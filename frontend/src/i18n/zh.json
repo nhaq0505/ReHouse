@@ -552,5 +552,19 @@
   "Số tiền đã thanh toán": "已支付金额",
   "Không tìm thấy hóa đơn": "未找到此账单",
   "Hóa đơn này không thuộc liên kết riêng hiện tại hoặc đã không còn khả dụng.": "此账单不属于当前专属链接，或已无法使用。",
-  "payOS xác nhận giao dịch đã hết hạn. Hóa đơn vẫn hiển thị số dư hiện tại; bạn có thể thanh toán lại khi sẵn sàng.": "payOS 已确认交易已过期。账单仍显示当前余额；准备好后可以重新付款。"
+  "payOS xác nhận giao dịch đã hết hạn. Hóa đơn vẫn hiển thị số dư hiện tại; bạn có thể thanh toán lại khi sẵn sàng.": "payOS 已确认交易已过期。账单仍显示当前余额；准备好后可以重新付款。",
+  "Tất cả loại hóa đơn": "全部账单类型",
+  "Tất cả kỳ": "全部账期",
+  "Trạng thái thanh toán": "付款状态",
+  "Tìm hóa đơn": "搜索账单",
+  "Phòng, dãy trọ hoặc người thuê": "房间、楼栋或租客",
+  "Kết quả bộ lọc: {0} hóa đơn": "筛选结果：{0} 张账单",
+  "Tổng giá trị hóa đơn": "账单总额",
+  "Đã ghi nhận trên hóa đơn": "账单已登记金额",
+  "Ba số liệu này tính từ {0} hóa đơn phù hợp với bộ lọc. Tiền cọc đã nhận không phải doanh thu.": "这三项数据统计符合筛选条件的 {0} 张账单。已收押金不属于收入。",
+  "LOẠI HÓA ĐƠN": "账单类型",
+  "Loại hóa đơn": "账单类型",
+  "Không có hóa đơn khớp bộ lọc": "没有符合筛选条件的账单",
+  "Hãy đổi bộ lọc hoặc từ khóa để xem hóa đơn.": "更改筛选条件或搜索关键词以查看账单。",
+  "Hóa đơn sẽ xuất hiện sau khi bạn ghi nhận tiền cọc, tạo khoản bổ sung hoặc chốt chỉ số điện.": "登记押金、添加补充费用或确认电表读数后，账单会显示在这里。"
 }

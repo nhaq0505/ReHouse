@@ -552,5 +552,19 @@
   "Số tiền đã thanh toán": "भुगतान की गई राशि",
   "Không tìm thấy hóa đơn": "बिल नहीं मिला",
   "Hóa đơn này không thuộc liên kết riêng hiện tại hoặc đã không còn khả dụng.": "यह बिल इस निजी लिंक से उपलब्ध नहीं है या अब उपयोग नहीं किया जा सकता।",
-  "payOS xác nhận giao dịch đã hết hạn. Hóa đơn vẫn hiển thị số dư hiện tại; bạn có thể thanh toán lại khi sẵn sàng.": "payOS ने लेनदेन की समय-सीमा समाप्त होने की पुष्टि की। बिल में वर्तमान बकाया दिखता रहेगा; तैयार होने पर फिर भुगतान कर सकते हैं।"
+  "payOS xác nhận giao dịch đã hết hạn. Hóa đơn vẫn hiển thị số dư hiện tại; bạn có thể thanh toán lại khi sẵn sàng.": "payOS ने लेनदेन की समय-सीमा समाप्त होने की पुष्टि की। बिल में वर्तमान बकाया दिखता रहेगा; तैयार होने पर फिर भुगतान कर सकते हैं।",
+  "Tất cả loại hóa đơn": "बिल के सभी प्रकार",
+  "Tất cả kỳ": "सभी अवधियाँ",
+  "Trạng thái thanh toán": "भुगतान स्थिति",
+  "Tìm hóa đơn": "बिल खोजें",
+  "Phòng, dãy trọ hoặc người thuê": "कमरा, भवन या किरायेदार",
+  "Kết quả bộ lọc: {0} hóa đơn": "फ़िल्टर परिणाम: {0} बिल",
+  "Tổng giá trị hóa đơn": "कुल बिल राशि",
+  "Đã ghi nhận trên hóa đơn": "बिलों में दर्ज राशि",
+  "Ba số liệu này tính từ {0} hóa đơn phù hợp với bộ lọc. Tiền cọc đã nhận không phải doanh thu.": "ये आँकड़े फ़िल्टर से मेल खाने वाले {0} बिलों के हैं। प्राप्त जमा राशि आय नहीं है।",
+  "LOẠI HÓA ĐƠN": "बिल का प्रकार",
+  "Loại hóa đơn": "बिल का प्रकार",
+  "Không có hóa đơn khớp bộ lọc": "इन फ़िल्टर से मेल खाने वाला कोई बिल नहीं है",
+  "Hãy đổi bộ lọc hoặc từ khóa để xem hóa đơn.": "बिल देखने के लिए फ़िल्टर या खोज शब्द को बदलें।",
+  "Hóa đơn sẽ xuất hiện sau khi bạn ghi nhận tiền cọc, tạo khoản bổ sung hoặc chốt chỉ số điện.": "जमा राशि दर्ज करने, अतिरिक्त शुल्क जोड़ने या बिजली रीडिंग तय करने के बाद बिल यहाँ दिखाई देंगे।"
 }

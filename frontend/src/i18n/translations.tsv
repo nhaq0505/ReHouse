@@ -552,3 +552,17 @@
 551|Invoice not found|未找到此账单|청구서를 찾을 수 없습니다|बिल नहीं मिला
 552|This invoice is not available through this private link.|此账单不属于当前专属链接，或已无法使用。|이 청구서는 현재 전용 링크에서 사용할 수 없거나 더 이상 이용할 수 없습니다.|यह बिल इस निजी लिंक से उपलब्ध नहीं है या अब उपयोग नहीं किया जा सकता।
 553|payOS confirmed that the transaction expired. The invoice still shows the current balance; you can try paying again when ready.|payOS 已确认交易已过期。账单仍显示当前余额；准备好后可以重新付款。|payOS가 거래 만료를 확인했습니다. 청구서에는 현재 잔액이 표시됩니다. 준비되면 다시 결제할 수 있습니다.|payOS ने लेनदेन की समय-सीमा समाप्त होने की पुष्टि की। बिल में वर्तमान बकाया दिखता रहेगा; तैयार होने पर फिर भुगतान कर सकते हैं।
+554|All invoice types|全部账单类型|모든 청구 유형|बिल के सभी प्रकार
+555|All periods|全部账期|전체 기간|सभी अवधियाँ
+556|Payment status|付款状态|결제 상태|भुगतान स्थिति
+557|Search invoices|搜索账单|청구서 검색|बिल खोजें
+558|Room, building or tenant|房间、楼栋或租客|방, 건물 또는 임차인|कमरा, भवन या किरायेदार
+559|Filtered results: {0} invoices|筛选结果：{0} 张账单|필터 결과: 청구서 {0}건|फ़िल्टर परिणाम: {0} बिल
+560|Total invoice value|账单总额|청구서 총액|कुल बिल राशि
+561|Recorded on invoices|账单已登记金额|청구서에 기록된 금액|बिलों में दर्ज राशि
+562|These figures cover {0} invoices matching the filters. Received deposits are not revenue.|这三项数据统计符合筛选条件的 {0} 张账单。已收押金不属于收入。|이 수치는 필터에 맞는 청구서 {0}건을 기준으로 합니다. 받은 보증금은 매출이 아닙니다.|ये आँकड़े फ़िल्टर से मेल खाने वाले {0} बिलों के हैं। प्राप्त जमा राशि आय नहीं है।
+563|INVOICE TYPE|账单类型|청구 유형|बिल का प्रकार
+564|Invoice type|账单类型|청구 유형|बिल का प्रकार
+565|No invoices match these filters|没有符合筛选条件的账单|필터와 일치하는 청구서가 없습니다|इन फ़िल्टर से मेल खाने वाला कोई बिल नहीं है
+566|Change the filters or search term to see invoices.|更改筛选条件或搜索关键词以查看账单。|청구서를 보려면 필터나 검색어를 바꾸세요.|बिल देखने के लिए फ़िल्टर या खोज शब्द को बदलें।
+567|Invoices will appear after you record a deposit, add a supplemental charge or finalize electricity readings.|登记押金、添加补充费用或确认电表读数后，账单会显示在这里。|보증금을 기록하거나 추가 청구서를 만들거나 전기 검침을 확정하면 청구서가 여기에 표시됩니다.|जमा राशि दर्ज करने, अतिरिक्त शुल्क जोड़ने या बिजली रीडिंग तय करने के बाद बिल यहाँ दिखाई देंगे।

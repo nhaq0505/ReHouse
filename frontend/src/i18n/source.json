@@ -552,5 +552,19 @@
   "Số tiền đã thanh toán",
   "Không tìm thấy hóa đơn",
   "Hóa đơn này không thuộc liên kết riêng hiện tại hoặc đã không còn khả dụng.",
-  "payOS xác nhận giao dịch đã hết hạn. Hóa đơn vẫn hiển thị số dư hiện tại; bạn có thể thanh toán lại khi sẵn sàng."
+  "payOS xác nhận giao dịch đã hết hạn. Hóa đơn vẫn hiển thị số dư hiện tại; bạn có thể thanh toán lại khi sẵn sàng.",
+  "Tất cả loại hóa đơn",
+  "Tất cả kỳ",
+  "Trạng thái thanh toán",
+  "Tìm hóa đơn",
+  "Phòng, dãy trọ hoặc người thuê",
+  "Kết quả bộ lọc: {0} hóa đơn",
+  "Tổng giá trị hóa đơn",
+  "Đã ghi nhận trên hóa đơn",
+  "Ba số liệu này tính từ {0} hóa đơn phù hợp với bộ lọc. Tiền cọc đã nhận không phải doanh thu.",
+  "LOẠI HÓA ĐƠN",
+  "Loại hóa đơn",
+  "Không có hóa đơn khớp bộ lọc",
+  "Hãy đổi bộ lọc hoặc từ khóa để xem hóa đơn.",
+  "Hóa đơn sẽ xuất hiện sau khi bạn ghi nhận tiền cọc, tạo khoản bổ sung hoặc chốt chỉ số điện."
 ]

@@ -269,7 +269,18 @@ a { color: var(--teal-dark); }
 .invoice-total-tile strong { color: #304a51; font-family: Manrope, sans-serif; font-size: 17px; font-weight: 700; }
 .invoice-total-paid strong { color: #237e60; }
 .invoice-total-due strong { color: #b97731; }
+.invoice-summary-scope { margin: -7px 0 18px; color: #5c7178; font-size: 13px; line-height: 1.55; }
 .invoice-list-card .section-card-header { margin-bottom: 10px; }
+.invoice-list-actions { display: flex; align-items: center; gap: 8px; }
+.invoice-filter-toolbar { display: grid; grid-template-columns: 1.15fr .85fr 1fr 1.35fr; gap: 12px; padding: 2px 0 16px; margin-bottom: 15px; border-bottom: 1px solid #edf1f0; }
+.invoice-filter { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
+.invoice-filter > span { color: #52666b; font-size: 12px; font-weight: 600; }
+.invoice-filter > .ant-select, .invoice-filter > .ant-picker, .invoice-filter > .ant-input-affix-wrapper { width: 100%; min-width: 0; }
+.invoice-filter-search .ant-input-prefix { color: #809195; }
+.invoice-kind-tag { display: inline-flex; max-width: 100%; margin: 0; padding: 3px 8px; border: 0; border-radius: 20px; font-size: 12px; line-height: 1.45; white-space: normal; }
+.invoice-kind-monthly { color: #267c60; background: #eaf6ef; }
+.invoice-kind-deposit { color: #53738a; background: #edf3f8; }
+.invoice-kind-supplemental { color: #8b682f; background: #fbf3e5; }
 .invoice-table .room-avatar-invoice { color: #6685a1; background: #edf3f8; }
 .balance-due { color: #bd6e3b !important; }
 .balance-clear { color: #318566 !important; }
@@ -708,6 +719,16 @@ html:lang(zh), html:lang(ko), html:lang(hi) { font-family: 'DM Sans', system-ui,
 .tenant-link-language { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .tenant-link-language label { font-weight: 600; }
 .tenant-link-language > span { color: var(--muted); font-size: 12px; }
+
+@media (max-width: 767px) {
+  .invoice-filter-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .invoice-filter-search { grid-column: 1 / -1; }
+  .invoice-list-actions { width: 100%; justify-content: space-between; }
+}
+@media (max-width: 480px) {
+  .invoice-filter-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .invoice-filter-search { grid-column: auto; }
+}
 
 /* Tenant QR checkout page; keep its controls scoped to the private tenant portal. */
 .tenant-page .tenant-checkout-page { padding-top: 25px; }

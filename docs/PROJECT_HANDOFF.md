@@ -472,3 +472,9 @@ Nguồn chi tiết: `README.md`, `skills/ui-ux/SKILL.md`, `references/review.md`
 - Trước khi đổi origin/recreate app đã tạo backup PostgreSQL và DataProtection key. Helper xác minh DNS, lấy địa chỉ gateway hiện tại, serialized operation bằng lock chung, recreate app bằng digest đang chạy và kiểm tra health, DB, bootstrap admin, key volume.
 - Database VPS vẫn là fresh deployment, chỉ có bootstrap admin; chưa import database/khóa từ Mac hoặc dữ liệu tenant. `WEBHOOK_BASE_URL` đã sẵn sàng để tạo callback HTTPS, nhưng trên VPS mới chưa có owner payOS settings/credentials, chưa gọi `confirm-webhook`, và không tạo checkout hay giao dịch. Lịch sử local về giao dịch Paid 30.000 VND được giữ như đã ghi ở phần trên; payOS chưa được xác minh trên VPS mới.
 - Cấu hình chuẩn nằm trong [`deploy/Caddyfile`](../deploy/Caddyfile), helper đổi public origin tại [`deploy/configure-public-origin.sh`](../deploy/configure-public-origin.sh), và [deployment runbook](deployment.md). Phần còn lại trước vận hành rộng: migrations có version, off-host backup/khôi phục định kỳ, giám sát, UAT nghiệp vụ và kiểm chứng payOS thật khi chủ trọ cung cấp credentials/đồng ý thử.
+
+## 27. Mặc định hiển thị toàn bộ hóa đơn — 13/10/2026
+
+- Trang hóa đơn tải danh sách không giới hạn kỳ và mặc định hiển thị mọi loại, mọi trạng thái, kể cả đã thanh toán. Chủ trọ có thể lọc loại/kỳ/trạng thái và tìm theo phòng, dãy hoặc người thuê; mỗi dòng có nhãn loại. Ba tổng số cập nhật theo đúng kết quả lọc và ghi rõ tiền cọc đã nhận không phải doanh thu. Bộ lọc rỗng có nút xóa; trạng thái rỗng ban đầu hướng dẫn các cách tạo hóa đơn.
+- Drawer chi tiết và link `?invoice=...` được giữ nguyên. Nút tạo hóa đơn còn thiếu chỉ hiện cho loại tháng khi đã chọn kỳ. Không đổi backend, dữ liệu hoặc số tiền; chưa chạy browser QA trong lượt này.
+- Kiểm tra frontend: `npm run i18n:build`, `npm run i18n:check` pass với 568 khóa × 4 catalog; `npm run build` pass (cảnh báo chunk lớn hiện có vẫn xuất hiện).

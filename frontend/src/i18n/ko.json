@@ -552,5 +552,19 @@
   "Số tiền đã thanh toán": "결제 금액",
   "Không tìm thấy hóa đơn": "청구서를 찾을 수 없습니다",
   "Hóa đơn này không thuộc liên kết riêng hiện tại hoặc đã không còn khả dụng.": "이 청구서는 현재 전용 링크에서 사용할 수 없거나 더 이상 이용할 수 없습니다.",
-  "payOS xác nhận giao dịch đã hết hạn. Hóa đơn vẫn hiển thị số dư hiện tại; bạn có thể thanh toán lại khi sẵn sàng.": "payOS가 거래 만료를 확인했습니다. 청구서에는 현재 잔액이 표시됩니다. 준비되면 다시 결제할 수 있습니다."
+  "payOS xác nhận giao dịch đã hết hạn. Hóa đơn vẫn hiển thị số dư hiện tại; bạn có thể thanh toán lại khi sẵn sàng.": "payOS가 거래 만료를 확인했습니다. 청구서에는 현재 잔액이 표시됩니다. 준비되면 다시 결제할 수 있습니다.",
+  "Tất cả loại hóa đơn": "모든 청구 유형",
+  "Tất cả kỳ": "전체 기간",
+  "Trạng thái thanh toán": "결제 상태",
+  "Tìm hóa đơn": "청구서 검색",
+  "Phòng, dãy trọ hoặc người thuê": "방, 건물 또는 임차인",
+  "Kết quả bộ lọc: {0} hóa đơn": "필터 결과: 청구서 {0}건",
+  "Tổng giá trị hóa đơn": "청구서 총액",
+  "Đã ghi nhận trên hóa đơn": "청구서에 기록된 금액",
+  "Ba số liệu này tính từ {0} hóa đơn phù hợp với bộ lọc. Tiền cọc đã nhận không phải doanh thu.": "이 수치는 필터에 맞는 청구서 {0}건을 기준으로 합니다. 받은 보증금은 매출이 아닙니다.",
+  "LOẠI HÓA ĐƠN": "청구 유형",
+  "Loại hóa đơn": "청구 유형",
+  "Không có hóa đơn khớp bộ lọc": "필터와 일치하는 청구서가 없습니다",
+  "Hãy đổi bộ lọc hoặc từ khóa để xem hóa đơn.": "청구서를 보려면 필터나 검색어를 바꾸세요.",
+  "Hóa đơn sẽ xuất hiện sau khi bạn ghi nhận tiền cọc, tạo khoản bổ sung hoặc chốt chỉ số điện.": "보증금을 기록하거나 추가 청구서를 만들거나 전기 검침을 확정하면 청구서가 여기에 표시됩니다."
 }

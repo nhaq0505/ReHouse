@@ -552,5 +552,19 @@
   "Số tiền đã thanh toán": "Amount paid",
   "Không tìm thấy hóa đơn": "Invoice not found",
   "Hóa đơn này không thuộc liên kết riêng hiện tại hoặc đã không còn khả dụng.": "This invoice is not available through this private link.",
-  "payOS xác nhận giao dịch đã hết hạn. Hóa đơn vẫn hiển thị số dư hiện tại; bạn có thể thanh toán lại khi sẵn sàng.": "payOS confirmed that the transaction expired. The invoice still shows the current balance; you can try paying again when ready."
+  "payOS xác nhận giao dịch đã hết hạn. Hóa đơn vẫn hiển thị số dư hiện tại; bạn có thể thanh toán lại khi sẵn sàng.": "payOS confirmed that the transaction expired. The invoice still shows the current balance; you can try paying again when ready.",
+  "Tất cả loại hóa đơn": "All invoice types",
+  "Tất cả kỳ": "All periods",
+  "Trạng thái thanh toán": "Payment status",
+  "Tìm hóa đơn": "Search invoices",
+  "Phòng, dãy trọ hoặc người thuê": "Room, building or tenant",
+  "Kết quả bộ lọc: {0} hóa đơn": "Filtered results: {0} invoices",
+  "Tổng giá trị hóa đơn": "Total invoice value",
+  "Đã ghi nhận trên hóa đơn": "Recorded on invoices",
+  "Ba số liệu này tính từ {0} hóa đơn phù hợp với bộ lọc. Tiền cọc đã nhận không phải doanh thu.": "These figures cover {0} invoices matching the filters. Received deposits are not revenue.",
+  "LOẠI HÓA ĐƠN": "INVOICE TYPE",
+  "Loại hóa đơn": "Invoice type",
+  "Không có hóa đơn khớp bộ lọc": "No invoices match these filters",
+  "Hãy đổi bộ lọc hoặc từ khóa để xem hóa đơn.": "Change the filters or search term to see invoices.",
+  "Hóa đơn sẽ xuất hiện sau khi bạn ghi nhận tiền cọc, tạo khoản bổ sung hoặc chốt chỉ số điện.": "Invoices will appear after you record a deposit, add a supplemental charge or finalize electricity readings."
 }

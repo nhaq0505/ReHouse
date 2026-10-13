@@ -100,14 +100,14 @@ export default function InvoicesPage() {
   };
   const closeInvoice = () => setSearchParams({});
   const columns: TableProps<Invoice>['columns'] = [
-    { title: t("PHÒNG / NGƯỜI THUÊ"), key: 'room', render: (_, item) => <div className="room-name-cell"><div className="room-avatar room-avatar-invoice"><FileTextOutlined /></div><div><strong>{item.roomName}</strong><span>{item.tenantName || t("Người thuê")} · {item.buildingName || t("Dãy trọ")}</span></div></div> },
-    { title: t("LOẠI HÓA ĐƠN"), key: 'kind', width: 150, render: (_, item) => <Tag className={`invoice-kind-tag invoice-kind-${item.kind.toLowerCase()}`}>{invoiceKindLabel(item.kind)}</Tag> },
-    { title: t("KỲ HÓA ĐƠN"), dataIndex: 'period', render: (value: string) => periodLabel(value) },
-    { title: t("TỔNG TIỀN"), dataIndex: 'total', render: (value: number) => <strong>{formatVnd(value)}</strong> },
-    { title: t("ĐÃ THU"), dataIndex: 'paid', render: (value: number) => <span>{formatVnd(value)}</span> },
-    { title: t("CÒN LẠI"), dataIndex: 'outstanding', render: (value: number) => <strong className={value > 0 ? 'balance-due' : 'balance-clear'}>{formatVnd(value)}</strong> },
-    { title: t("TRẠNG THÁI"), dataIndex: 'status', render: (value: string) => <Tag className={`status-pill ${statusClass(value)}`}>{statusLabel(value)}</Tag> },
-    { title: '', key: 'action', fixed: 'right', width: 140, align: 'right', render: (_, item) => <Button type="link" onClick={() => showInvoice(item.id)}>{t("Chi tiết")} <ArrowRightOutlined /></Button> },
+    { title: t("PHÒNG / NGƯỜI THUÊ"), key: 'room', width: 220, render: (_, item) => <div className="room-name-cell"><div className="room-avatar room-avatar-invoice"><FileTextOutlined /></div><div><strong>{item.roomName}</strong><span>{item.tenantName || t("Người thuê")} · {item.buildingName || t("Dãy trọ")}</span></div></div> },
+    { title: t("LOẠI HÓA ĐƠN"), key: 'kind', width: 140, render: (_, item) => <Tag className={`invoice-kind-tag invoice-kind-${item.kind.toLowerCase()}`}>{invoiceKindLabel(item.kind)}</Tag> },
+    { title: t("KỲ HÓA ĐƠN"), dataIndex: 'period', width: 120, render: (value: string) => periodLabel(value) },
+    { title: t("TỔNG TIỀN"), dataIndex: 'total', width: 90, align: 'right', render: (value: number) => <strong>{formatVnd(value)}</strong> },
+    { title: t("ĐÃ THU"), dataIndex: 'paid', width: 90, align: 'right', render: (value: number) => <span>{formatVnd(value)}</span> },
+    { title: t("CÒN LẠI"), dataIndex: 'outstanding', width: 90, align: 'right', render: (value: number) => <strong className={value > 0 ? 'balance-due' : 'balance-clear'}>{formatVnd(value)}</strong> },
+    { title: t("TRẠNG THÁI"), dataIndex: 'status', width: 130, render: (value: string) => <Tag className={`status-pill ${statusClass(value)}`}>{statusLabel(value)}</Tag> },
+    { title: '', key: 'action', fixed: 'right', width: 100, align: 'right', render: (_, item) => <Button type="link" style={{ whiteSpace: 'nowrap' }} onClick={() => showInvoice(item.id)}>{t("Chi tiết")} <ArrowRightOutlined /></Button> },
   ];
   const clearFilters = () => { setKindFilter('All'); setPeriod(null); setStatusFilter('All'); setSearchText(''); };
   const setMonth = (value: Dayjs | null) => setPeriod(value?.format('YYYY-MM') ?? null);
@@ -124,7 +124,7 @@ export default function InvoicesPage() {
           <label className="invoice-filter"><span>{t("Trạng thái thanh toán")}</span><Select aria-label={t("Trạng thái thanh toán")} value={statusFilter} onChange={(value) => setStatusFilter(value as InvoiceStatusFilter)} options={[{ value: 'All', label: t("Tất cả trạng thái") }, { value: 'Unpaid', label: t("Chưa thanh toán") }, { value: 'Partial', label: t("Thanh toán một phần") }, { value: 'Paid', label: t("Đã thanh toán") }]} /></label>
           <label className="invoice-filter invoice-filter-search"><span>{t("Tìm hóa đơn")}</span><Input aria-label={t("Tìm hóa đơn")} prefix={<SearchOutlined />} value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder={t("Phòng, dãy trọ hoặc người thuê")} allowClear /></label>
         </div>
-        {invoices.length ? <ResponsiveTable className="invoice-table" rowKey="id" columns={columns} dataSource={invoices} pagination={{ pageSize: 10, showSizeChanger: false, hideOnSinglePage: true }} scroll={{ x: 960 }} /> : hasActiveFilters ? <EmptyPanel title={t("Không có hóa đơn khớp bộ lọc")} description={t("Hãy đổi bộ lọc hoặc từ khóa để xem hóa đơn.")} action={<Button onClick={clearFilters}>{t("Xóa lọc")}</Button>} /> : <EmptyPanel title={t("Chưa có hóa đơn")} description={t("Hóa đơn sẽ xuất hiện sau khi bạn ghi nhận tiền cọc, tạo khoản bổ sung hoặc chốt chỉ số điện.")} />}
+        {invoices.length ? <ResponsiveTable className="invoice-table" rowKey="id" columns={columns} dataSource={invoices} pagination={{ pageSize: 10, showSizeChanger: false, hideOnSinglePage: true }} scroll={{ x: 980 }} /> : hasActiveFilters ? <EmptyPanel title={t("Không có hóa đơn khớp bộ lọc")} description={t("Hãy đổi bộ lọc hoặc từ khóa để xem hóa đơn.")} action={<Button onClick={clearFilters}>{t("Xóa lọc")}</Button>} /> : <EmptyPanel title={t("Chưa có hóa đơn")} description={t("Hóa đơn sẽ xuất hiện sau khi bạn ghi nhận tiền cọc, tạo khoản bổ sung hoặc chốt chỉ số điện.")} />}
       </SectionCard>
     </>}
     <Drawer className="invoice-drawer" title={t("Chi tiết hóa đơn")} width={520} open={!!selectedId} onClose={closeInvoice} destroyOnClose>

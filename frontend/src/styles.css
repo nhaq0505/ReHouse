@@ -282,6 +282,8 @@ a { color: var(--teal-dark); }
 .invoice-kind-deposit { color: #53738a; background: #edf3f8; }
 .invoice-kind-supplemental { color: #8b682f; background: #fbf3e5; }
 .invoice-table .room-avatar-invoice { color: #6685a1; background: #edf3f8; }
+.invoice-table .room-name-cell > div:last-child { min-width: 0; flex: 1; }
+.invoice-table .room-name-cell strong, .invoice-table .room-name-cell span { overflow-wrap: anywhere; word-break: normal; }
 .balance-due { color: #bd6e3b !important; }
 .balance-clear { color: #318566 !important; }
 .invoice-drawer .ant-drawer-header { padding: 21px 24px; border-bottom: 1px solid #edf1ef; }

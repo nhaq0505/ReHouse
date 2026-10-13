@@ -1,0 +1,87 @@
+# Rehouse — Quản lý phòng trọ
+
+**Agent tiếp tục dự án: đọc [kế hoạch và tài liệu bàn giao](docs/PROJECT_HANDOFF.md) trước.**
+
+MVP ASP.NET Core .NET 10 + React/TypeScript cho nhiều chủ trọ. Admin duyệt chủ trọ; quản lý dãy/phòng/lượt thuê; nhập chỉ số điện thủ công; tính tiền và phát hành hóa đơn; link khách riêng; thu tiền thủ công và tích hợp payOS theo từng chủ trọ. Camera/AI nằm ở giai đoạn sau.
+
+## Chạy thử trên máy
+
+Yêu cầu .NET SDK 10 và Node.js 24 (hoặc phiên bản tương thích Vite).
+
+Terminal backend:
+
+```sh
+ASPNETCORE_ENVIRONMENT=Development SeedDemo=true dotnet run --project backend/RoomRental.Api --urls http://localhost:5080
+```
+
+Terminal frontend:
+
+```sh
+cd frontend
+npm ci
+npm run dev
+```
+
+Mở http://localhost:5173. Vite chuyển `/api` sang backend cổng 5080. Development mặc định dùng SQLite, dữ liệu nằm trong thư mục `backend/RoomRental.Api/.local-data` (tách khỏi thư mục mã nguồn `Data` trên macOS).
+
+Chỉ khi bật `SeedDemo=true` trong Development, có tài khoản thử:
+
+| Vai trò | Email | Mật khẩu |
+| --- | --- | --- |
+| Admin | admin@phongtro.local | Admin123! |
+| Chủ trọ | owner@phongtro.local | Owner123! |
+
+Luồng thử: đăng nhập chủ trọ → tạo dãy/phòng → nhận khách thuê → nhập chỉ số tháng → xem hóa đơn → ghi nhận thu tiền hoặc mở link khách. Đăng ký một chủ trọ mới sẽ phải chờ admin duyệt.
+
+## Docker với PostgreSQL
+
+```sh
+cp .env.example .env
+# Sửa .env: mật khẩu PostgreSQL, email/mật khẩu admin, URL công khai.
+docker compose up --build -d
+```
+
+Mở http://localhost:8080 (hoặc APP_PORT đã đặt). Docker phục vụ frontend và API cùng origin, không bật dữ liệu demo. Tài khoản admin đầu tiên được tạo từ cấu hình `BootstrapAdmin`; không thay mật khẩu tài khoản đã tồn tại khi khởi động lại.
+
+Hai volume lưu PostgreSQL và khóa mã hóa DataProtection. Sao lưu cả hai trước khi nâng cấp. Không chạy `docker compose down -v` nếu muốn giữ dữ liệu.
+
+Cookie của bản Production yêu cầu kết nối bảo mật. `localhost` dùng để thử tại máy; khi truy cập từ IP LAN hoặc tên miền, phải cấu hình HTTPS. Khởi tạo schema hiện dùng `EnsureCreated` cho cơ sở dữ liệu mới; trước khi thay đổi schema trên dữ liệu vận hành cần bổ sung và kiểm thử migration, không xóa database để nâng cấp.
+
+Khi đưa lên máy chủ, cấu hình HTTPS qua reverse proxy và đặt `PUBLIC_BASE_URL` đúng tên miền; không dùng tài khoản demo. Đặt `TRUSTED_PROXIES` thành IP của reverse proxy (ngăn cách bằng dấu phẩy) để backend nhận đúng HTTPS/host từ forwarded headers và kiểm tra nguồn yêu cầu. Proxy phải chuyển tiếp `Host`, `X-Forwarded-Proto`, `X-Forwarded-For`; không cấu hình tin mọi proxy. Phiên bản hiện tại cần được kiểm thử trên dữ liệu thực trước khi vận hành rộng.
+
+## payOS
+
+Chủ trọ vào phần cấu hình thanh toán và nhập Client ID, API Key, Checksum Key của kênh payOS riêng. Backend mã hóa thông tin, không trả khóa bí mật về giao diện. Thiếu cấu hình thì không tạo link thanh toán giả.
+
+Khi bấm **Lưu và xác minh payOS**, backend lưu bộ khóa rồi tự gọi API `confirm-webhook` của payOS để đăng ký URL của chủ trọ:
+
+```text
+https://ten-mien-cua-ban/api/payments/webhook/{ownerId}
+```
+
+Backend lấy origin HTTPS từ `WebhookBaseUrl` (Docker: `WEBHOOK_BASE_URL`), mặc định dùng `PublicBaseUrl`. Không lấy URL từ browser hoặc Host header. Khi phát triển có thể đặt `WebhookBaseUrl` trong `backend/RoomRental.Api/appsettings.Development.local.json` (gitignore), trỏ đến tunnel HTTPS. Tunnel chỉ webhook vẫn cho phép giao diện chạy localhost. Khi tunnel đổi URL, cập nhật cấu hình máy chủ rồi bấm **Xác minh lại webhook**.
+
+Trạng thái xác minh được lưu trong database, gắn với bộ khóa và URL hiện tại. Nếu xác minh thất bại, khóa vẫn được lưu; giao diện báo lỗi và cho thử lại mà không nhập lại khóa. Bộ khóa hoặc URL thay đổi sẽ làm trạng thái cũ hết hiệu lực. Xác minh thành công chỉ chứng minh endpoint nhận webhook được; vẫn phải thử giao dịch thật. Nâng cấp này thêm bảng `PaymentWebhookRegistrations` bằng thao tác tạo bảng nếu chưa có, không xóa dữ liệu MVP; các thay đổi schema tiếp theo vẫn cần migration đầy đủ.
+
+Chỉ webhook hợp lệ/đối soát máy chủ mới ghi nhận tiền; URL quay về sau thanh toán không chứng minh đã trả tiền. Cần thử giao dịch thật và webhook HTTPS với tài khoản payOS của chủ trọ trước khi nhận tiền. Dự án không chứa khóa API thật.
+
+## Kiểm tra
+
+```sh
+dotnet build backend/RoomRental.Api
+npm --prefix frontend run build
+python3 -m unittest discover -s tests -v
+```
+
+Kiểm thử API cần backend đang chạy với dữ liệu thử ở localhost:5080; xem hướng dẫn bổ sung trong thư mục tests. Không chạy bài kiểm thử tích hợp trên cơ sở dữ liệu vận hành.
+
+Xem `docs/api-contract.md` cho API và `docs/implementation-notes.md` cho phạm vi MVP, các giới hạn và bước triển khai AI sau này.
+
+
+Tiền cọc: vào **Phòng & người thuê → Thêm người thuê**, nhập mức cọc thỏa thuận với từng khách (0 nếu không thu). Hệ thống tạo khoản cọc riêng trên link khách; thu qua payOS hoặc ghi nhận thu thủ công. Xem tại **Hóa đơn → Tiền cọc** hoặc menu phòng **Thu / quyết toán cọc**. Khi khách chuyển đi, ghi nhận số đã hoàn hoặc khấu trừ vào công nợ/chi phí trước khi kết thúc lượt thuê. Hoàn cọc là ghi nhận đã hoàn bên ngoài, không tự chuyển tiền ngân hàng.
+
+Nhân bản phòng: **Phòng & người thuê → ⋯ → Nhân bản phòng**. Form điền sẵn dãy và mức phí để chỉnh trước khi tạo. Nhập chỉ số công tơ của phòng mới; phòng bản sao bắt đầu trống, chưa có người thuê hoặc công nợ.
+
+Hóa đơn bổ sung: **Phòng & người thuê → ⋯ → Tạo hóa đơn bổ sung**, nhập nội dung, số tiền và hạn thanh toán. Dùng cho phòng đang có khách; khoản thu xuất hiện trên link khách hiện có. Xem lại tại **Hóa đơn → Hóa đơn bổ sung**.
+
+Trả phòng: **Phòng & người thuê → ⋯ → Trả phòng & quyết toán**. Chốt chỉ số cuối kỳ và nhập phí/tiền thuê còn lại chưa có hóa đơn; khấu trừ cọc hoặc ghi nhận tiền đã nhận; ghi nhận đã hoàn phần cọc dư; Hoàn tất trả phòng để thu hồi link và trả phòng về trống. Luồng mới chặn kết thúc khi còn nợ, cọc đang giữ hoặc giao dịch payOS chờ. Hoàn cọc không tự chuyển tiền ngân hàng; tiền thuê theo ngày do chủ trọ tự xác định.

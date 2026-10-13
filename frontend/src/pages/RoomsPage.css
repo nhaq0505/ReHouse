@@ -1,0 +1,103 @@
+/* evondevKit pilot: tokens and geometry stay inside the room workflow. */
+.rooms-workspace, .room-editor {
+  --room-ink: #19333b;
+  --room-muted: #526970;
+  --room-line: #e6edeb;
+  --room-control-line: #c8d7d1;
+  --room-surface: #fff;
+  --room-hover: #f4f7f6;
+  --room-accent: #0a796a;
+  --room-danger: #a93241;
+  font-family: 'DM Sans', sans-serif;
+}
+.rooms-workspace .page-heading { align-items: center; gap: 16px; margin-bottom: 24px; }
+.rooms-workspace .page-heading h2.ant-typography { font-family: inherit; font-size: 22px; font-weight: 600; letter-spacing: 0; }
+.rooms-workspace .page-subtitle { color: var(--room-muted) !important; font-size: 14px; margin-top: 8px !important; }
+.rooms-workspace .ant-btn, .room-editor .ant-btn { min-height: 40px; border-radius: 12px; font-weight: 500; box-shadow: none; }
+.rooms-workspace .ant-btn-default:hover, .room-editor .ant-btn-default:hover { background: var(--room-hover); border-color: var(--room-control-line); color: var(--room-ink); }
+.rooms-workspace .room-directory { padding: 0; border-color: var(--room-line); border-radius: 16px; overflow: hidden; box-shadow: none; }
+.room-directory-toolbar { display: flex; align-items: flex-end; gap: 16px; padding: 20px; border-bottom: 1px solid var(--room-line); }
+.room-filter { display: flex; min-width: 0; flex: 0 1 210px; flex-direction: column; gap: 8px; }
+.room-filter > span { color: var(--room-muted); font-size: 13px; font-weight: 500; }
+.room-filter .ant-select { width: 100%; }
+.room-filter-result { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; min-height: 40px; font-size: 13px; color: var(--room-muted); white-space: nowrap; }
+.rooms-workspace .room-table .ant-table { font-size: 14px; }
+.rooms-workspace .room-table .ant-table-thead > tr > th { font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--room-muted); }
+.room-list-name, .room-list-tenant { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.room-list-name strong { color: var(--room-ink); font-size: 15px; font-weight: 600; }
+.room-list-tenant strong { color: var(--room-ink); font-size: 14px; font-weight: 500; }
+.room-list-name > span, .room-list-tenant > span { color: var(--room-muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.room-state { margin: 0; padding: 4px 8px; border: 0; border-radius: 8px; font-size: 12px; line-height: 20px; white-space: nowrap; }
+.room-state-occupied { color: #226747; background: #eaf6ef; }
+.room-state-vacant { color: var(--room-muted); background: #f0f4f2; }
+.room-price { color: var(--room-ink); font-size: 14px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.room-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.room-more.ant-btn { flex: 0 0 40px; width: 40px; height: 40px; color: var(--room-muted); font-size: 20px; }
+.room-actions .ant-btn-default { color: var(--room-ink); border-color: var(--room-control-line); white-space: nowrap; }
+.rooms-workspace .mobile-records { gap: 0; }
+.rooms-workspace .mobile-record { padding: 20px; border: 0; border-bottom: 1px solid var(--room-line); border-radius: 0; }
+.rooms-workspace .mobile-record:last-of-type { border-bottom: 0; }
+.room-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.room-card-head > div { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
+.room-card-head strong { font-size: 16px; font-weight: 600; color: var(--room-ink); overflow-wrap: anywhere; }
+.room-card-head > div > span { font-size: 13px; color: var(--room-muted); overflow-wrap: anywhere; }
+.room-card-tenant { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; font-size: 14px; }
+.room-card-tenant > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; text-align: right; }
+.room-card-tenant strong { color: var(--room-ink); font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.room-card-tenant > div > span { color: var(--room-muted); font-size: 13px; overflow-wrap: anywhere; }
+.room-field-label { color: var(--room-muted); font-size: 13px; font-weight: 400; }
+.room-card-rent { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+.room-card-rent strong { color: var(--room-ink); font-weight: 500; font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rooms-workspace .mobile-record .room-actions { padding-top: 16px; border-top: 1px solid var(--room-line); justify-content: space-between; }
+.room-list-loading { padding: 20px; }
+.room-editor .ant-modal-title { font-family: inherit; color: var(--room-ink); font-size: 18px; font-weight: 600; }
+.room-editor .modal-intro, .room-editor .ant-typography { color: var(--room-muted); font-size: 14px; line-height: 1.6; }
+.room-editor .ant-form-item-label > label { font-size: 14px; font-weight: 500; }
+.room-editor .ant-input, .room-editor .ant-input-number-input, .room-editor .ant-select, .room-editor .ant-picker-input > input { font-size: 14px; }
+.room-editor .ant-modal-footer { margin-top: 20px; }
+.room-editor .link-info { padding: 0; text-align: left; }
+.room-editor .link-info-icon { display: none; }
+.room-editor .link-info > .ant-btn { margin-top: 16px; }
+.room-link-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.room-link-footer > .ant-btn-dangerous { margin-right: auto; color: var(--room-danger); background: #fcf0f1; }
+.room-editor .ant-btn-dangerous { background: #fcf0f1; color: var(--room-danger); border-color: transparent; }
+.room-editor .ant-btn-dangerous:hover { background: #f9e5e8 !important; color: var(--room-danger) !important; }
+.room-editor .ant-modal-confirm-title { font-size: 18px; font-weight: 600; }
+.room-editor .ant-modal-confirm-content { font-size: 14px; line-height: 1.6; }
+.rooms-workspace .ant-pagination { padding: 16px; }
+/* Keep the project's visible keyboard focus; inputs use a subtle brand ring. */
+.room-editor .ant-input:focus, .room-editor .ant-input-number-focused, .room-editor .ant-select-focused .ant-select-selector { border-color: var(--room-accent) !important; box-shadow: 0 0 0 2px rgba(10,121,106,.1) !important; }
+@media (max-width: 767px) {
+  .rooms-workspace .page-heading { align-items: stretch; gap: 16px; margin-bottom: 20px; }
+  .rooms-workspace .page-heading h2.ant-typography { font-size: 22px; }
+  .rooms-workspace .page-heading-extra > .ant-btn { min-height: 44px; width: 100%; }
+  .room-directory-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; padding: 16px; }
+  .room-filter { gap: 8px; }
+  .room-filter-result { grid-column: 1 / -1; justify-content: space-between; margin: 0; min-height: 24px; }
+  .rooms-workspace .mobile-record { padding: 16px; }
+  .rooms-workspace .room-actions .ant-btn { min-height: 44px; }
+  .room-more.ant-btn { flex-basis: 44px; width: 44px; height: 44px; }
+  .room-editor .ant-input, .room-editor .ant-input-number-input, .room-editor .ant-select, .room-editor .ant-picker-input > input { font-size: 16px; }
+  .room-editor .ant-btn { min-height: 44px; }
+  .room-link-footer { flex-direction: column-reverse; align-items: stretch; }
+  .room-link-footer > .ant-btn-dangerous { margin: 0; }
+  .room-card-tenant .room-field-label { flex: 0 0 auto; }
+}
+@media (max-width: 399px) {
+  .room-directory-toolbar { grid-template-columns: minmax(0,1fr); }
+  .room-filter { display: grid; grid-template-columns: 70px minmax(0,1fr); align-items: center; }
+  .room-filter-result { grid-column: auto; }
+}
+@media (max-width: 767px) {
+  .room-filter-result[data-filtered='false'] { display: none; }
+}
+/* Adapted from evondevKit tokens.css (MIT, license retained in .agents/skills/ui-ux). */
+.rooms-workspace, .rooms-workspace *, .room-editor, .room-editor * { --room-scrollbar-thumb: transparent; }
+.rooms-workspace:hover, .rooms-workspace *:hover, .room-editor:hover, .room-editor *:hover { --room-scrollbar-thumb: rgba(25,51,59,.28); }
+.rooms-workspace ::-webkit-scrollbar, .room-editor ::-webkit-scrollbar { width: 4px; height: 4px; }
+.rooms-workspace ::-webkit-scrollbar-track, .room-editor ::-webkit-scrollbar-track { background: transparent; }
+.rooms-workspace ::-webkit-scrollbar-thumb, .room-editor ::-webkit-scrollbar-thumb { background: var(--room-scrollbar-thumb); border-radius: 9999px; }
+@supports not selector(::-webkit-scrollbar) {
+  .rooms-workspace *, .room-editor * { scrollbar-width: thin; scrollbar-color: var(--room-scrollbar-thumb) transparent; }
+}
+.room-editor .ant-modal-body { overflow-x: hidden; }

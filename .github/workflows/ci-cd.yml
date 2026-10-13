@@ -1,0 +1,221 @@
+name: Rehouse CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rehouse-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: room_rental
+          POSTGRES_USER: room_rental
+          POSTGRES_PASSWORD: ci-only-db-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U room_rental -d room_rental"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build frontend and check translations
+        run: >-
+          docker run --rm
+          --volume "$GITHUB_WORKSPACE/frontend:/workspace"
+          --workdir /workspace
+          node:24-alpine
+          sh -ec 'npm ci && npm run build && npm run i18n:check'
+
+      - name: Build backend
+        run: >-
+          docker run --rm
+          --volume "$GITHUB_WORKSPACE:/workspace"
+          --workdir /workspace
+          mcr.microsoft.com/dotnet/sdk:10.0
+          dotnet build backend/RoomRental.Api/RoomRental.Api.csproj
+          --configuration Release --nologo
+
+      - name: Run payment service tests
+        run: >-
+          docker run --rm
+          --volume "$GITHUB_WORKSPACE:/workspace"
+          --workdir /workspace
+          mcr.microsoft.com/dotnet/sdk:10.0
+          dotnet run --project tests/RoomRental.WebhookTests/RoomRental.WebhookTests.csproj
+          --configuration Release
+
+      - name: Build image and run API integration suite on disposable PostgreSQL
+        env:
+          CI_POSTGRES_PASSWORD: ci-only-db-password
+        run: |
+          set -euo pipefail
+          image="rehouse-ci:${GITHUB_SHA}"
+          docker build --platform linux/amd64 --tag "$image" .
+
+          cleanup() {
+            docker rm --force rehouse-ci-api >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker run --detach \
+            --name rehouse-ci-api \
+            --network host \
+            --env ASPNETCORE_ENVIRONMENT=Development \
+            --env ASPNETCORE_URLS=http://+:5080 \
+            --env DatabaseProvider=Postgres \
+            --env "ConnectionStrings__DefaultConnection=Host=127.0.0.1;Port=5432;Database=room_rental;Username=room_rental;Password=${CI_POSTGRES_PASSWORD}" \
+            --env DataProtection__KeysPath=/app/data/keys \
+            --env WebhookBaseUrl=http://localhost:5080 \
+            --env SeedDemo=true \
+            "$image"
+
+          ready=false
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:5080/api/health >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != true ]]; then
+            docker logs rehouse-ci-api
+            exit 1
+          fi
+
+          API_BASE_URL=http://127.0.0.1:5080 \
+          API_ORIGIN=http://127.0.0.1:5080 \
+            python3 -m unittest discover -s tests -p 'test_api_integration.py' -v
+
+  publish:
+    name: Publish immutable image
+    needs: verify
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_ref: ${{ steps.push.outputs.image_ref }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build and push commit-tagged image
+        id: push
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          image_name="ghcr.io/$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          image_tag="${image_name}:${GITHUB_SHA}"
+
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+
+          docker build --platform linux/amd64 \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --tag "$image_tag" .
+          docker push "$image_tag"
+
+          image_ref="$(docker image inspect --format '{{index .RepoDigests 0}}' "$image_tag")"
+          if [[ ! "$image_ref" =~ ^ghcr\.io/nhaq0505/rehouse@sha256:[a-f0-9]{64}$ ]]; then
+            echo "Could not resolve the pushed image digest." >&2
+            exit 1
+          fi
+          printf 'image_ref=%s\n' "$image_ref" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy to VPS
+    needs: publish
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Deploy image digest over pinned SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          GHCR_TOKEN: ${{ github.token }}
+          IMAGE_REF: ${{ needs.publish.outputs.image_ref }}
+        run: |
+          set -euo pipefail
+          : "${DEPLOY_HOST:?Set the production DEPLOY_HOST secret}"
+          : "${DEPLOY_USER:?Set the production DEPLOY_USER secret}"
+          : "${DEPLOY_PORT:?Set the production DEPLOY_PORT secret}"
+          : "${DEPLOY_SSH_KEY:?Set the production DEPLOY_SSH_KEY secret}"
+          : "${DEPLOY_KNOWN_HOSTS:?Set the production DEPLOY_KNOWN_HOSTS secret}"
+          : "${GHCR_TOKEN:?The workflow GITHUB_TOKEN is unavailable}"
+
+          if [[ ! "$DEPLOY_HOST" =~ ^[A-Za-z0-9.-]+$ ||
+                ! "$DEPLOY_USER" =~ ^[A-Za-z0-9._-]+$ ||
+                ! "$DEPLOY_PORT" =~ ^[0-9]{1,5}$ ||
+                "$DEPLOY_PORT" -lt 1 || "$DEPLOY_PORT" -gt 65535 ]]; then
+            echo "Invalid deployment host, user, or port configuration." >&2
+            exit 1
+          fi
+          if [[ ! "$IMAGE_REF" =~ ^ghcr\.io/nhaq0505/rehouse@sha256:[a-f0-9]{64}$ ]]; then
+            echo "The published image reference is missing or invalid." >&2
+            exit 1
+          fi
+
+          key_file="$RUNNER_TEMP/rehouse-deploy-key"
+          known_hosts_file="$RUNNER_TEMP/rehouse-known-hosts"
+          umask 077
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$key_file"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$known_hosts_file"
+          chmod 600 "$key_file" "$known_hosts_file"
+          trap 'rm -f "$key_file" "$known_hosts_file"' EXIT
+
+          host_key_name="$DEPLOY_HOST"
+          if [[ "$DEPLOY_PORT" != 22 ]]; then
+            host_key_name="[${DEPLOY_HOST}]:${DEPLOY_PORT}"
+          fi
+          if ! ssh-keygen -F "$host_key_name" -f "$known_hosts_file" >/dev/null; then
+            echo "Pinned host key is missing for the configured deployment endpoint." >&2
+            exit 1
+          fi
+
+          echo "::add-mask::$GHCR_TOKEN"
+          printf '%s\n' "$GHCR_TOKEN" | ssh -T \
+            -i "$key_file" \
+            -p "$DEPLOY_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$known_hosts_file" \
+            -o GlobalKnownHostsFile=/dev/null \
+            -o IdentitiesOnly=yes \
+            -o PasswordAuthentication=no \
+            -o KbdInteractiveAuthentication=no \
+            -o ForwardAgent=no \
+            -o ClearAllForwardings=yes \
+            -o ConnectTimeout=15 \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "deploy ${IMAGE_REF}"

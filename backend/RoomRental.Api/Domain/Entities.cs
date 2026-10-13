@@ -1,0 +1,182 @@
+namespace RoomRental.Api.Domain;
+
+public enum UserRole { Admin, Owner }
+public enum OwnerStatus { Pending, Approved, Rejected, Suspended }
+public enum InvoiceStatus { Unpaid, Partial, Paid }
+public enum PaymentAttemptStatus { Pending, Paid, Failed }
+
+public sealed class AppUser
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public required string Name { get; set; }
+    public required string Email { get; set; }
+    public string? Phone { get; set; }
+    public required string PasswordHash { get; set; }
+    public UserRole Role { get; set; } = UserRole.Owner;
+    public OwnerStatus Status { get; set; } = OwnerStatus.Pending;
+    public string? StatusReason { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class AuthSession
+{
+    public required string Id { get; set; }
+    public Guid UserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset ExpiresAt { get; set; }
+    public DateTimeOffset? RevokedAt { get; set; }
+}
+
+public sealed class Building
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid OwnerId { get; set; }
+    public required string Name { get; set; }
+    public string? Address { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class Room
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid BuildingId { get; set; }
+    public required string Name { get; set; }
+    public decimal Rent { get; set; }
+    public decimal ElectricityRate { get; set; }
+    public decimal WaterFee { get; set; }
+    public bool WaterPerPerson { get; set; }
+    public decimal ServiceFee { get; set; }
+    public decimal InitialReading { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class Occupancy
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid RoomId { get; set; }
+    public required string TenantName { get; set; }
+    public string? Phone { get; set; }
+    public int People { get; set; } = 1;
+    public DateOnly StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
+    public bool IsActive { get; set; } = true;
+    public string? TenantTokenHash { get; set; }
+    public string? ProtectedTenantToken { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class MonthlyReading
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid RoomId { get; set; }
+    public Guid OccupancyId { get; set; }
+    public required string Period { get; set; }
+    public decimal PreviousReading { get; set; }
+    public decimal CurrentReading { get; set; }
+    public decimal Consumption { get; set; }
+    public DateTimeOffset RecordedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class DepositSettlement
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid InvoiceId { get; set; }
+    public decimal Amount { get; set; }
+    public required string Kind { get; set; }
+    public required string Reason { get; set; }
+    public required string IdempotencyKey { get; set; }
+    public Guid? TargetInvoiceId { get; set; }
+    public required string RecordedAt { get; set; }
+}
+
+public sealed class Invoice
+{
+    public string Kind { get; set; } = "Monthly";
+    public string? Description { get; set; }
+    public bool IsFinalMeterReading { get; set; }
+    public List<DepositSettlement> DepositSettlements { get; set; } = [];
+
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid OwnerId { get; set; }
+    public Guid RoomId { get; set; }
+    public Guid OccupancyId { get; set; }
+    public required string RoomName { get; set; }
+    public required string BuildingName { get; set; }
+    public required string Period { get; set; }
+    public required string TenantName { get; set; }
+    public decimal PreviousReading { get; set; }
+    public decimal CurrentReading { get; set; }
+    public decimal Consumption { get; set; }
+    public decimal Rent { get; set; }
+    public decimal ElectricityAmount { get; set; }
+    public decimal WaterAmount { get; set; }
+    public decimal ServiceAmount { get; set; }
+    public decimal Total { get; set; }
+    public decimal Paid { get; set; }
+    public InvoiceStatus Status { get; set; } = InvoiceStatus.Unpaid;
+    public DateOnly DueDate { get; set; }
+    public DateTimeOffset IssuedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class PaymentReceipt
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid OwnerId { get; set; }
+    public Guid InvoiceId { get; set; }
+    public decimal Amount { get; set; }
+    public string? Note { get; set; }
+    public string? IdempotencyKey { get; set; }
+    public required string Source { get; set; }
+    public string? ExternalReference { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class PaymentWebhookRegistration
+{
+    public Guid OwnerId { get; set; }
+    public required string SettingsVersion { get; set; }
+    public required string WebhookUrl { get; set; }
+    public required string Status { get; set; }
+    public string? VerifiedAt { get; set; }
+    public string? Error { get; set; }
+}
+
+public sealed class OwnerPaymentSettings
+{
+    public Guid OwnerId { get; set; }
+    public required string ClientId { get; set; }
+    public required string ProtectedApiKey { get; set; }
+    public required string ProtectedChecksumKey { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class PayOsAttempt
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid OwnerId { get; set; }
+    public Guid InvoiceId { get; set; }
+    public long OrderCode { get; set; }
+    public int Amount { get; set; }
+    public string? PaymentLinkId { get; set; }
+    public string? CheckoutUrl { get; set; }
+    public string? QrCode { get; set; }
+    public string? AccountName { get; set; }
+    public string? AccountNumber { get; set; }
+    public string? BankBin { get; set; }
+    public string? Description { get; set; }
+    public string? ProviderStatus { get; set; }
+    public long? ExpiresAt { get; set; }
+    public PaymentAttemptStatus Status { get; set; } = PaymentAttemptStatus.Pending;
+    public string? ProviderReference { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? PaidAt { get; set; }
+}
+
+public sealed class ProcessedWebhook
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid OwnerId { get; set; }
+    public required string Reference { get; set; }
+    public long OrderCode { get; set; }
+    public DateTimeOffset ProcessedAt { get; set; } = DateTimeOffset.UtcNow;
+}

@@ -1,0 +1,554 @@
+0|Cannot connect to the server. Check your connection and try again.|无法连接服务器，请检查网络后重试。|서버에 연결할 수 없습니다. 연결을 확인하고 다시 시도하세요.|सर्वर से कनेक्ट नहीं हो सका। कनेक्शन जाँचकर फिर प्रयास करें।
+1|Request failed ({0}).|请求失败（{0}）。|요청 실패 ({0}).|अनुरोध विफल ({0})।
+2|Month {0}/{1}|{1}年{0}月|{1}년 {0}월|माह {0}/{1}
+3|Account not approved|账户未获批准|계정 미승인|खाता स्वीकृत नहीं है
+4|Registration could not be approved. Contact the administrator for details.|注册未获批准，请联系管理员了解详情。|가입이 승인되지 않았습니다. 관리자에게 문의하세요.|पंजीकरण स्वीकृत नहीं हुआ। जानकारी के लिए व्यवस्थापक से संपर्क करें।
+5|Account suspended|账户已暂停|계정 정지|खाता निलंबित है
+6|Management access is suspended. Contact the administrator for help.|管理权限已暂停，请联系管理员。|관리 기능 이용이 중지되었습니다. 관리자에게 문의하세요.|प्रबंधन का उपयोग निलंबित है। व्यवस्थापक से संपर्क करें।
+7|Awaiting account approval|等待账户审核|계정 승인 대기 중|खाते की स्वीकृति की प्रतीक्षा
+8|Your account is created. An administrator will review it before you can manage rentals.|账户已创建，管理员审核后即可管理出租房。|계정이 생성되었습니다. 관리자 승인 후 임대 관리를 시작할 수 있습니다.|खाता बन गया है। किराये का प्रबंधन शुरू करने से पहले व्यवस्थापक इसकी समीक्षा करेगा।
+9|Check status|查看状态|상태 확인|स्थिति जाँचें
+10|Sign out|退出登录|로그아웃|लॉग आउट
+11|Need help? Contact the system administrator.|需要帮助？请联系系统管理员。|도움이 필요하신가요? 시스템 관리자에게 문의하세요.|मदद चाहिए? सिस्टम व्यवस्थापक से संपर्क करें।
+12|Pending approval|待审核|승인 대기|स्वीकृति लंबित
+13|Approved|已批准|승인됨|स्वीकृत
+14|Reject|拒绝|거절|अस्वीकार
+15|Suspend|暂停|정지|निलंबित करें
+16|Owner account approved.|房东账户已批准。|임대인 계정이 승인되었습니다.|मकान मालिक का खाता स्वीकृत हुआ।
+17|Registration rejected.|注册申请已拒绝。|가입 신청이 거절되었습니다.|पंजीकरण अस्वीकार हुआ।
+18|Account status updated.|账户状态已更新。|계정 상태가 변경되었습니다.|खाते की स्थिति अपडेट हुई।
+19|Approve account {0}?|批准账户 {0}？|{0} 계정을 승인할까요?|{0} का खाता स्वीकृत करें?
+20|The owner can access management after approval.|批准后房东即可使用管理功能。|승인 후 임대인이 관리 기능을 사용할 수 있습니다.|स्वीकृति के बाद मकान मालिक प्रबंधन का उपयोग कर सकेगा।
+21|Approve account|批准账户|계정 승인|खाता स्वीकृत करें
+22|Cancel|取消|취소|रद्द करें
+23|OWNER|房东|임대인|मकान मालिक
+24|PHONE|电话|전화번호|फ़ोन
+25|Not provided|未提供|미입력|नहीं दिया गया
+26|REGISTRATION DATE|注册日期|가입일|पंजीकरण तिथि
+27|STATUS|状态|상태|स्थिति
+28|Approve|批准|승인|स्वीकृत करें
+29|Unlock|解除暂停|잠금 해제|अनलॉक करें
+30|Approve again|重新批准|재승인|फिर स्वीकृत करें
+31|SYSTEM ADMINISTRATION|系统管理|시스템 관리|सिस्टम प्रशासन
+32|Owner accounts|房东账户|임대인 계정|मकान मालिक के खाते
+33|Review registrations and manage access status.|审核注册申请并管理访问状态。|가입 신청과 접근 상태를 관리하세요.|पंजीकरण की समीक्षा करें और पहुँच की स्थिति प्रबंधित करें।
+34|Requests to review|待审核申请|검토할 신청|समीक्षा हेतु अनुरोध
+35|Awaiting your action|等待您处理|처리 대기 중|आपकी कार्रवाई की प्रतीक्षा
+36|All new requests reviewed|新申请已全部审核|새 신청 검토 완료|सभी नए अनुरोध देख लिए गए
+37|Account list|账户列表|계정 목록|खाता सूची
+38|Filter owner status|筛选房东状态|임대인 상태 필터|मकान मालिक की स्थिति छाँटें
+39|All statuses|全部状态|모든 상태|सभी स्थितियाँ
+40|No owner accounts yet|暂无房东账户|임대인 계정 없음|अभी कोई मकान मालिक खाता नहीं
+41|No accounts: {0}|没有{0}的账户|{0} 계정 없음|{0} खाते नहीं हैं
+42|New registration requests will appear here.|新注册申请将显示在这里。|새 가입 신청이 여기에 표시됩니다.|नए पंजीकरण अनुरोध यहाँ दिखेंगे।
+43|Reject registration|拒绝注册|가입 거절|पंजीकरण अस्वीकार करें
+44|Suspend account|暂停账户|계정 정지|खाता निलंबित करें
+45|Confirm|确认|확인|पुष्टि करें
+46|will be notified of the account status.|将收到账户状态通知。|님에게 계정 상태가 안내됩니다.|को खाते की स्थिति की सूचना मिलेगी।
+47|Reason|原因|사유|कारण
+48|Please enter a reason.|请输入原因。|사유를 입력하세요.|कृपया कारण दर्ज करें।
+49|Explain the decision to the owner|填写原因以便房东理解|임대인에게 결정 사유를 설명하세요|मकान मालिक को निर्णय का कारण बताएँ
+50|Building added.|楼栋已添加。|건물이 추가되었습니다.|भवन जोड़ा गया।
+51|YOUR PROPERTIES|您的房产|내 임대 공간|आपकी संपत्तियाँ
+52|Buildings|楼栋|건물|भवन
+53|Organize rental locations and add rooms to each building.|管理出租地点，为每栋楼添加房间。|임대 장소를 정리하고 건물별 방을 추가하세요.|किराये के स्थान व्यवस्थित करें और हर भवन में कमरे जोड़ें।
+54|Create building|创建楼栋|건물 추가|भवन बनाएँ
+55|No buildings added yet|尚未添加楼栋|아직 건물이 없습니다|अभी कोई भवन नहीं जोड़ा गया
+56|Create your first building, then add rooms and tenants.|先创建第一栋楼，再添加房间和租客。|첫 건물을 만든 후 방과 임차인을 추가하세요.|पहला भवन बनाएँ, फिर कमरे और किरायेदार जोड़ें।
+57|Create first building|创建第一栋楼|첫 건물 추가|पहला भवन बनाएँ
+58|buildings|栋楼|개 건물|भवन
+59|Room counts are unavailable right now|暂时无法加载房间数量|방 수를 불러올 수 없습니다|अभी कमरों की संख्या उपलब्ध नहीं है
+60|{0} rooms managed|正在管理 {0} 个房间|{0}개 방 관리 중|{0} कमरों का प्रबंधन
+61|Manage rooms|管理房间|방 관리|कमरे प्रबंधित करें
+62|No address yet|暂无地址|주소 없음|पता नहीं है
+63|rooms|个房间|개 방|कमरे
+64|Your buildings|您的楼栋|내 건물|आपके भवन
+65|View rooms|查看房间|방 보기|कमरे देखें
+66|Manage rooms by building|按楼栋管理房间|건물별 방 관리|भवन के अनुसार कमरे प्रबंधित करें
+67|Create rooms, update rent and record move-ins under Rooms & tenants.|在“房间与租客”中创建房间、更新租金和登记入住。|방 및 임차인에서 방 추가, 임대료 변경, 입주 등록을 하세요.|कमरे और किरायेदार में कमरे बनाएँ, किराया बदलें और प्रवेश दर्ज करें।
+68|Go to rooms|前往房间|방으로 이동|कमरों पर जाएँ
+69|Add new building|添加新楼栋|새 건물 추가|नया भवन जोड़ें
+70|Enter a name and address to identify your building.|填写名称和地址，方便识别楼栋。|건물을 구분할 이름과 주소를 입력하세요.|भवन की पहचान के लिए नाम और पता दर्ज करें।
+71|Building name|楼栋名称|건물 이름|भवन का नाम
+72|Please enter a building name.|请输入楼栋名称。|건물 이름을 입력하세요.|भवन का नाम दर्ज करें।
+73|Example: Hoa Su Street building|例如：Hoa Su 路楼栋|예: Hoa Su 거리 건물|उदाहरण: Hoa Su सड़क का भवन
+74|Address|地址|주소|पता
+75|Please enter an address.|请输入地址。|주소를 입력하세요.|पता दर्ज करें।
+76|House number, street, ward, district|门牌号、街道、街区、区县|번지, 거리, 동, 구|मकान नंबर, सड़क, वार्ड, ज़िला
+77|OVERVIEW|概览|개요|अवलोकन
+78|Welcome back|欢迎回来|다시 오신 것을 환영합니다|आपका स्वागत है
+79|Your rentals at a glance.|快速了解出租房情况。|임대 현황을 한눈에 확인하세요.|आपके किराये की स्थिति एक नज़र में।
+80|Enter this month's readings|录入本月读数|이번 달 검침 입력|इस माह की रीडिंग दर्ज करें
+81|Quick actions|快捷操作|빠른 작업|त्वरित कार्य
+82|Add rental location|添加出租地点|임대 장소 추가|किराये का स्थान जोड़ें
+83|Create room|创建房间|방 추가|कमरा बनाएँ
+84|Set rent and fees|设置租金与费用|임대료 및 요금 설정|किराया और शुल्क तय करें
+85|Share tenant link|提供租客链接|임차인 링크 발급|किरायेदार को लिंक दें
+86|Choose an occupied room|选择已出租房间|입주 중인 방 선택|किरायेदार वाला कमरा चुनें
+87|Total rooms|房间总数|전체 방 수|कुल कमरे
+88|occupied|已出租|입주 중|में किरायेदार हैं
+89|Total billed|账单总额|청구 총액|कुल बिल राशि
+90|Issued|已开具|발행됨|जारी
+91|Collected|已收款|수납액|प्राप्त राशि
+92|Recorded payments|已登记收款|기록된 수납|दर्ज किए गए भुगतान
+93|Outstanding|待收款|미수금|बकाया
+94|From issued invoices|来自已开具账单|발행된 청구서 기준|जारी बिलों से
+95|To do|待办事项|할 일|करने वाले कार्य
+96|Enter electricity readings|录入电表读数|전기 검침 입력|बिजली की रीडिंग दर्ज करें
+97|rooms need readings this month|个房间需要本月读数|개 방의 이번 달 검침 필요|कमरों की इस माह रीडिंग चाहिए
+98|Create monthly invoices|创建月度账单|월 청구서 발행|मासिक बिल बनाएँ
+99|Check readings and issue tenant invoices|核对读数后向租客开具账单|검침 확인 후 임차인 청구서 발행|रीडिंग जाँचें और किरायेदारों के बिल जारी करें
+100|Update vacant rooms|更新空房|빈방 업데이트|खाली कमरे अपडेट करें
+101|Manage current tenants and move-in dates|管理当前租客与入住日期|임차인 및 입주일 관리|वर्तमान किरायेदार और प्रवेश तिथि प्रबंधित करें
+102|Room status|房间状态|방 현황|कमरों की स्थिति
+103|Occupancy rate|出租率|입주율|भरे हुए कमरों का अनुपात
+104|Occupied|已出租|입주 중|किरायेदार हैं
+105|Vacant|空置|빈방|खाली
+106|rooms added to the system|个房间已添加到系统|개 방 등록됨|कमरे सिस्टम में जोड़े गए
+107|Recent invoices|近期账单|최근 청구서|हाल के बिल
+108|All invoices|全部账单|전체 청구서|सभी बिल
+109|Rental property|出租房|임대 주택|किराये की संपत्ति
+110|Tenant name unavailable|暂无租客姓名|임차인 이름 없음|किरायेदार का नाम नहीं है
+111|Move-in deposit|入住押金|입주 보증금|प्रवेश की जमा राशि
+112|Supplemental invoice|补充账单|추가 청구서|अतिरिक्त बिल
+113|Paid|已付款|납부 완료|भुगतान हो गया
+114|Partially paid|部分已付|부분 납부|आंशिक भुगतान
+115|Unpaid|未付款|미납|भुगतान नहीं हुआ
+116|No invoices this month|本月暂无账单|이번 달 청구서 없음|इस माह कोई बिल नहीं
+117|Enter electricity readings to start billing.|录入电表读数以开始生成账单。|검침을 입력해 청구서를 만드세요.|बिल बनाने के लिए बिजली की रीडिंग दर्ज करें।
+118|Enter readings|录入读数|검침 입력|रीडिंग दर्ज करें
+119|Missing invoices checked and created.|已检查并创建缺失账单。|누락 청구서 확인 및 발행 완료.|छूटे बिल जाँचे और बनाए गए।
+120|payOS confirmed payment. The invoice is updated.|payOS 已确认付款，账单已更新。|payOS 결제 확인 후 청구서가 업데이트되었습니다.|payOS ने भुगतान की पुष्टि की। बिल अपडेट हो गया।
+121|No payOS transaction to reconcile for this invoice.|此账单没有需要核对的 payOS 交易。|대사할 payOS 거래가 없습니다.|इस बिल के लिए जाँचने योग्य payOS लेनदेन नहीं है।
+122|payOS reports the transaction ended without payment.|payOS 显示交易已结束且未付款。|payOS 거래가 결제 없이 종료되었습니다.|payOS के अनुसार लेनदेन बिना भुगतान समाप्त हुआ।
+123|payOS has not confirmed payment. Check again later.|payOS 尚未确认付款，请稍后再查。|payOS가 결제를 확인하지 않았습니다. 나중에 다시 확인하세요.|payOS ने भुगतान की पुष्टि नहीं की है। बाद में फिर जाँचें।
+124|Payment recorded.|收款已登记。|수납이 기록되었습니다.|प्राप्त राशि दर्ज हुई।
+125|Record this payment?|登记此次收款？|이 수납을 기록할까요?|यह प्राप्त राशि दर्ज करें?
+126|Record {0}{1}? This payment will be saved in the invoice ledger.|即将登记 {0}{1}，该收款将保存至账单记录。|{0}{1} 수납을 청구서 장부에 기록합니다.|{0}{1} दर्ज कर रहे हैं। यह भुगतान बिल के खाते में सहेजा जाएगा।
+127|Record payment|登记收款|수납 기록|प्राप्त राशि दर्ज करें
+128|Review|再次检查|다시 확인|फिर जाँचें
+129|ROOM / TENANT|房间 / 租客|방 / 임차인|कमरा / किरायेदार
+130| · Deposit| · 押金| · 보증금| · जमा राशि
+131| · Additional| · 补充| · 추가| · अतिरिक्त
+132|Tenant|租客|임차인|किरायेदार
+133|BILLING PERIOD|账期|청구 기간|बिल अवधि
+134|TOTAL|总额|총액|कुल राशि
+135|COLLECTED|已收款|수납액|प्राप्त राशि
+136|REMAINING|余额|잔액|शेष
+137|Details|详情|상세|विवरण
+138|CLEAR PAYMENTS|清晰收款|투명한 수납|स्पष्ट भुगतान
+139|Invoices|账单|청구서|बिल
+140|Track rent, utilities and collected payments by room.|按房间跟踪租金、水电费与收款。|방별 임대료, 공과금, 수납 내역을 확인하세요.|हर कमरे का किराया, बिजली, पानी और प्राप्त भुगतान देखें।
+141|Invoice type|账单类型|청구 유형|बिल का प्रकार
+142|Monthly invoice|月度账单|월 청구서|मासिक बिल
+143|Tenancy deposits|各租期押金|임대 보증금|किरायेदारी की जमा राशियाँ
+144|Invoice month|账单月份|청구 월|बिल का माह
+145|Create missing invoices|创建缺失账单|누락 청구서 발행|छूटे बिल बनाएँ
+146|Total required deposits|应收押金总额|보증금 요구 총액|कुल आवश्यक जमा राशि
+147|Total supplemental invoices|补充账单总额|추가 청구 총액|अतिरिक्त बिलों का कुल
+148|Total billed · {0}|账单总额 · {0}|청구 총액 · {0}|कुल बिल राशि · {0}
+149|Invoices {0}|账单 {0}|청구서 {0}|बिल {0}
+150|invoices|张账单|건 청구서|बिल
+151|No deposits yet|暂无押金|보증금 없음|अभी जमा राशि नहीं है
+152|No supplemental invoices|暂无补充账单|추가 청구서 없음|अतिरिक्त बिल नहीं हैं
+153|No invoices for {0}|{0}暂无账单|{0} 청구서 없음|{0} के लिए बिल नहीं हैं
+154|Enter a deposit when adding a tenant to create a separate amount due.|添加租客时填写押金，生成独立应收款。|임차인 추가 시 보증금을 입력하면 별도로 청구됩니다.|किरायेदार जोड़ते समय जमा राशि दर्ज करें ताकि अलग देय राशि बने।
+155|Create additional charges from an occupied room's menu.|从已出租房间的菜单创建额外费用。|입주 중인 방 메뉴에서 추가 요금을 만드세요.|किरायेदार वाले कमरे के मेनू से अतिरिक्त शुल्क बनाएँ।
+156|Finalize readings to create invoices, or retry creating missing invoices.|确认读数生成账单，或重试创建缺失账单。|검침을 확정하거나 누락 청구서 발행을 다시 시도하세요.|बिल बनाने के लिए रीडिंग तय करें या छूटे बिल फिर बनाएँ।
+157|Create invoice|创建账单|청구서 발행|बिल बनाएँ
+158|Invoice details|账单详情|청구서 상세|बिल का विवरण
+159|Billing period|账期|청구 기간|बिल अवधि
+160|Issued|开具日期|발행일|जारी तिथि
+161|Description|内容|내용|विवरण
+162|Final electricity ·|期末电费 ·|최종 전기료 ·|अंतिम बिजली ·
+163|Other charges|其他费用|기타 요금|अन्य शुल्क
+164|Amount|金额|금액|राशि
+165|Required deposit|应缴押金|보증금 요구액|आवश्यक जमा राशि
+166|Room rent|房租|방 임대료|कमरे का किराया
+167|Electricity|电费|전기료|बिजली शुल्क
+168|Water|水费|수도료|पानी शुल्क
+169|Service fee|服务费|서비스 요금|सेवा शुल्क
+170|Recorded|已登记|기록됨|दर्ज हुआ
+171|Due date:|付款期限：|납부 기한:|अंतिम तिथि:
+172|Reconcile payOS payment|核对 payOS 付款|payOS 결제 대사|payOS भुगतान जाँचें
+173|Check the payOS transaction before recording an external payment.|登记外部收款前，请先检查 payOS 交易。|외부 수납 기록 전에 payOS 거래를 확인하세요.|बाहर प्राप्त भुगतान दर्ज करने से पहले payOS लेनदेन जाँचें।
+174|Check payOS transaction|检查 payOS 交易|payOS 거래 확인|payOS लेनदेन जाँचें
+175|Cash or bank transfer already received outside the system.|已在系统外收到的现金或转账。|시스템 외부에서 이미 받은 현금 또는 계좌 이체.|सिस्टम के बाहर पहले ही मिला नकद या बैंक हस्तांतरण।
+176|Amount received|收到金额|수납 금액|प्राप्त राशि
+177|Enter an amount from 1 to {0}.|请输入 1 至 {0} 的金额。|1부터 {0}까지 금액을 입력하세요.|1 से {0} तक राशि दर्ज करें।
+178|VND|VND|VND|VND
+179|Note|备注|메모|टिप्पणी
+180|Example: Bank transfer on 12/10|例如：12/10 收到转账|예: 12/10 계좌 이체|उदाहरण: 12/10 को बैंक हस्तांतरण
+181|Save payment|保存收款|수납 저장|भुगतान सहेजें
+182|This invoice is fully paid.|此账单已全额付清。|이 청구서는 완납되었습니다.|इस बिल का पूरा भुगतान हो गया है।
+183|Unable to sign in. Please try again.|无法登录，请重试。|로그인할 수 없습니다. 다시 시도하세요.|लॉग इन नहीं हो सका। फिर प्रयास करें।
+184|RENTAL MANAGEMENT|出租房管理|임대 관리|किराया प्रबंधन
+185|RENTALS MADE EASIER|轻松管理出租房|더 편리한 임대 관리|किराया प्रबंधन आसान
+186|Every room organized.|每间房井然有序。|모든 방을 깔끔하게.|हर कमरा व्यवस्थित।
+187|Every payment clear.|每笔款项清晰透明。|모든 수납을 명확하게.|हर भुगतान स्पष्ट।
+188|Manage tenants, electricity readings and invoices in one place.|在一个平台管理租客、电表读数和账单。|임차인, 검침, 청구서를 한곳에서 관리하세요.|किरायेदार, बिजली की रीडिंग और बिल एक ही जगह प्रबंधित करें।
+189|See every building at a glance|快速掌握楼栋情况|건물 현황을 한눈에|हर भवन की स्थिति एक नज़र में
+190|Clear invoices, easy reconciliation|账单透明，轻松核对|투명한 청구서와 쉬운 대사|स्पष्ट बिल, आसान मिलान
+191|Tenants view invoices with a private link|租客通过专属链接查看账单|임차인 전용 링크로 청구서 조회|किरायेदार निजी लिंक से बिल देखते हैं
+192|Simplify everyday management|简化日常管理|매일의 관리를 간편하게|रोज़ का प्रबंधन सरल करें
+193|WELCOME BACK|欢迎回来|다시 오신 것을 환영합니다|आपका स्वागत है
+194|Sign in|登录|로그인|लॉग इन
+195|Enter your account details to continue managing rentals.|输入账户信息，继续管理出租房。|계정 정보를 입력해 임대 관리를 계속하세요.|प्रबंधन जारी रखने के लिए खाते की जानकारी दर्ज करें।
+196|Please enter your email.|请输入邮箱。|이메일을 입력하세요.|ईमेल दर्ज करें।
+197|Invalid email format.|邮箱格式不正确。|이메일 형식이 올바르지 않습니다.|ईमेल का प्रारूप गलत है।
+198|Password|密码|비밀번호|पासवर्ड
+199|Please enter your password.|请输入密码。|비밀번호를 입력하세요.|पासवर्ड दर्ज करें।
+200|Enter password|输入密码|비밀번호 입력|पासवर्ड दर्ज करें
+201|Try a demo account|使用演示账户|데모 계정 사용|डेमो खाता इस्तेमाल करें
+202|Owner|房东|임대인|मकान मालिक
+203|Administrator|管理员|관리자|व्यवस्थापक
+204|No account yet?|还没有账户？|계정이 없으신가요?|अभी खाता नहीं है?
+205|Register as an owner|注册房东账户|임대인 가입|मकान मालिक के रूप में पंजीकरण करें
+206|Page not found|页面不存在|페이지를 찾을 수 없습니다|पृष्ठ नहीं मिला
+207|The address may have changed or does not exist.|链接可能已变更或不存在。|주소가 변경되었거나 존재하지 않습니다.|पता बदल गया है या मौजूद नहीं है।
+208|Go to home|返回首页|홈으로 이동|मुख्य पृष्ठ पर जाएँ
+209|Webhook registered and verified with payOS.|Webhook 已向 payOS 注册并验证。|payOS 웹훅 등록 및 검증 완료.|payOS के साथ webhook पंजीकृत और सत्यापित हुआ।
+210|Settings saved. Webhook is unverified; please retry.|配置已保存，Webhook 未验证，请重试。|설정 저장 완료. 웹훅 검증을 다시 시도하세요.|सेटिंग सहेजी गई। Webhook सत्यापित नहीं है; फिर प्रयास करें।
+211|Webhook URL copied.|Webhook 地址已复制。|웹훅 URL 복사 완료.|Webhook URL कॉपी हुआ।
+212|Select and copy the webhook URL above.|请选择并复制上方的 Webhook 地址。|위 웹훅 URL을 선택해 복사하세요.|ऊपर का webhook URL चुनकर कॉपी करें।
+213|AUTOMATIC COLLECTION|自动收款|자동 수납|स्वचालित भुगतान प्राप्ति
+214|Online payments|在线支付|온라인 결제|ऑनलाइन भुगतान
+215|Connect payOS so tenants can pay invoices through their private link.|连接 payOS，让租客通过专属链接付款。|payOS를 연결하면 임차인이 전용 링크로 결제할 수 있습니다.|payOS जोड़ें ताकि किरायेदार अपने निजी लिंक से बिल चुका सकें।
+216|payOS settings|payOS 配置|payOS 설정|payOS सेटिंग
+217|Connection details are encrypted and stored securely.|连接信息经过加密并安全保存。|연결 정보는 암호화되어 안전하게 저장됩니다.|कनेक्शन की जानकारी एन्क्रिप्ट करके सुरक्षित रखी जाती है।
+218|Webhook verified by payOS|Webhook 已由 payOS 验证|payOS 웹훅 검증 완료|payOS ने webhook सत्यापित किया
+219|Settings saved — webhook not ready|配置已保存，Webhook 尚未就绪|설정 저장됨 · 웹훅 준비 안 됨|सेटिंग सहेजी गई · webhook तैयार नहीं
+220|payOS settings not saved|尚未保存 payOS 配置|payOS 설정 미저장|payOS सेटिंग नहीं सहेजी गई
+221|Webhook registered. Try a small payment to verify payment and automatic balance updates.|Webhook 已注册。请尝试小额支付，验证付款和自动销账。|웹훅 등록 완료. 소액 결제로 결제 및 잔액 자동 갱신을 확인하세요.|Webhook पंजीकृत है। भुगतान और स्वतः बकाया अपडेट जाँचने के लिए छोटी राशि आज़माएँ।
+222|Saving settings automatically registers and verifies the webhook with payOS.|保存配置时，系统会自动向 payOS 注册并验证 Webhook。|설정 저장 시 payOS 웹훅을 자동 등록하고 검증합니다.|सेटिंग सहेजने पर payOS webhook स्वतः पंजीकृत और सत्यापित होता है।
+223|This URL is registered with payOS after saving. It must be accessible from the Internet.|保存后会向 payOS 注册此地址，必须能从互联网访问。|저장 후 이 URL이 payOS에 등록됩니다. 인터넷에서 접근 가능해야 합니다.|सहेजने के बाद यह URL payOS में पंजीकृत होता है। इंटरनेट से उपलब्ध होना चाहिए।
+224|Server has no public HTTPS URL|服务器尚无公共 HTTPS 地址|서버에 공개 HTTPS URL 없음|सर्वर का सार्वजनिक HTTPS URL नहीं है
+225|Copy webhook URL|复制 Webhook 地址|웹훅 URL 복사|Webhook URL कॉपी करें
+226|Verify webhook again|重新验证 Webhook|웹훅 재검증|Webhook फिर सत्यापित करें
+227|Please enter Client ID.|请输入 Client ID。|Client ID를 입력하세요.|Client ID दर्ज करें।
+228|Enter Client ID from payOS|输入 payOS 的 Client ID|payOS Client ID 입력|payOS का Client ID दर्ज करें
+229|Current key is hidden. Enter a new API Key to update.|当前密钥已隐藏，输入新 API Key 以更新。|현재 키는 숨겨져 있습니다. 새 API Key로 변경하세요.|वर्तमान कुंजी छिपी है। बदलने के लिए नया API Key दर्ज करें।
+230|Please enter API Key.|请输入 API Key。|API Key를 입력하세요.|API Key दर्ज करें।
+231|Enter new key|输入新密钥|새 키 입력|नई कुंजी दर्ज करें
+232|Enter API Key|输入 API Key|API Key 입력|API Key दर्ज करें
+233|Current key is hidden. Enter a new Checksum Key to update.|当前密钥已隐藏，输入新 Checksum Key 以更新。|현재 키는 숨겨져 있습니다. 새 Checksum Key로 변경하세요.|वर्तमान कुंजी छिपी है। बदलने के लिए नया Checksum Key दर्ज करें।
+234|Please enter Checksum Key.|请输入 Checksum Key。|Checksum Key를 입력하세요.|Checksum Key दर्ज करें।
+235|Enter Checksum Key|输入 Checksum Key|Checksum Key 입력|Checksum Key दर्ज करें
+236|Sensitive information is not displayed after saving.|保存后不再显示敏感信息。|저장 후 민감 정보는 표시되지 않습니다.|सहेजने के बाद संवेदनशील जानकारी नहीं दिखाई जाती।
+237|Saving and verifying…|正在保存并验证…|저장 및 검증 중…|सहेज और सत्यापित कर रहे हैं…
+238|Save and verify payOS|保存并验证 payOS|payOS 저장 및 검증|payOS सहेजें और सत्यापित करें
+239|HOW IT WORKS|使用流程|이용 방법|यह कैसे काम करता है
+240|Tenant opens invoice link|租客打开账单链接|임차인이 청구서 링크 열기|किरायेदार बिल लिंक खोलता है
+241|No login needed; use the room's private link.|无需登录，只需房间专属链接。|로그인 없이 방 전용 링크를 사용합니다.|लॉग इन की आवश्यकता नहीं; कमरे का निजी लिंक इस्तेमाल करें।
+242|Pay with payOS|通过 payOS 付款|payOS로 결제|payOS से भुगतान करें
+243|The tenant is redirected to a secure payment page.|租客将跳转到安全付款页面。|임차인은 안전한 결제 페이지로 이동합니다.|किरायेदार सुरक्षित भुगतान पृष्ठ पर जाता है।
+244|Invoice updates automatically|账单自动更新|청구서 자동 갱신|बिल स्वतः अपडेट होता है
+245|Payments are confirmed through a verified webhook.|通过已验证的 Webhook 确认收款。|검증된 웹훅으로 수납이 확인됩니다.|सत्यापित webhook से भुगतान की पुष्टि होती है।
+246|Payment security|交易安全|거래 보안|भुगतान सुरक्षा
+247|Connection details are encrypted on the server. Rehouse does not store tenants' card or bank details.|连接信息在服务器端加密。Rehouse 不保存租客的银行卡或银行资料。|연결 정보는 서버에서 암호화됩니다. Rehouse는 임차인의 카드 및 은행 정보를 저장하지 않습니다.|कनेक्शन जानकारी सर्वर पर एन्क्रिप्ट होती है। Rehouse किरायेदार के कार्ड या बैंक की जानकारी नहीं रखता।
+248|Encrypted connection keys|连接密钥加密|연결 키 암호화|एन्क्रिप्टेड कनेक्शन कुंजियाँ
+249|Verified payment results|验证付款结果|결제 결과 검증|भुगतान परिणाम सत्यापन
+250|Automatic invoice reconciliation|自动核对账单|청구서 자동 대사|स्वचालित बिल मिलान
+251|Webhook verified|Webhook 已验证|웹훅 검증됨|Webhook सत्यापित
+252|Webhook not ready|Webhook 尚未就绪|웹훅 준비 안 됨|Webhook तैयार नहीं
+253|Settings not saved|配置未保存|설정 미저장|सेटिंग नहीं सहेजी गई
+254|Readings finalized and invoice issued.|读数已确认，账单已开具。|검침 확정 및 청구서 발행 완료.|रीडिंग तय हुई और बिल जारी हुआ।
+255|PREVIOUS READING|上次读数|이전 검침|पिछली रीडिंग
+256|NEW READING|新读数|새 검침|नई रीडिंग
+257|Finalized|已确认|확정됨|तय हो गया
+258|New reading {0}|新读数 {0}|새 검침 {0}|नई रीडिंग {0}
+259|USAGE|用量|사용량|खपत
+260|Finalize reading and issue invoice?|确认读数并开具账单？|검침을 확정하고 청구서를 발행할까요?|रीडिंग तय करके बिल जारी करें?
+261|The reading and current rates will be saved in the invoice. They cannot be edited after finalizing.|读数和当前费率将存入账单，确认后不可修改。|검침과 현재 요금이 청구서에 저장됩니다. 확정 후 수정할 수 없습니다.|रीडिंग और वर्तमान दरें बिल में सहेजी जाएँगी। तय करने के बाद बदल नहीं सकते।
+262|Finalize & issue invoice|确认并开具账单|확정 및 청구서 발행|तय करें और बिल जारी करें
+263|MONTHLY ELECTRICITY READINGS|每月电表读数|월 전기 검침|मासिक बिजली रीडिंग
+264|Electricity readings|电表读数|전기 검침|बिजली की रीडिंग
+265|Record the final reading. An invoice is issued when you finalize it.|录入期末读数，确认后立即生成账单。|마지막 검침을 기록하세요. 확정 시 청구서가 발행됩니다.|अंतिम रीडिंग दर्ज करें। इसे तय करते ही बिल जारी होगा।
+266|Reading month|抄表月份|검침 월|रीडिंग का माह
+267|rooms finalized|个房间已确认|개 방 확정됨|कमरों की रीडिंग तय हुई
+268|Previous readings come from the latest record or room setup.|上次读数取自最近记录或创建房间时的初始值。|이전 검침은 최근 기록 또는 방 생성 시 값입니다.|पिछली रीडिंग अंतिम रिकॉर्ड या कमरा बनाते समय के मान से ली गई है।
+269|Occupied rooms|已出租房间列表|입주 중인 방 목록|किरायेदार वाले कमरे
+270|Finalizing immediately issues an invoice|确认读数后立即生成账单|검침 확정 시 청구서 즉시 발행|रीडिंग तय करते ही बिल जारी होता है
+271|and saves current rates. Mid-month move-in or move-out proration is not yet supported.|并保存当前费率。目前不支持月中入住或退房的按日分摊。|및 현재 요금을 저장합니다. 월 중 입주·퇴거에 따른 일할 계산은 아직 지원하지 않습니다.|और वर्तमान दरें सहेजी जाती हैं। बीच माह प्रवेश या छोड़ने का अनुपातिक हिसाब अभी उपलब्ध नहीं है।
+272|No occupied rooms|暂无已出租房间|입주 중인 방 없음|किरायेदार वाले कमरे नहीं हैं
+273|No readings to finalize for {0}|{0}没有待确认读数的房间|{0} 확정할 방 없음|{0} के लिए तय करने वाली रीडिंग नहीं
+274|Add a tenant before entering readings.|录入电表读数前，请先添加租客。|검침 입력 전에 임차인을 추가하세요.|रीडिंग दर्ज करने से पहले किरायेदार जोड़ें।
+275|All rooms have finalized readings for this period.|本期所有房间的读数均已确认。|이번 기간 모든 방의 검침이 확정되었습니다.|इस अवधि में सभी कमरों की रीडिंग तय हो गई है।
+276|All occupied rooms have invoices for this period.|本期所有已出租房间均已有账单。|이번 기간 모든 입주 방의 청구서가 있습니다.|इस अवधि में सभी किरायेदार वाले कमरों के बिल हैं।
+277|Account created. Sign in with your registered email and password.|账户已创建，请用注册邮箱和密码登录。|계정 생성 완료. 등록한 이메일과 비밀번호로 로그인하세요.|खाता बन गया। पंजीकृत ईमेल और पासवर्ड से लॉग इन करें।
+278|Unable to create account. Please try again.|无法创建账户，请重试。|계정을 만들 수 없습니다. 다시 시도하세요.|खाता नहीं बन सका। फिर प्रयास करें।
+279|EASY TO GET STARTED|轻松开始|간편한 시작|शुरू करना आसान
+280|Rental management|出租房管理|임대 관리|किराया प्रबंधन
+281|your way.|按您的方式。|나만의 방식으로.|आपके तरीके से।
+282|Create an owner account. After approval, add buildings and start managing.|创建房东账户，审核通过后即可添加楼栋并开始管理。|임대인 계정을 만드세요. 승인 후 건물을 추가하고 관리할 수 있습니다.|मकान मालिक का खाता बनाएँ। स्वीकृति के बाद भवन जोड़कर प्रबंधन शुरू करें।
+283|Create account|创建账户|계정 만들기|खाता बनाएँ
+284|Enter your contact details|填写联系信息|연락처 입력|संपर्क जानकारी दर्ज करें
+285|Wait for approval|等待账户审核|계정 승인 대기|खाते की स्वीकृति की प्रतीक्षा करें
+286|We will review it soon|我们会尽快审核|곧 확인해 드리겠습니다|हम जल्द इसकी समीक्षा करेंगे
+287|Manage rentals|管理出租房|임대 주택 관리|किराये प्रबंधित करें
+288|Add rooms and get started|添加房间并开始使用|방을 추가하고 시작하세요|कमरे जोड़कर शुरू करें
+289|Back to sign in|返回登录|로그인으로 돌아가기|लॉग इन पर वापस जाएँ
+290|FOR OWNERS|面向房东|임대인용|मकान मालिकों के लिए
+291|These details help manage your account and provide support.|此信息用于账户管理与支持。|계정 관리와 지원에 필요한 정보입니다.|यह जानकारी खाता प्रबंधित करने और सहायता देने में मदद करती है।
+292|Your name|您的姓名|이름|आपका नाम
+293|Please enter your name.|请输入姓名。|이름을 입력하세요.|नाम दर्ज करें।
+294|Your full name|您的全名|성명|आपका पूरा नाम
+295|Phone number|电话号码|전화번호|फ़ोन नंबर
+296|Please enter your phone number.|请输入电话号码。|전화번호를 입력하세요.|फ़ोन नंबर दर्ज करें।
+297|Password must contain at least 8 characters.|密码至少需要 8 个字符。|비밀번호는 8자 이상이어야 합니다.|पासवर्ड कम से कम 8 अक्षरों का हो।
+298|At least 8 characters|至少 8 个字符|8자 이상|कम से कम 8 अक्षर
+299|Already have an account?|已有账户？|이미 계정이 있으신가요?|पहले से खाता है?
+300|Owner accounts require approval before use.|房东账户须经审核后才能使用。|임대인 계정은 승인 후 이용할 수 있습니다.|मकान मालिक के खाते को उपयोग से पहले स्वीकृति चाहिए।
+301|Please enter a value.|请输入数值。|값을 입력하세요.|मान दर्ज करें।
+302|Value cannot be less than 0.|数值不能小于 0。|값은 0 이상이어야 합니다.|मान 0 से कम नहीं हो सकता।
+303|Room added.|房间已添加。|방이 추가되었습니다.|कमरा जोड़ा गया।
+304|Supplemental invoice created on the tenant link.|补充账单已添加至租客链接。|임차인 링크에 추가 청구서가 생성되었습니다.|किरायेदार के लिंक पर अतिरिक्त बिल बनाया गया।
+305|Room details updated.|房间信息已更新。|방 정보가 변경되었습니다.|कमरे की जानकारी अपडेट हुई।
+306|Tenant and any deposit recorded.|租客及押金（如有）已登记。|임차인 및 보증금이 등록되었습니다.|किरायेदार और जमा राशि, यदि है, दर्ज हुई।
+307|{0} (copy)|{0}（副本）|{0} (복사본)|{0} (प्रतिलिपि)
+308|{0} (copy {1})|{0}（副本 {1}）|{0} (복사본 {1})|{0} (प्रतिलिपि {1})
+309|Edit room details|编辑房间信息|방 정보 수정|कमरे की जानकारी बदलें
+310|Duplicate room|复制房间|방 복제|कमरे की प्रतिलिपि बनाएँ
+311|Create supplemental invoice|创建补充账单|추가 청구서 발행|अतिरिक्त बिल बनाएँ
+312|Collect / settle deposit|收取 / 结算押金|보증금 수납 / 정산|जमा राशि लें / निपटान करें
+313|Move-out & settlement|退房与结算|퇴거 및 정산|कमरा छोड़ना और निपटान
+314|Add tenant|添加租客|임차인 추가|किरायेदार जोड़ें
+315|Revoke the link for {0}?|撤销 {0} 的链接？|{0}의 링크를 폐기할까요?|{0} का लिंक रद्द करें?
+316|Create a private invoice and payment link. Any previous link will stop working.|创建专属账单与付款链接。已发出的旧链接将失效。|전용 청구·결제 링크를 만듭니다. 기존 링크는 무효화됩니다.|निजी बिल और भुगतान लिंक बनाएँ। पुराना लिंक काम करना बंद कर देगा।
+317|Revoke & create new link|撤销并生成新链接|폐기 및 새 링크 발급|रद्द करें और नया लिंक बनाएँ
+318|Actions for {0}|{0} 的操作|{0} 작업|{0} के कार्य
+319|people|人|명|व्यक्ति
+320|Required deposit|应缴押金|보증금 요구액|आवश्यक जमा राशि
+321|· Held|· 当前保管|· 보관 중|· रखी गई राशि
+322|No tenant yet|暂无租客|임차인 없음|अभी किरायेदार नहीं है
+323|Rent / month|月租金|월 임대료|किराया / माह
+324|Room|房间|방|कमरा
+325|Status|状态|상태|स्थिति
+326|Rooms & tenants|房间与租客|방 및 임차인|कमरे और किरायेदार
+327|Manage rooms, tenants and invoice links.|管理房间、租客及账单链接。|방, 임차인, 청구서 링크를 관리하세요.|कमरे, किरायेदार और बिल लिंक प्रबंधित करें।
+328|Filter by occupancy|按入住状态筛选|입주 상태 필터|किरायेदारी की स्थिति छाँटें
+329|All ({0})|全部（{0}）|전체 ({0})|सभी ({0})
+330|Occupied ({0})|已出租（{0}）|입주 중 ({0})|किरायेदार हैं ({0})
+331|Vacant ({0})|空置（{0}）|빈방 ({0})|खाली ({0})
+332|Filter by building|按楼栋筛选|건물 필터|भवन के अनुसार छाँटें
+333|All buildings|全部楼栋|전체 건물|सभी भवन
+334|Building no longer exists|楼栋已不存在|건물이 존재하지 않습니다|भवन अब मौजूद नहीं है
+335|Loading rooms…|正在加载房间…|방 불러오는 중…|कमरे लोड हो रहे हैं…
+336|{0} rooms|{0} 个房间|{0}개 방|{0} कमरे
+337|Clear filters|清除筛选|필터 해제|फ़िल्टर हटाएँ
+338|No rooms yet|暂无房间|방 없음|अभी कमरे नहीं हैं
+339|No matching rooms|没有匹配的房间|일치하는 방 없음|मेल खाते कमरे नहीं हैं
+340|Create a room in a building to start managing tenants.|在楼栋中创建房间，以开始管理租客。|건물에 방을 추가해 임차인 관리를 시작하세요.|किरायेदारों का प्रबंधन शुरू करने के लिए भवन में कमरा बनाएँ।
+341|No rooms match the current filters.|没有房间符合当前筛选条件。|현재 필터에 맞는 방이 없습니다.|वर्तमान फ़िल्टर से कोई कमरा मेल नहीं खाता।
+342|Duplicate {0}|复制 {0}|{0} 복제|{0} की प्रतिलिपि बनाएँ
+343|Add new room|添加新房间|새 방 추가|नया कमरा जोड़ें
+344|Details: {0}|{0} 的信息|{0} 정보|विवरण: {0}
+345|Add tenant · {0}|添加租客 · {0}|임차인 추가 · {0}|किरायेदार जोड़ें · {0}
+346|Create room|创建房间|방 추가|कमरा बनाएँ
+347|Save changes|保存更改|변경 저장|बदलाव सहेजें
+348|Save tenant|保存租客|임차인 저장|किरायेदार सहेजें
+349|Enter the deposit agreed with this tenant. It is billed separately and payable through the tenant link after saving.|填写与该租客约定的押金。保存后单独开单，可通过租客链接支付。|이 임차인과 합의한 보증금을 입력하세요. 저장 후 별도 청구되어 전용 링크로 납부할 수 있습니다.|इस किरायेदार से तय जमा राशि दर्ज करें। सहेजने के बाद अलग बिल बनेगा और किरायेदार के लिंक से भुगतान होगा।
+350|Tenant name|租客姓名|임차인 이름|किरायेदार का नाम
+351|Please enter the tenant's name.|请输入租客姓名。|임차인 이름을 입력하세요.|किरायेदार का नाम दर्ज करें।
+352|Full name|姓名|성명|पूरा नाम
+353|Number of residents|居住人数|거주 인원|रहने वालों की संख्या
+354|Enter between 1 and 30 people.|请输入 1 至 30 人。|1~30명을 입력하세요.|1 से 30 व्यक्ति दर्ज करें।
+355|Enter 0 if no deposit is required. This creates an amount due, not a received payment.|不收押金时填 0。此处仅生成应收款，不代表已收款。|보증금이 없으면 0을 입력하세요. 청구 금액이며 수납 기록이 아닙니다.|जमा राशि नहीं चाहिए तो 0 दर्ज करें। यह देय राशि है, प्राप्त भुगतान नहीं।
+356|Enter a valid deposit amount.|请输入有效押金金额。|올바른 보증금 금액을 입력하세요.|मान्य जमा राशि दर्ज करें।
+357|Move-in date|入住日期|입주일|प्रवेश तिथि
+358|Please select a date.|请选择日期。|날짜를 선택하세요.|तिथि चुनें।
+359|Building and rates copied. Edit the name and initial meter reading before creating. The new room has no tenant, deposit or invoices.|已复制楼栋与费率。创建前请修改名称和初始读数。新房间无租客、押金或账单。|건물과 요금이 복사되었습니다. 이름과 초기 검침을 수정하세요. 새 방에는 임차인, 보증금, 청구서가 없습니다.|भवन और दरें कॉपी हुईं। बनाने से पहले नाम और प्रारंभिक मीटर रीडिंग बदलें। नए कमरे में किरायेदार, जमा राशि या बिल नहीं हैं।
+360|Enter rent and fees for monthly billing.|填写月度账单使用的租金与费用。|월 청구에 사용할 임대료와 요금을 입력하세요.|मासिक बिल के लिए किराया और शुल्क दर्ज करें।
+361|Please select a building.|请选择楼栋。|건물을 선택하세요.|भवन चुनें।
+362|Select building|选择楼栋|건물 선택|भवन चुनें
+363|Room name|房间名称|방 이름|कमरे का नाम
+364|Please enter a room name.|请输入房间名称。|방 이름을 입력하세요.|कमरे का नाम दर्ज करें।
+365|Example: Room 01|例如：房间 01|예: 01호|उदाहरण: कमरा 01
+366|Electricity rate / kWh|每 kWh 电价|전기 요금 / kWh|बिजली दर / kWh
+367|Water billing method|水费计费方式|수도료 계산 방식|पानी शुल्क की गणना
+368|Per room / month|每房间每月|방별 / 월|प्रति कमरा / माह
+369|Per person / month|每人每月|인당 / 월|प्रति व्यक्ति / माह
+370|Service fee / month|每月服务费|월 서비스 요금|सेवा शुल्क / माह
+371|Initial meter reading|初始电表读数|초기 검침|प्रारंभिक मीटर रीडिंग
+372|Create supplemental invoice · {0}|创建补充账单 · {0}|추가 청구서 발행 · {0}|अतिरिक्त बिल बनाएँ · {0}
+373|Separate charge for|单独收费对象：|별도 청구 대상:|अलग शुल्क इनके लिए
+374|. After creation, the tenant can view and pay using the existing link.|。创建后租客可通过现有链接查看并付款。|. 발행 후 기존 링크로 조회 및 납부할 수 있습니다.|। बनने के बाद किरायेदार मौजूदा लिंक से देख और भुगतान कर सकता है।
+375|Charge description|收费内容|청구 내용|शुल्क का विवरण
+376|Enter a charge description.|请输入收费内容。|청구 내용을 입력하세요.|शुल्क का विवरण दर्ज करें।
+377|Example: Lock repair, extra rent…|例如：修锁费、补收租金…|예: 자물쇠 수리비, 추가 임대료…|उदाहरण: ताले की मरम्मत, अतिरिक्त किराया…
+378|Enter an amount from 1 to 2,147,483,647 VND.|请输入 1 至 2,147,483,647 VND。|1~2,147,483,647 VND를 입력하세요.|1 से 2,147,483,647 VND तक राशि दर्ज करें।
+379|Due date|付款期限|납부 기한|अंतिम तिथि
+380|Select a due date.|请选择付款期限。|납부 기한을 선택하세요.|अंतिम तिथि चुनें।
+381|Invoice link · {0}|账单链接 · {0}|청구서 링크 · {0}|बिल लिंक · {0}
+382|Close|关闭|닫기|बंद करें
+383|Link copied.|链接已复制。|링크 복사 완료.|लिंक कॉपी हुआ।
+384|Select and copy the link above.|请选择并复制上方链接。|위 링크를 선택해 복사하세요.|ऊपर का लिंक चुनकर कॉपी करें।
+385|Copy link|复制链接|링크 복사|लिंक कॉपी करें
+386|New link created and old link revoked. |新链接已创建，旧链接已撤销。|새 링크가 생성되고 기존 링크는 폐기되었습니다. |नया लिंक बना और पुराना रद्द हुआ। 
+387|Send this link to|将此链接发送给|링크 전달 대상:|यह लिंक इन्हें भेजें
+388|the tenant|租客|임차인|किरायेदार
+389|to view invoices and pay.|以查看账单并付款。|청구서 조회 및 납부용입니다.|ताकि बिल देख और भुगतान कर सकें।
+390|Tenant invoice link|租客账单链接|임차인 청구서 링크|किरायेदार का बिल लिंक
+391|Open tenant page|打开租客页面|임차인 페이지 열기|किरायेदार का पृष्ठ खोलें
+392|Create a building first|请先创建楼栋|먼저 건물을 추가하세요|पहले भवन बनाएँ
+393|A room belongs to a building for easier organization and management.|房间需要归属楼栋，方便分类和管理。|방은 분류와 관리를 위해 건물에 속해야 합니다.|व्यवस्थित प्रबंधन के लिए कमरा किसी भवन में होना चाहिए।
+394|Additional charge details|补充费用详情|추가 요금 상세|अतिरिक्त शुल्क का विवरण
+395|Deposit details|押金详情|보증금 상세|जमा राशि का विवरण
+396|Paid in|已缴纳|납부액|जमा किया गया
+397|Held by owner|房东当前保管|임대인 보관액|मकान मालिक के पास राशि
+398|Refunded|已退还|반환됨|लौटाया गया
+399|Deducted|已扣除|공제됨|कटौती हुई
+400|View invoice details|查看账单详情|청구서 상세 보기|बिल का विवरण देखें
+401|Rent|租金|임대료|किराया
+402|Electricity|电费|전기료|बिजली
+403|Water|水费|수도료|पानी
+404|Amount due|待付款|납부할 금액|देय राशि
+405|Check transaction|查看交易|거래 확인|लेनदेन जाँचें
+406|Pay|付款|결제|भुगतान करें
+407|payOS confirmed payment.|payOS 已确认付款。|payOS 결제 확인 완료.|payOS ने भुगतान की पुष्टि की।
+408|No payOS transaction to check for this invoice.|此账单没有需要核对的 payOS 交易。|확인할 payOS 거래가 없습니다.|इस बिल के लिए जाँचने योग्य payOS लेनदेन नहीं है।
+409|The previous transaction ended. You can start a new payment.|上次交易已结束，可以重新付款。|이전 거래가 종료되었습니다. 새 결제를 시작할 수 있습니다.|पिछला लेनदेन समाप्त हुआ। नया भुगतान शुरू कर सकते हैं।
+410|payOS has not confirmed payment. Please check again later.|payOS 尚未确认付款，请稍后重试。|payOS가 결제를 확인하지 않았습니다. 나중에 다시 확인하세요.|payOS ने भुगतान की पुष्टि नहीं की है। बाद में फिर जाँचें।
+411|Invalid payment link.|付款链接无效。|유효하지 않은 결제 링크입니다.|भुगतान लिंक अमान्य है।
+412|Link not found|链接不存在|링크를 찾을 수 없습니다|लिंक नहीं मिला
+413|Unable to load invoices|无法加载账单|청구서를 불러올 수 없습니다|बिल लोड नहीं हो सके
+414|This link is invalid or revoked. Contact the owner for a new link.|此链接无效或已撤销，请联系房东获取新链接。|링크가 유효하지 않거나 폐기되었습니다. 임대인에게 새 링크를 요청하세요.|लिंक अमान्य या रद्द है। नए लिंक के लिए मकान मालिक से संपर्क करें।
+415|ROOM DETAILS|房间信息|방 정보|कमरे की जानकारी
+416|Your room|您的房间|내 방|आपका कमरा
+417|Total amount due|待付款总额|총 납부 금액|कुल देय राशि
+418|Private link|专属链接|전용 링크|निजी लिंक
+419|Verifying payment|正在核实付款|결제 확인 중|भुगतान सत्यापित हो रहा है
+420|Payment updates after payOS confirms the transaction. Refresh to check the latest status.|payOS 确认交易后会更新付款，请刷新查看最新状态。|payOS 거래 확인 후 반영됩니다. 새로고침해 최신 상태를 확인하세요.|payOS की पुष्टि के बाद भुगतान अपडेट होगा। नवीनतम स्थिति के लिए रिफ़्रेश करें।
+421|Refresh|刷新|새로고침|रिफ़्रेश करें
+422|You returned from the payment page|您已从付款页面返回|결제 페이지에서 돌아왔습니다|आप भुगतान पृष्ठ से वापस आए हैं
+423|Your invoice still shows the current balance. You can try paying again when ready.|账单仍显示当前余额，准备好后可重新付款。|현재 잔액이 표시됩니다. 준비되면 결제를 다시 시도하세요.|बिल में वर्तमान शेष राशि दिख रही है। तैयार होने पर फिर भुगतान कर सकते हैं।
+424|Unable to start payment|暂时无法开始付款|결제를 시작할 수 없습니다|भुगतान शुरू नहीं हो सका
+425|Your invoices|您的账单|내 청구서|आपके बिल
+426|Deposits, monthly invoices and additional charges are tracked separately.|押金、月度账单和额外费用分别记录。|보증금, 월 청구서, 추가 요금은 별도로 관리됩니다.|जमा राशि, मासिक बिल और अतिरिक्त शुल्क अलग रखे जाते हैं।
+427|No invoices yet|暂无账单|청구서 없음|अभी बिल नहीं हैं
+428|New invoices appear here after the owner finalizes billing.|房东完成账单确认后，新账单将在这里显示。|임대인이 청구를 확정하면 새 청구서가 표시됩니다.|मकान मालिक बिल तय करेगा तब नए बिल यहाँ दिखेंगे।
+429|This information is only for holders of the room's private link.|此信息仅供持有房间专属链接的人查看。|이 정보는 방 전용 링크를 가진 분만 이용할 수 있습니다.|यह जानकारी केवल कमरे का निजी लिंक रखने वालों के लिए है।
+430|RENTAL INVOICES|出租房账单|임대 청구서|किराये के बिल
+431|Rehouse makes rental management clearer.|Rehouse 让出租房管理更清晰。|Rehouse로 임대 관리를 더 명확하게.|Rehouse से किराया प्रबंधन अधिक स्पष्ट होता है।
+432|Secure payment support|安全支付支持|안전한 결제 지원|सुरक्षित भुगतान सुविधा
+433|Overview|概览|개요|अवलोकन
+434|MAIN MENU|主菜单|주 메뉴|मुख्य मेनू
+435|Need help?|需要帮助？|도움이 필요하신가요?|मदद चाहिए?
+436|Manage rentals easily, one step at a time.|一步步轻松管理出租房。|단계별로 간편하게 임대를 관리하세요.|किराया प्रबंधन आसानी से, कदम दर कदम।
+437|Version 1.0|版本 1.0|버전 1.0|संस्करण 1.0
+438|Main menu|主菜单|주 메뉴|मुख्य मेनू
+439|Open menu|打开菜单|메뉴 열기|मेनू खोलें
+440|Workspace|工作区|작업 공간|कार्यस्थान
+441|Administrator|管理员|관리자|व्यवस्थापक
+442|Main navigation|主导航|주 탐색|मुख्य नेविगेशन
+443|Deposit settlement recorded.|押金结算已登记。|보증금 정산이 기록되었습니다.|जमा राशि का निपटान दर्ज हुआ।
+444|Record completed deposit refund?|登记已退还押金？|보증금 반환 완료를 기록할까요?|जमा राशि लौटाने का रिकॉर्ड दर्ज करें?
+445|Confirm deposit deduction?|确认扣除押金？|보증금 공제를 확인할까요?|जमा राशि की कटौती की पुष्टि करें?
+446|. Confirm only after returning the money to the tenant.|。请在已向租客退款后确认。|. 임차인에게 돈을 돌려준 후에만 확인하세요.|। किरायेदार को राशि लौटाने के बाद ही पुष्टि करें।
+447|Record|登记|기록|दर्ज करें
+448|Deposit settlement|押金结算|보증금 정산|जमा राशि का निपटान
+449|Deposit held:|当前押金：|보관 보증금:|रखी गई जमा राशि:
+450|Settlement method|结算方式|정산 방식|निपटान का तरीका
+451|Record deposit refunded to tenant|登记已向租客退还押金|임차인에게 반환한 보증금 기록|किरायेदार को लौटाई जमा राशि दर्ज करें
+452|Deduct deposit|扣除押金|보증금 공제|जमा राशि काटें
+453|Apply to an outstanding invoice (optional)|抵扣未付账单（可选）|미납 청구서에 적용 (선택)|बकाया बिल में समायोजित करें (वैकल्पिक)
+454|Leave blank for damage or other costs.|扣除损坏赔偿或其他费用时可留空。|파손이나 기타 비용 공제 시 비워 두세요.|क्षति या अन्य खर्च की कटौती के लिए खाली छोड़ें।
+455|{0} · Due {1}|{0} · 待付 {1}|{0} · 미납 {1}|{0} · देय {1}
+456|Additional|补充|추가|अतिरिक्त
+457|Reason / refund details|原因 / 退款信息|사유 / 반환 정보|कारण / वापसी का विवरण
+458|Record deposit settlement|登记押金结算|보증금 정산 기록|जमा राशि का निपटान दर्ज करें
+459|The tenancy changed. Close settlement and reopen it from the room list.|租期已变更。请关闭结算页面并从房间列表重新打开。|임대가 변경되었습니다. 닫고 방 목록에서 다시 여세요.|किरायेदारी बदल गई है। निपटान बंद करके कमरे की सूची से फिर खोलें।
+460|Settlement updated.|结算已更新。|정산이 업데이트되었습니다.|निपटान अपडेट हुआ।
+461|Move-out completed and tenant link revoked.|退房已完成，租客链接已撤销。|퇴거 완료 및 임차인 링크 폐기.|कमरा छोड़ना पूरा हुआ और किरायेदार का लिंक रद्द हुआ।
+462|Move-out & settlement · {0}|退房与结算 · {0}|퇴거 및 정산 · {0}|कमरा छोड़ना और निपटान · {0}
+463|Loading settlement…|正在加载结算…|정산 불러오는 중…|निपटान लोड हो रहा है…
+464|Outstanding: {0} · Deposit held: {1}|欠款：{0} · 保管押金：{1}|미수금: {0} · 보관 보증금: {1}|बकाया: {0} · रखी जमा राशि: {1}
+465|After applying the deposit: collect {0} more, or refund {1}.|抵扣押金后：需再收 {0}，或退还 {1}。|보증금 적용 후 추가 수납 {0} 또는 반환 {1}.|जमा राशि समायोजन के बाद: और {0} लें, या {1} लौटाएँ।
+466|Outstanding excludes unfinalized electricity and other final charges.|欠款尚未包含未确认的期末电费与额外费用。|미수금에는 미확정 최종 전기료 및 추가 요금이 포함되지 않습니다.|बकाया में अभी तय न हुए अंतिम बिजली और अन्य शुल्क शामिल नहीं हैं।
+467|Pending payOS transaction|存在待处理 payOS 交易|대기 중인 payOS 거래|payOS लेनदेन लंबित है
+468|Reconcile transactions before deductions, recording payments or ending the tenancy.|扣款、登记收款或结束租期前，请先核对交易。|공제, 수납 기록, 임대 종료 전에 거래를 대사하세요.|कटौती, प्राप्त राशि दर्ज करने या किरायेदारी समाप्त करने से पहले लेनदेन जाँचें।
+469|1. Finalize electricity & final charges|1. 确认电费与期末费用|1. 전기 및 최종 요금 확정|1. बिजली और अंतिम शुल्क तय करें
+470|Finalized: {0} → {1} kWh · {2}|已确认：{0} → {1} kWh · {2}|확정: {0} → {1} kWh · {2}|तय: {0} → {1} kWh · {2}
+471|Issue final move-out invoice?|开具退房最终账单？|퇴거 최종 청구서를 발행할까요?|कमरा छोड़ने का अंतिम बिल जारी करें?
+472|Publish final charges on the tenant link. After finalizing, do not add monthly electricity invoices for this tenancy.|在租客链接发布最终费用。确认后勿再添加本租期的月度电费账单。|전용 링크에 최종 요금을 발행합니다. 확정 후 이 임대의 월 전기 청구서를 추가하지 마세요.|किरायेदार के लिंक पर अंतिम शुल्क जारी करें। इसके बाद इस किरायेदारी का मासिक बिजली बिल न जोड़ें।
+473|Finalize invoice|确认账单|청구서 확정|बिल तय करें
+474|Last finalized reading:|最近确认读数：|마지막 확정 검침:|अंतिम तय रीडिंग:
+475|kWh · Current electricity rate:|kWh · 当前电价：|kWh · 현재 전기 요금:|kWh · वर्तमान बिजली दर:
+476|/kWh. Only additional usage is billed; monthly rent is not added automatically.|/kWh。仅计算新增用量，不自动加收月租。|/kWh. 추가 사용량만 계산하며 월 임대료는 자동 합산되지 않습니다.|/kWh। केवल अतिरिक्त खपत जोड़ी जाती है; मासिक किराया स्वतः नहीं जुड़ता।
+477|Meter reading at move-out|退房时电表读数|퇴거 시 검침|कमरा छोड़ते समय मीटर रीडिंग
+478|Enter a reading of {0} or higher.|请输入不低于 {0} 的读数。|{0} 이상의 검침을 입력하세요.|{0} या अधिक रीडिंग दर्ज करें।
+479|Unbilled remaining rent / fees|尚未开单的剩余租金 / 费用|미청구 잔여 임대료 / 요금|बिना बिल का शेष किराया / शुल्क
+480|Only enter uncollected amounts not in other invoices; enter 0 if none.|仅填写未收取且未计入其他账单的费用，无则填 0。|미수납이며 다른 청구서에 없는 금액만 입력하세요. 없으면 0입니다.|केवल न मिली और अन्य बिल में शामिल न हुई राशि दर्ज करें; नहीं है तो 0।
+481|Remaining charge description|剩余费用内容|잔여 요금 내용|शेष शुल्क का विवरण
+482|Enter the remaining charge description.|请输入剩余费用内容。|잔여 요금 내용을 입력하세요.|शेष शुल्क का विवरण दर्ज करें।
+483|Estimated final amount:|预计最终金额：|예상 최종 금액:|अनुमानित अंतिम राशि:
+484|Finalize electricity & final charges|确认电费与最终费用|전기 및 최종 요금 확정|बिजली और अंतिम शुल्क तय करें
+485|2. Collect balance & apply deposit|2. 收取欠款并抵扣押金|2. 미수금 수납 및 보증금 공제|2. बकाया लें और जमा राशि समायोजित करें
+486|No outstanding rent or additional charges.|无租金或额外费用欠款。|미납 임대료 및 추가 요금이 없습니다.|किराया या अतिरिक्त शुल्क बकाया नहीं है।
+487|Outstanding|欠款|미납|बकाया
+488|Apply deposit to move-out balance|退房时以押金抵扣欠款|퇴거 미수금에 보증금 적용|जमा राशि से कमरा छोड़ने का बकाया चुकाएँ
+489|Apply deposit to this invoice?|以押金抵扣此账单？|이 청구서에 보증금을 적용할까요?|इस बिल में जमा राशि समायोजित करें?
+490|Apply {0} of the held deposit to this balance.|将保管押金中的 {0} 抵扣此欠款。|보관 보증금 {0}을 이 미수금에 적용합니다.|रखी जमा राशि में से {0} इस बकाया में समायोजित करें।
+491|Apply deposit|抵扣押金|보증금 적용|जमा राशि समायोजित करें
+492|Collect move-out balance|收取退房欠款|퇴거 미수금 수납|कमरा छोड़ने का बकाया लें
+493|Record additional payment received|登记已收到追加款|추가 수납 기록|अतिरिक्त प्राप्त भुगतान दर्ज करें
+494|Reconcile payOS|核对 payOS|payOS 대사|payOS जाँचें
+495|3. Refund remaining deposit|3. 退还剩余押金|3. 잔여 보증금 반환|3. शेष जमा राशि लौटाएँ
+496|Held|当前保管|보관 중|रखी गई राशि
+497|. Only record a refund after paying the tenant outside the system.|。请在系统外向租客退款后再登记。|. 시스템 외부에서 임차인에게 반환한 후에만 기록하세요.|। सिस्टम के बाहर किरायेदार को राशि लौटाने के बाद ही दर्ज करें।
+498|Remaining deposit refunded at move-out|退房时已退还剩余押金|퇴거 시 잔여 보증금 반환 완료|कमरा छोड़ते समय शेष जमा राशि लौटाई
+499|Confirm you have paid {0} to the tenant. This action does not transfer money.|确认您已向租客支付 {0}。此操作不会转账。|임차인에게 {0}을 반환했음을 확인하세요. 이 작업은 송금하지 않습니다.|पुष्टि करें कि आपने किरायेदार को {0} दिए हैं। इस कार्य से बैंक हस्तांतरण नहीं होता।
+500|Record completed refund|登记已退款|반환 완료 기록|पूर्ण वापसी दर्ज करें
+501|Reconcile deposit transaction|核对押金交易|보증금 거래 대사|जमा राशि का लेनदेन जाँचें
+502|4. End tenancy|4. 结束租期|4. 임대 종료|4. किरायेदारी समाप्त करें
+503|After all balances and deposits are settled, the tenant link is revoked and the room becomes vacant. Invoice history is kept.|欠款和押金结清后，租客链接撤销，房间变为空置。历史账单将保留。|미수금과 보증금 정산 후 링크가 폐기되고 빈방이 됩니다. 청구서 내역은 유지됩니다.|सभी बकाया और जमा राशि निपटने पर लिंक रद्द होगा और कमरा खाली होगा। बिल इतिहास रहेगा।
+504|Confirm move-out?|确认退房？|퇴거를 확인할까요?|कमरा छोड़ने की पुष्टि करें?
+505|End tenancy and revoke the tenant link immediately after confirming.|确认后立即结束租期并撤销租客链接。|확인 즉시 임대가 종료되고 링크가 폐기됩니다.|पुष्टि के बाद तुरंत किरायेदारी समाप्त होगी और लिंक रद्द होगा।
+506|Move out|退房|퇴거|कमरा छोड़ें
+507|Complete move-out|完成退房|퇴거 완료|कमरा छोड़ना पूरा करें
+508|Reload settlement|重新加载结算|정산 다시 불러오기|निपटान फिर लोड करें
+509|Record money received|登记已收款|받은 금액 기록|प्राप्त राशि दर्ज करें
+510|Cash or bank transfer already received from the tenant.|已从租客收到的现金或转账。|임차인에게 이미 받은 현금 또는 계좌 이체.|किरायेदार से पहले ही मिला नकद या बैंक हस्तांतरण।
+511|Amount received|已收到金额|받은 금액|प्राप्त राशि
+512|Unable to load data.|加载数据失败。|데이터를 불러올 수 없습니다.|डेटा लोड नहीं हो सका।
+513|Data unavailable|数据暂不可用|데이터 없음|डेटा उपलब्ध नहीं
+514|Try again|重试|다시 시도|फिर प्रयास करें
+515|Menu|菜单|메뉴|मेनू
+516|Email|邮箱|이메일|ईमेल
+517|Tenant language|租客语言|임차인 언어|किरायेदार की भाषा
+518|Choose the link language before sharing with the tenant.|发送给租客前，请选择链接语言。|임차인에게 전달하기 전에 링크 언어를 선택하세요.|किरायेदार को भेजने से पहले लिंक की भाषा चुनें।
+519|Unable to check the status right now. You can try again in a few minutes.|暂时无法检查状态。请几分钟后重试。|현재 상태를 확인할 수 없습니다. 몇 분 후 다시 시도하세요.|अभी स्थिति जाँची नहीं जा सकी। कुछ मिनट बाद फिर प्रयास करें।
+520|Transfer details copied.|已复制转账内容。|이체 내용이 복사되었습니다.|भुगतान विवरण कॉपी किया गया।
+521|Could not copy. Select the details to copy them.|无法复制。请选中转账内容并复制。|복사할 수 없습니다. 이체 내용을 선택해 복사하세요.|कॉपी नहीं हो सका। कॉपी करने के लिए भुगतान विवरण चुनें।
+522|Payment successful|支付成功|결제가 완료되었습니다|भुगतान सफल
+523|The payment has been confirmed and the invoice is updated.|付款已确认，账单已更新。|결제가 확인되어 청구서가 업데이트되었습니다.|भुगतान की पुष्टि हो गई है और बिल अपडेट कर दिया गया है।
+524|Transaction expired|交易已过期|거래가 만료되었습니다|लेनदेन की अवधि समाप्त हो गई
+525|payOS confirmed that this transaction expired. The invoice still shows its current balance; you can close this window and try paying again.|payOS 已确认此交易过期。账单仍显示当前余额；您可以关闭此窗口后重新付款。|payOS에서 거래가 만료된 것으로 확인했습니다. 청구서에는 현재 잔액이 표시됩니다. 창을 닫고 다시 결제할 수 있습니다.|payOS ने पुष्टि की है कि लेनदेन की अवधि समाप्त हो गई। बिल में मौजूदा बकाया दिखाई देगा; आप यह विंडो बंद करके फिर भुगतान कर सकते हैं।
+526|Transaction cancelled|交易已取消|거래가 취소되었습니다|लेनदेन रद्द कर दिया गया
+527|payOS confirmed that the transaction was cancelled. The invoice still has an outstanding balance.|payOS 已确认此交易已取消。账单仍有未付余额。|payOS에서 거래가 취소된 것으로 확인했습니다. 청구서에 미납 잔액이 남아 있습니다.|payOS ने लेनदेन रद्द होने की पुष्टि की है। बिल में अभी बकाया राशि है।
+528|Payment was not completed|付款未完成|결제가 완료되지 않았습니다|भुगतान पूरा नहीं हुआ
+529|payOS did not complete the transaction. Please try again or contact the landlord.|payOS 未完成此交易。请重试或联系房东。|payOS에서 거래를 완료하지 못했습니다. 다시 시도하거나 집주인에게 문의하세요.|payOS ने लेनदेन पूरा नहीं किया। कृपया फिर प्रयास करें या मकान-मालिक से संपर्क करें।
+530|Payment awaiting confirmation|付款等待确认|결제 확인 대기 중|भुगतान की पुष्टि की प्रतीक्षा है
+531|The system is waiting for payOS to confirm. You can close this window; the transaction will continue to be processed.|系统正在等待 payOS 确认。您可以关闭此窗口，交易仍会继续处理。|시스템이 payOS 확인을 기다리고 있습니다. 창을 닫아도 거래 처리는 계속됩니다.|सिस्टम payOS की पुष्टि की प्रतीक्षा कर रहा है। आप यह विंडो बंद कर सकते हैं; लेनदेन की प्रक्रिया जारी रहेगी।
+532|Recipient name|收款人姓名|예금주|प्राप्तकर्ता का नाम
+533|Account number|账号|계좌번호|खाता संख्या
+534|Bank code (BIN)|银行代码 (BIN)|은행 코드(BIN)|बैंक कोड (BIN)
+535|Pay invoice|支付账单|청구서 결제|बिल का भुगतान
+536|Checking…|正在检查…|확인 중…|जाँच हो रही है…
+537|Check now|立即检查|지금 확인|अभी जाँचें
+538|Amount to transfer|转账金额|이체 금액|भुगतान की राशि
+539|Scan this code with your banking app to pay the exact amount for this invoice.|使用银行应用扫描此二维码，按账单准确金额付款。|은행 앱으로 이 QR 코드를 스캔해 청구서의 정확한 금액을 결제하세요.|इस बिल की सही राशि का भुगतान करने के लिए बैंक ऐप से यह QR कोड स्कैन करें।
+540|A QR code is not available for this transaction.|此交易暂时没有可用的二维码。|이 거래에는 QR 코드가 제공되지 않습니다.|इस लेनदेन के लिए QR कोड उपलब्ध नहीं है।
+541|You can continue by opening the secure payOS checkout page below.|您可以打开下方安全的 payOS 付款页面继续操作。|아래의 안전한 payOS 결제 페이지를 열어 계속할 수 있습니다.|नीचे दिया गया सुरक्षित payOS भुगतान पृष्ठ खोलकर आगे बढ़ें।
+542|There is no secure payOS checkout page available for this transaction. Check its status or contact the landlord before paying.|此交易没有可用的安全 payOS 付款页面。付款前请检查交易状态或联系房东。|이 거래에는 안전한 payOS 결제 페이지가 없습니다. 결제 전에 상태를 확인하거나 집주인에게 문의하세요.|इस लेनदेन के लिए सुरक्षित payOS भुगतान पृष्ठ उपलब्ध नहीं है। भुगतान से पहले स्थिति जाँचें या मकान-मालिक से संपर्क करें।
+543|Transfer description|转账备注|이체 내용|भुगतान विवरण
+544|Copy|复制|복사|कॉपी
+545|Payment deadline|付款期限|결제 기한|भुगतान की समय-सीमा
+546|Payment order code|付款订单号|결제 주문 코드|भुगतान ऑर्डर कोड
+547|Open payOS|打开 payOS|payOS 열기|payOS 열기
+548|QR code display period ended|二维码显示期限已结束|QR 코드 표시 시간이 끝났습니다|QR कोड दिखाने की अवधि समाप्त हो गई
+549|The QR code display period ended. The system is checking the transaction with payOS; wait for an updated status before transferring again.|二维码显示期限已结束。系统正在向 payOS 核实交易；请等待状态更新后再转账。|QR 코드 표시 시간이 끝났습니다. 시스템이 payOS에 거래를 확인하고 있습니다. 다시 송금하기 전에 상태가 업데이트될 때까지 기다리세요.|QR कोड दिखाने की अवधि समाप्त हो गई। सिस्टम payOS से लेनदेन की पुष्टि कर रहा है; दोबारा भुगतान करने से पहले स्थिति अपडेट होने की प्रतीक्षा करें।
+550|Amount paid|已支付金额|결제 금액|भुगतान की गई राशि
+551|Invoice not found|未找到此账单|청구서를 찾을 수 없습니다|बिल नहीं मिला
+552|This invoice is not available through this private link.|此账单不属于当前专属链接，或已无法使用。|이 청구서는 현재 전용 링크에서 사용할 수 없거나 더 이상 이용할 수 없습니다.|यह बिल इस निजी लिंक से उपलब्ध नहीं है या अब उपयोग नहीं किया जा सकता।
+553|payOS confirmed that the transaction expired. The invoice still shows the current balance; you can try paying again when ready.|payOS 已确认交易已过期。账单仍显示当前余额；准备好后可以重新付款。|payOS가 거래 만료를 확인했습니다. 청구서에는 현재 잔액이 표시됩니다. 준비되면 다시 결제할 수 있습니다.|payOS ने लेनदेन की समय-सीमा समाप्त होने की पुष्टि की। बिल में वर्तमान बकाया दिखता रहेगा; तैयार होने पर फिर भुगतान कर सकते हैं।

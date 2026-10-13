@@ -1,0 +1,44 @@
+name: phongtro
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: room_rental
+      POSTGRES_USER: room_rental
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U room_rental -d room_rental"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build: .
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      DatabaseProvider: Postgres
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=room_rental;Username=room_rental;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      DataProtection__KeysPath: /app/data/keys
+      PublicBaseUrl: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      WebhookBaseUrl: ${WEBHOOK_BASE_URL:-${PUBLIC_BASE_URL:-http://localhost:8080}}
+      TrustedProxies: ${TRUSTED_PROXIES:-}
+      BootstrapAdmin__Email: ${BOOTSTRAP_ADMIN_EMAIL:-admin@example.com}
+      BootstrapAdmin__Password: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in .env}
+      SeedDemo: "false"
+    volumes:
+      - app_keys:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  app_keys:
+

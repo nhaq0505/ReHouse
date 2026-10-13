@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Rehouse backup
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=20m
+Unit=rehouse-backup.service
+
+[Install]
+WantedBy=timers.target

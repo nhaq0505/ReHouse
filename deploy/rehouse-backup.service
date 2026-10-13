@@ -1,0 +1,14 @@
+[Unit]
+Description=Back up the Rehouse PostgreSQL database and DataProtection keys
+ConditionPathExists=/var/lib/rehouse/current-image
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/rehouse-backup
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/backups/rehouse /var/lib/rehouse/ops.lock /run/docker.sock
+NoNewPrivileges=true

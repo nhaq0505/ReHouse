@@ -1,0 +1,84 @@
+name: rehouse
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: room_rental
+      POSTGRES_USER: room_rental
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in /etc/rehouse/runtime.env}
+    command:
+      - postgres
+      - -c
+      - max_connections=20
+      - -c
+      - shared_buffers=96MB
+      - -c
+      - work_mem=2MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - max_wal_size=512MB
+      - -c
+      - max_parallel_workers=2
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    mem_limit: 384m
+    cpus: 0.65
+    pids_limit: 128
+    shm_size: 64m
+    restart: unless-stopped
+    logging: &bounded_logs
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  app:
+    image: ${IMAGE_REF:?IMAGE_REF must be an immutable GHCR digest}
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      DatabaseProvider: Postgres
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=room_rental;Username=room_rental;Password=${DB_PASSWORD:?DB_PASSWORD must be set in /etc/rehouse/runtime.env};Maximum Pool Size=15;Timeout=15;Command Timeout=30"
+      DataProtection__KeysPath: /app/data/keys
+      PublicBaseUrl: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      WebhookBaseUrl: ${WEBHOOK_BASE_URL:-http://localhost:8080}
+      TrustedProxies: ${TRUSTED_PROXIES:-}
+      BootstrapAdmin__Email: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BootstrapAdmin__Password: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      AuthRequestsPerMinute: "10"
+      SeedDemo: "false"
+    volumes:
+      - app_keys:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    mem_limit: 640m
+    cpus: 1.25
+    pids_limit: 256
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    logging: *bounded_logs
+
+volumes:
+  postgres_data:
+    name: rehouse_postgres_data
+  app_keys:
+    name: rehouse_data_protection_keys

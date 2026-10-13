@@ -1,0 +1,22 @@
+name: rehouse-pg-migration
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: rehouse-pg-migration-db
+    env_file:
+      - ../../backend/RoomRental.Api/.local-data/postgres-migration/postgres.env
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - postgres_migration_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U room_rental -d room_rental"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  postgres_migration_data:
+    name: rehouse-pg-migration-data

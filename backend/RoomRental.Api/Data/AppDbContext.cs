@@ -1,0 +1,173 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using RoomRental.Api.Domain;
+
+namespace RoomRental.Api.Data;
+
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+{
+    public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
+    public DbSet<Building> Buildings => Set<Building>();
+    public DbSet<Room> Rooms => Set<Room>();
+    public DbSet<Occupancy> Occupancies => Set<Occupancy>();
+    public DbSet<MonthlyReading> Readings => Set<MonthlyReading>();
+    public DbSet<DepositSettlement> DepositSettlements => Set<DepositSettlement>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<PaymentReceipt> Receipts => Set<PaymentReceipt>();
+    public DbSet<OwnerPaymentSettings> PaymentSettings => Set<OwnerPaymentSettings>();
+    public DbSet<PaymentWebhookRegistration> PaymentWebhookRegistrations => Set<PaymentWebhookRegistration>();
+    public DbSet<PayOsAttempt> PayOsAttempts => Set<PayOsAttempt>();
+    public DbSet<ProcessedWebhook> ProcessedWebhooks => Set<ProcessedWebhook>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PaymentWebhookRegistration>().HasKey(x => x.OwnerId);
+        if (Database.IsSqlite())
+        {
+            foreach (var property in modelBuilder.Model.GetEntityTypes().SelectMany(entity => entity.GetProperties())
+                         .Where(property => property.ClrType == typeof(DateTimeOffset) || property.ClrType == typeof(DateTimeOffset?)))
+                property.SetValueConverter(new DateTimeOffsetToBinaryConverter());
+        }
+
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.Email).IsUnique();
+            entity.Property(x => x.Email).HasMaxLength(320);
+            entity.Property(x => x.Name).HasMaxLength(160);
+            entity.Property(x => x.Phone).HasMaxLength(60);
+            entity.Property(x => x.PasswordHash).HasMaxLength(1024);
+            entity.Property(x => x.Role).HasConversion<string>().HasMaxLength(24);
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(24);
+            entity.Property(x => x.StatusReason).HasMaxLength(1000);
+        });
+
+        modelBuilder.Entity<AuthSession>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.UserId, x.ExpiresAt });
+        });
+
+        modelBuilder.Entity<Building>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.OwnerId);
+            entity.Property(x => x.Name).HasMaxLength(160);
+            entity.Property(x => x.Address).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<Room>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.BuildingId);
+            entity.Property(x => x.Name).HasMaxLength(100);
+            entity.Property(x => x.Rent).HasPrecision(18, 2);
+            entity.Property(x => x.ElectricityRate).HasPrecision(18, 2);
+            entity.Property(x => x.WaterFee).HasPrecision(18, 2);
+            entity.Property(x => x.ServiceFee).HasPrecision(18, 2);
+            entity.Property(x => x.InitialReading).HasPrecision(18, 3);
+        });
+
+        modelBuilder.Entity<Occupancy>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.RoomId, x.IsActive });
+            entity.HasIndex(x => x.TenantTokenHash).IsUnique();
+            entity.Property(x => x.TenantName).HasMaxLength(160);
+            entity.Property(x => x.Phone).HasMaxLength(60);
+            entity.Property(x => x.TenantTokenHash).HasMaxLength(64);
+            entity.Property(x => x.ProtectedTenantToken).HasMaxLength(2048);
+        });
+
+        modelBuilder.Entity<MonthlyReading>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.RoomId, x.Period }).IsUnique();
+            entity.HasIndex(x => new { x.RoomId, x.Period });
+            entity.Property(x => x.Period).HasMaxLength(7);
+            entity.Property(x => x.PreviousReading).HasPrecision(18, 3);
+            entity.Property(x => x.CurrentReading).HasPrecision(18, 3);
+            entity.Property(x => x.Consumption).HasPrecision(18, 3);
+        });
+
+        modelBuilder.Entity<DepositSettlement>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.InvoiceId, x.IdempotencyKey }).IsUnique();
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+        });
+        modelBuilder.Entity<Invoice>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.RoomId, x.Period }).IsUnique().HasFilter("\"Kind\" = 'Monthly'");
+            entity.HasIndex(x => x.OccupancyId).IsUnique().HasDatabaseName("IX_Invoices_OccupancyId_Deposit")
+                .HasFilter("\"Kind\" = 'Deposit'");
+            entity.HasMany(x => x.DepositSettlements).WithOne().HasForeignKey(x => x.InvoiceId);
+            entity.HasIndex(x => new { x.OwnerId, x.Period });
+            entity.HasIndex(x => x.OccupancyId);
+            entity.Property(x => x.RoomName).HasMaxLength(100);
+            entity.Property(x => x.Description).HasMaxLength(500);
+            entity.HasIndex(x => x.OccupancyId, "FinalMeterInvoice").IsUnique().HasDatabaseName("IX_Invoices_OccupancyId_FinalMeter").HasFilter("\"IsFinalMeterReading\" = TRUE");
+            entity.Property(x => x.BuildingName).HasMaxLength(160);
+            entity.Property(x => x.Period).HasMaxLength(7);
+            entity.Property(x => x.TenantName).HasMaxLength(160);
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.PreviousReading).HasPrecision(18, 3);
+            entity.Property(x => x.CurrentReading).HasPrecision(18, 3);
+            entity.Property(x => x.Consumption).HasPrecision(18, 3);
+            entity.Property(x => x.Rent).HasPrecision(18, 2);
+            entity.Property(x => x.ElectricityAmount).HasPrecision(18, 2);
+            entity.Property(x => x.WaterAmount).HasPrecision(18, 2);
+            entity.Property(x => x.ServiceAmount).HasPrecision(18, 2);
+            entity.Property(x => x.Total).HasPrecision(18, 2);
+            entity.Property(x => x.Paid).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<PaymentReceipt>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.InvoiceId, x.IdempotencyKey }).IsUnique();
+            entity.HasIndex(x => new { x.OwnerId, x.ExternalReference }).IsUnique();
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.Note).HasMaxLength(500);
+            entity.Property(x => x.IdempotencyKey).HasMaxLength(100);
+            entity.Property(x => x.Source).HasMaxLength(30);
+            entity.Property(x => x.ExternalReference).HasMaxLength(160);
+        });
+
+        modelBuilder.Entity<OwnerPaymentSettings>(entity =>
+        {
+            entity.HasKey(x => x.OwnerId);
+            entity.Property(x => x.ClientId).HasMaxLength(160);
+            entity.Property(x => x.ProtectedApiKey).HasMaxLength(4096);
+            entity.Property(x => x.ProtectedChecksumKey).HasMaxLength(4096);
+        });
+
+        modelBuilder.Entity<PayOsAttempt>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.OrderCode).IsUnique();
+            entity.HasIndex(x => new { x.InvoiceId, x.Status });
+            entity.HasIndex(x => x.InvoiceId).IsUnique().HasDatabaseName("IX_PayOsAttempts_InvoiceId_Pending")
+                .HasFilter("\"Status\" = 'Pending'");
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.CheckoutUrl).HasMaxLength(2048);
+            entity.Property(x => x.PaymentLinkId).HasMaxLength(160);
+            entity.Property(x => x.QrCode).HasMaxLength(4096);
+            entity.Property(x => x.AccountName).HasMaxLength(200);
+            entity.Property(x => x.AccountNumber).HasMaxLength(100);
+            entity.Property(x => x.BankBin).HasMaxLength(20);
+            entity.Property(x => x.Description).HasMaxLength(500);
+            entity.Property(x => x.ProviderStatus).HasMaxLength(40);
+            entity.Property(x => x.ProviderReference).HasMaxLength(160);
+        });
+
+        modelBuilder.Entity<ProcessedWebhook>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.OwnerId, x.Reference }).IsUnique();
+            entity.Property(x => x.Reference).HasMaxLength(160);
+        });
+    }
+}

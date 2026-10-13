@@ -2,7 +2,7 @@ import { t } from '../i18n/runtime';
 import { useEffect, useMemo, useState } from 'react';
 import { App, Button, Card, Col, Form, Input, Modal, Row, Select, Space, Spin, Tag, Typography } from 'antd';
 import { ArrowRightOutlined, BankOutlined, EnvironmentOutlined, HomeOutlined, PlusOutlined, RollbackOutlined } from '@ant-design/icons';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type Building } from '../api';
 import { EmptyPanel, LoadError, PageTitle, SectionCard } from '../components/Ui';
@@ -12,6 +12,7 @@ type ArchiveFilter = 'Active' | 'Archived';
 export default function BuildingsPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [open, setOpen] = useState(false);
   const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>('Active');
@@ -62,7 +63,7 @@ export default function BuildingsPage() {
           </div>
         </Card></Col>;
       })}</Row>
-      {archiveFilter === 'Active' && <SectionCard className="building-tip-card"><div className="building-tip"><div className="tip-illustration"><HomeOutlined /></div><div><strong>{t("Quản lý phòng trong từng dãy")}</strong><span>{t("Tạo phòng mới, cập nhật giá thuê và ghi nhận người chuyển vào trong mục Phòng & người thuê.")}</span></div><Button type="primary" ghost href="/rooms">{t("Đi đến phòng")}</Button></div></SectionCard>}
+      {archiveFilter === 'Active' && <SectionCard className="building-tip-card"><div className="building-tip"><div className="tip-illustration"><HomeOutlined /></div><div><strong>{t("Quản lý phòng trong từng dãy")}</strong><span>{t("Tạo phòng mới, cập nhật giá thuê và ghi nhận người chuyển vào trong mục Phòng & người thuê.")}</span></div><Button type="primary" ghost onClick={() => navigate('/rooms')}>{t("Đi đến phòng")}</Button></div></SectionCard>}
     </>}
     <Modal title={t("Thêm dãy trọ mới")} open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} okText={t("Tạo dãy trọ")} cancelText={t("Hủy")} confirmLoading={createMutation.isPending} destroyOnClose>
       <Typography.Paragraph className="modal-intro">{t("Đặt tên và nhập địa chỉ để dễ nhận biết dãy trọ của bạn.")}</Typography.Paragraph><Form form={form} layout="vertical" onFinish={(values) => createMutation.mutate(values)} requiredMark={false}><Form.Item label={t("Tên dãy trọ")} name="name" rules={[{ required: true, whitespace: true, message: t("Vui lòng nhập tên dãy trọ.") }]}><Input placeholder={t("Ví dụ: Dãy trọ đường Hoa Sứ")} maxLength={100} /></Form.Item><Form.Item label={t("Địa chỉ")} name="address" rules={[{ required: true, whitespace: true, message: t("Vui lòng nhập địa chỉ.") }]}><Input.TextArea placeholder={t("Số nhà, đường, phường/xã, quận/huyện")} autoSize={{ minRows: 2, maxRows: 4 }} maxLength={250} /></Form.Item></Form>

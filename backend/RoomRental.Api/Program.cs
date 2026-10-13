@@ -39,12 +39,12 @@ else
     throw new InvalidOperationException("DatabaseProvider must be SQLite or Postgres.");
 }
 
-builder.Services.AddDataProtection();
+var dataProtection = builder.Services.AddDataProtection();
 var keyPath = builder.Configuration["DataProtection:KeysPath"];
 if (!string.IsNullOrWhiteSpace(keyPath))
 {
     Directory.CreateDirectory(keyPath);
-    builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keyPath));
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keyPath));
 }
 
 builder.Services.AddSingleton<IPasswordHasher<AppUser>, PasswordHasher<AppUser>>();

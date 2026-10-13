@@ -2,12 +2,13 @@ import { getLocale, t } from '../i18n/runtime';
 import { useMemo } from 'react';
 import { Button, Card, Col, Progress, Row, Skeleton, Statistic, Typography } from 'antd';
 import { ArrowRightOutlined, BankOutlined, CalculatorOutlined, FileTextOutlined, HomeOutlined, LinkOutlined, PlusOutlined, RiseOutlined, WarningOutlined } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api, formatVnd, periodLabel, currentPeriod } from '../api';
 import { LoadError, PageTitle, SectionCard } from '../components/Ui';
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const dashboardQuery = useQuery({ queryKey: ['dashboard'], queryFn: api.dashboard });
   const roomsQuery = useQuery({ queryKey: ['rooms'], queryFn: () => api.rooms.list() });
   const invoicesQuery = useQuery({ queryKey: ['invoices', currentPeriod()], queryFn: () => api.invoices.list(currentPeriod()) });
@@ -20,7 +21,7 @@ export default function DashboardPage() {
 
   if (dashboardQuery.isError) return <><PageTitle eyebrow={t("TỔNG QUAN")} title={t("Chào mừng trở lại")} subtitle={t("Tình hình nhà trọ của bạn, trong nháy mắt.")} /><LoadError error={dashboardQuery.error} onRetry={() => void dashboardQuery.refetch()} /></>;
   return <>
-    <PageTitle eyebrow={todayLabel} title={t("Chào mừng trở lại")} subtitle={t("Tình hình nhà trọ của bạn, trong nháy mắt.")} extra={<Button type="primary" icon={<CalculatorOutlined />} href="/readings">{t("Nhập chỉ số tháng này")}</Button>} />
+    <PageTitle eyebrow={todayLabel} title={t("Chào mừng trở lại")} subtitle={t("Tình hình nhà trọ của bạn, trong nháy mắt.")} extra={<Button type="primary" icon={<CalculatorOutlined />} onClick={() => navigate('/readings')}>{t("Nhập chỉ số tháng này")}</Button>} />
     <SectionCard title={t("Thao tác nhanh")} className="quick-actions-card"><div className="quick-actions"><Link to="/buildings?create=1"><BankOutlined /><strong>{t("Tạo dãy trọ")}</strong><span>{t("Thêm địa điểm cho thuê")}</span><PlusOutlined /></Link><Link to="/rooms?create=1"><HomeOutlined /><strong>{t("Tạo phòng trọ")}</strong><span>{t("Thiết lập giá thuê và phí")}</span><PlusOutlined /></Link><Link to="/rooms?links=1"><LinkOutlined /><strong>{t("Cấp link cho khách")}</strong><span>{t("Chọn phòng đang có người thuê")}</span><ArrowRightOutlined /></Link></div></SectionCard>
     {loading ? <div className="content-card"><Skeleton active paragraph={{ rows: 8 }} /></div> : <>
       <Row gutter={[16, 16]} className="stat-grid">
@@ -43,8 +44,8 @@ export default function DashboardPage() {
           <div className="mini-room-note"><BankOutlined /> {rooms.length}  {t("phòng đã được thêm vào hệ thống")}</div>
         </SectionCard></Col>
       </Row>
-      <SectionCard title={t("Hóa đơn gần đây")} extra={<Button type="link" href="/invoices">{t("Tất cả hóa đơn")} <ArrowRightOutlined /></Button>}>
-        {invoicesQuery.isError ? <LoadError error={invoicesQuery.error} onRetry={() => void invoicesQuery.refetch()} /> : invoicesQuery.isPending ? <Skeleton active paragraph={{ rows: 3 }} /> : recentInvoices.length ? <div className="recent-invoice-list">{recentInvoices.map((invoice) => <Link key={invoice.id} className="recent-invoice-row" to={`/invoices?invoice=${encodeURIComponent(invoice.id)}`}><div className="invoice-room-avatar">{invoice.roomName?.slice(0, 2)?.toUpperCase() ?? 'P'}</div><div className="recent-invoice-room"><strong>{invoice.roomName}</strong><span>{invoice.buildingName || t("Nhà trọ")} · {invoice.tenantName || t("Chưa có tên người thuê")}</span></div><div className="recent-invoice-period">{invoice.kind === 'Deposit' ? t("Tiền cọc nhận phòng") : invoice.kind === 'Supplemental' ? t("Hóa đơn bổ sung") : periodLabel(invoice.period)}</div><div className="recent-invoice-amount"><strong>{formatVnd(invoice.total)}</strong><span className={`status-pill status-${invoice.status?.toLowerCase()}`}>{invoice.status === 'Paid' ? t("Đã thanh toán") : invoice.status === 'Partial' ? t("Thanh toán một phần") : t("Chưa thanh toán")}</span></div></Link>)}</div> : <div className="inline-empty"><FileTextOutlined /><div><strong>{t("Chưa có hóa đơn trong tháng này")}</strong><span>{t("Ghi chỉ số điện để bắt đầu tạo hóa đơn.")}</span></div><Button type="link" href="/readings">{t("Nhập chỉ số")}</Button></div>}
+      <SectionCard title={t("Hóa đơn gần đây")} extra={<Button type="link" onClick={() => navigate('/invoices')}>{t("Tất cả hóa đơn")} <ArrowRightOutlined /></Button>}>
+        {invoicesQuery.isError ? <LoadError error={invoicesQuery.error} onRetry={() => void invoicesQuery.refetch()} /> : invoicesQuery.isPending ? <Skeleton active paragraph={{ rows: 3 }} /> : recentInvoices.length ? <div className="recent-invoice-list">{recentInvoices.map((invoice) => <Link key={invoice.id} className="recent-invoice-row" to={`/invoices?invoice=${encodeURIComponent(invoice.id)}`}><div className="invoice-room-avatar">{invoice.roomName?.slice(0, 2)?.toUpperCase() ?? 'P'}</div><div className="recent-invoice-room"><strong>{invoice.roomName}</strong><span>{invoice.buildingName || t("Nhà trọ")} · {invoice.tenantName || t("Chưa có tên người thuê")}</span></div><div className="recent-invoice-period">{invoice.kind === 'Deposit' ? t("Tiền cọc nhận phòng") : invoice.kind === 'Supplemental' ? t("Hóa đơn bổ sung") : periodLabel(invoice.period)}</div><div className="recent-invoice-amount"><strong>{formatVnd(invoice.total)}</strong><span className={`status-pill status-${invoice.status?.toLowerCase()}`}>{invoice.status === 'Paid' ? t("Đã thanh toán") : invoice.status === 'Partial' ? t("Thanh toán một phần") : t("Chưa thanh toán")}</span></div></Link>)}</div> : <div className="inline-empty"><FileTextOutlined /><div><strong>{t("Chưa có hóa đơn trong tháng này")}</strong><span>{t("Ghi chỉ số điện để bắt đầu tạo hóa đơn.")}</span></div><Button type="link" onClick={() => navigate('/readings')}>{t("Nhập chỉ số")}</Button></div>}
       </SectionCard>
     </>}
   </>;

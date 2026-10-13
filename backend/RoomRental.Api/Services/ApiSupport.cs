@@ -50,6 +50,9 @@ public static class ApiSupport
 
     public static decimal RoundVnd(decimal value) => decimal.Round(value, 0, MidpointRounding.AwayFromZero);
 
+    public static string UtcIsoString(DateTimeOffset value) =>
+        value.ToUniversalTime().ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+
     public static bool IsSameOrigin(HttpRequest request)
     {
         var candidate = request.Headers.Origin.FirstOrDefault();

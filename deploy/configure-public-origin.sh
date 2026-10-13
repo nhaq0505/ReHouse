@@ -73,7 +73,7 @@ wait_for_app() {
       query_result=$(compose "$image_ref" exec -T db psql --no-psqlrc -At -v ON_ERROR_STOP=1 \
         -U room_rental -d room_rental -c 'SELECT 1' 2>/dev/null || true)
       admin_count=$(compose "$image_ref" exec -T db psql --no-psqlrc -At -v ON_ERROR_STOP=1 \
-        -U room_rental -d room_rental -c "SELECT count(*) FROM \"Users\" WHERE \"Email\"='admin@rehouse.local' AND \"Role\"='Admin'" 2>/dev/null || true)
+        -U room_rental -d room_rental -c "SELECT count(*) FROM \"Users\" WHERE \"Role\"='Admin' AND \"Status\"='Approved'" 2>/dev/null || true)
       app_id=$(compose "$image_ref" ps -q app 2>/dev/null || true)
       if [[ "$query_result" == 1 && "$admin_count" =~ ^[1-9][0-9]*$ && -n "$app_id" ]]; then
         app_uid=$(docker exec "$app_id" id -u 2>/dev/null || true)

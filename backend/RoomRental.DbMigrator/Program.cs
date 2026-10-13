@@ -45,8 +45,9 @@ var connectionString = new NpgsqlConnectionStringBuilder
 
 var expectedTables = new[]
 {
-    "AuthSessions", "Buildings", "DepositSettlements", "Invoices", "Occupancies", "PayOsAttempts",
-    "PaymentSettings", "PaymentWebhookRegistrations", "ProcessedWebhooks", "Readings", "Receipts", "Rooms", "Users"
+    "AuthSessions", "Buildings", "DepositSettlements", "InvoiceRevisions", "Invoices", "MoveoutCompletions",
+    "Occupancies", "PayOsAttempts", "PaymentSettings", "PaymentWebhookRegistrations", "ProcessedWebhooks",
+    "Readings", "Receipts", "Rooms", "Users"
 };
 
 await using var sqliteConnection = new Microsoft.Data.Sqlite.SqliteConnection(
@@ -82,7 +83,9 @@ try
     counts["Occupancies"] = await CopySetAsync<Occupancy>(source, target);
     counts["Readings"] = await CopySetAsync<MonthlyReading>(source, target);
     counts["Invoices"] = await CopySetAsync<Invoice>(source, target);
+    counts["InvoiceRevisions"] = await CopySetAsync<InvoiceRevision>(source, target);
     counts["DepositSettlements"] = await CopySetAsync<DepositSettlement>(source, target);
+    counts["MoveoutCompletions"] = await CopySetAsync<MoveoutCompletion>(source, target);
     counts["Receipts"] = await CopySetAsync<PaymentReceipt>(source, target);
     counts["PaymentSettings"] = await CopySetAsync<OwnerPaymentSettings>(source, target);
     counts["PaymentWebhookRegistrations"] = await CopySetAsync<PaymentWebhookRegistration>(source, target);
@@ -169,7 +172,7 @@ static async Task ValidateSqliteBackupAsync(Microsoft.Data.Sqlite.SqliteConnecti
     var actual = new HashSet<string>(StringComparer.Ordinal);
     await using (var command = connection.CreateCommand())
     {
-        command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';";
+        command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'SchemaUpgrades';";
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync()) actual.Add(reader.GetString(0));
     }
@@ -181,7 +184,7 @@ static async Task<HashSet<string>> ReadPostgresTablesAsync(AppDbContext context)
 {
     var result = new HashSet<string>(StringComparer.Ordinal);
     await using var command = context.Database.GetDbConnection().CreateCommand();
-    command.CommandText = "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = current_schema();";
+    command.CommandText = "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = current_schema() AND tablename <> 'SchemaUpgrades';";
     await using var reader = await command.ExecuteReaderAsync();
     while (await reader.ReadAsync()) result.Add(reader.GetString(0));
     return result;
@@ -219,7 +222,9 @@ static Task<int> CountTargetRowsAsync(AppDbContext target, string table) => tabl
     "Occupancies" => target.Occupancies.CountAsync(),
     "Readings" => target.Readings.CountAsync(),
     "Invoices" => target.Invoices.CountAsync(),
+    "InvoiceRevisions" => target.InvoiceRevisions.CountAsync(),
     "DepositSettlements" => target.DepositSettlements.CountAsync(),
+    "MoveoutCompletions" => target.MoveoutCompletions.CountAsync(),
     "Receipts" => target.Receipts.CountAsync(),
     "PaymentSettings" => target.PaymentSettings.CountAsync(),
     "PaymentWebhookRegistrations" => target.PaymentWebhookRegistrations.CountAsync(),

@@ -185,6 +185,14 @@ public sealed class InvoiceSweepService(IServiceScopeFactory scopeFactory, ILogg
             try
             {
                 using var scope = scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var cutoff = timeProvider.GetUtcNow().AddDays(-7);
+                var expiredSessions = await db.AuthSessions.Where(s => s.ExpiresAt < cutoff).ToListAsync(stoppingToken);
+                if (expiredSessions.Count > 0)
+                {
+                    db.AuthSessions.RemoveRange(expiredSessions);
+                    await db.SaveChangesAsync(stoppingToken);
+                }
                 var service = scope.ServiceProvider.GetRequiredService<InvoiceService>();
                 var period = timeProvider.GetUtcNow().ToOffset(VietnamTimeZone.GetUtcOffset(timeProvider.GetUtcNow())).ToString("yyyy-MM");
                 var result = await service.GenerateForAllApprovedOwnersAsync(period, stoppingToken);

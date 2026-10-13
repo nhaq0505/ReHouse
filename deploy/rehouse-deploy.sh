@@ -109,7 +109,7 @@ wait_for_app() {
     if curl --fail --silent --max-time 4 http://127.0.0.1:8080/api/health >/dev/null; then
       local query_result admin_count app_id app_uid app_gid keys_owner
       query_result=$(compose "$selected_image" exec -T db psql --no-psqlrc -At -v ON_ERROR_STOP=1 -U room_rental -d room_rental -c 'SELECT 1' 2>/dev/null || true)
-      admin_count=$(compose "$selected_image" exec -T db psql --no-psqlrc -At -v ON_ERROR_STOP=1 -U room_rental -d room_rental -c "SELECT count(*) FROM \"Users\" WHERE \"Email\"='admin@rehouse.local' AND \"Role\"='Admin'" 2>/dev/null || true)
+      admin_count=$(compose "$selected_image" exec -T db psql --no-psqlrc -At -v ON_ERROR_STOP=1 -U room_rental -d room_rental -c "SELECT count(*) FROM \"Users\" WHERE \"Role\"='Admin' AND \"Status\"='Approved'" 2>/dev/null || true)
       app_id=$(compose "$selected_image" ps -q app 2>/dev/null || true)
       if [[ "$query_result" == 1 && "$admin_count" =~ ^[1-9][0-9]*$ && -n "$app_id" ]]; then
         app_uid=$(docker exec "$app_id" id -u 2>/dev/null || true)

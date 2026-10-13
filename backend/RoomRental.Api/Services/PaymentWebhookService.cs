@@ -64,7 +64,7 @@ public sealed class PaymentWebhookService(AppDbContext db, IDataProtectionProvid
                 returnedUrl.GetString() == url)
             {
                 status = "Verified";
-                verifiedAt = DateTimeOffset.UtcNow.ToString("O");
+                verifiedAt = ApiSupport.UtcIsoString(DateTimeOffset.UtcNow);
                 error = null;
             }
             else error = "payOS chưa xác minh được webhook. Kiểm tra bộ khóa và khả năng truy cập URL HTTPS rồi thử lại.";

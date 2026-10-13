@@ -164,7 +164,7 @@ public static class MoveoutEndpoints
                     Kind = "Refund",
                     Reason = $"Manual move-out refund ({request.RequestId:D}).",
                     IdempotencyKey = SettlementKey(request.RequestId, "refund"),
-                    RecordedAt = completedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture)
+                    RecordedAt = ApiSupport.UtcIsoString(completedAt)
                 });
             if (retained > 0)
                 db.DepositSettlements.Add(new DepositSettlement
@@ -174,7 +174,7 @@ public static class MoveoutEndpoints
                     Kind = "Deduction",
                     Reason = $"Deposit retained by owner at move-out by manual agreement ({request.RequestId:D}).",
                     IdempotencyKey = SettlementKey(request.RequestId, "retain"),
-                    RecordedAt = completedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture)
+                    RecordedAt = ApiSupport.UtcIsoString(completedAt)
                 });
             if (request.RefundAmount > 0 || retained > 0) deposit.Version++;
         }

@@ -85,7 +85,7 @@ wait_for_app() {
   for ((attempt = 0; attempt < 60; attempt++)); do
     if curl --fail --silent --max-time 4 http://127.0.0.1:8080/api/health >/dev/null; then
       query_result=$(psql_database "$db_name" -At -c 'SELECT 1' 2>/dev/null || true)
-      admin_count=$(psql_database "$db_name" -At -c "SELECT count(*) FROM \"Users\" WHERE \"Email\"='admin@rehouse.local' AND \"Role\"='Admin'" 2>/dev/null || true)
+      admin_count=$(psql_database "$db_name" -At -c "SELECT count(*) FROM \"Users\" WHERE \"Role\"='Admin' AND \"Status\"='Approved'" 2>/dev/null || true)
       app_id=$(compose "$image_ref" ps -q app 2>/dev/null || true)
       if [[ "$query_result" == 1 && "$admin_count" =~ ^[1-9][0-9]*$ && -n "$app_id" ]]; then
         app_uid=$(docker exec "$app_id" id -u 2>/dev/null || true)
@@ -147,7 +147,7 @@ docker exec -i "$db_id" pg_restore -U room_rental -d "$restore_db" --no-owner < 
 [[ "$(psql_database "$restore_db" -At -c 'SELECT 1')" == 1 ]] || fail 'restored database failed its SQL check'
 table_count=$(psql_database "$restore_db" -At -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'")
 if [[ "$table_count" != 0 ]]; then
-  admin_count=$(psql_database "$restore_db" -At -c "SELECT count(*) FROM \"Users\" WHERE \"Email\"='admin@rehouse.local' AND \"Role\"='Admin'")
+  admin_count=$(psql_database "$restore_db" -At -c "SELECT count(*) FROM \"Users\" WHERE \"Role\"='Admin' AND \"Status\"='Approved'")
   [[ "$admin_count" =~ ^[1-9][0-9]*$ ]] || fail 'restored database has no bootstrap administrator'
 fi
 

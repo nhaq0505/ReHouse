@@ -22,7 +22,7 @@ public static class AuthEndpoints
             var phone = request.Phone?.Trim();
             if (string.IsNullOrWhiteSpace(name) || name.Length > 160)
                 throw new ApiException(StatusCodes.Status400BadRequest, "Vui lòng nhập họ tên tối đa 160 ký tự.");
-            if (string.IsNullOrWhiteSpace(email) || email.Length > 320 || !email.Contains('@'))
+            if (string.IsNullOrWhiteSpace(email) || email.Length > 320 || !email.Contains('@') || !System.Net.Mail.MailAddress.TryCreate(email, out _))
                 throw new ApiException(StatusCodes.Status400BadRequest, "Vui lòng nhập địa chỉ email hợp lệ.");
             if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8 || request.Password.Length > 256)
                 throw new ApiException(StatusCodes.Status400BadRequest, "Mật khẩu cần có ít nhất 8 ký tự.");

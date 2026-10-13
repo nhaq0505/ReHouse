@@ -55,7 +55,8 @@ const rules: readonly [RegExp, string][] = [
  [/amount must|amount cannot|supported limit|Tiền cọc phải|tiền vượt|số tiền nguyên VND|khoản bổ sung nguyên VND/, 'amount'],
  [/already used|Mã.*đã.*dùng/, 'duplicate'], [/People must/, 'people'], [/Start date/, 'futureDate'],
  [/name is required|họ tên tối đa/, 'name'], [/Reason must|Receipt note/, 'reason'],
- [/cùng người thuê|Hoàn cọc không thể/, 'scope'], [/Status must|Unknown owner|Period must|non-negative/, 'form'],
+ [/cùng người thuê|Hoàn cọc không thể/, 'scope'], [/Status must|Unknown owner|Period must|non-negative|Supply at least one|charge fields|amount field|meter or charge/, 'form'],
+ [/Only a monthly draft|Only an issued invoice|recorded payment cannot|settlement records cannot|later meter reading|later move-out reading|editable meter anchor|source meter reading|Draft invoices must|Draft deposit invoices/, 'request'],
 ];
 const languageIndex = () => ({ vi: 0, en: 1, zh: 2, ko: 3, hi: 4 })[getLanguage()];
 export function errorText(source: string, status = 400) {

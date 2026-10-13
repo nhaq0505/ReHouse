@@ -40,4 +40,6 @@
 test-results/
 playwright-report/
 **/artifacts/
+out/
+**/out/
 

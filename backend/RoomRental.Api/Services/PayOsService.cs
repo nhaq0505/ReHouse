@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -18,6 +19,7 @@ public sealed class PayOsService(
     ILogger<PayOsService> logger)
 {
     private readonly IDataProtector _protector = protectionProvider.CreateProtector("RoomRental.OwnerPayOsCredentials.v1");
+    private static readonly ConcurrentDictionary<long, DateTimeOffset> LastReconcileAttemptByOrder = new();
     private const string ApiBaseUrl = "https://api-merchant.payos.vn";
     private const int CheckoutExpirySeconds = 600;
 
@@ -241,14 +243,28 @@ public sealed class PayOsService(
 
     public async Task<(int Checked, int Failed)> ReconcilePendingBatchAsync(CancellationToken cancellationToken)
     {
-        var pendingOrders = await db.PayOsAttempts.AsNoTracking().Where(row => row.Status == PaymentAttemptStatus.Pending)
-            .OrderBy(row => row.CreatedAt).Select(row => new { row.OwnerId, row.OrderCode }).Take(12).ToListAsync(cancellationToken);
+        var candidates = await db.PayOsAttempts.AsNoTracking().Where(row => row.Status == PaymentAttemptStatus.Pending)
+            .OrderBy(row => row.CreatedAt).Select(row => new { row.OwnerId, row.OrderCode, row.CreatedAt }).Take(100).ToListAsync(cancellationToken);
+        var pendingOrders = candidates
+            .OrderBy(row => LastReconcileAttemptByOrder.GetValueOrDefault(row.OrderCode, DateTimeOffset.MinValue))
+            .ThenBy(row => row.CreatedAt)
+            .Take(12)
+            .ToList();
         var failed = 0;
         foreach (var order in pendingOrders)
         {
-            try { await ReconcileAsync(order.OwnerId, order.OrderCode, cancellationToken); }
+            LastReconcileAttemptByOrder[order.OrderCode] = DateTimeOffset.UtcNow;
+            try
+            {
+                await ReconcileAsync(order.OwnerId, order.OrderCode, cancellationToken);
+                LastReconcileAttemptByOrder.TryRemove(order.OrderCode, out _);
+            }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-            catch (Exception) { failed++; }
+            catch (Exception)
+            {
+                db.ChangeTracker.Clear();
+                failed++;
+            }
         }
         if (failed > 0) logger.LogWarning("Automatic payOS reconciliation failed for {Count} pending order(s).", failed);
         return (pendingOrders.Count, failed);

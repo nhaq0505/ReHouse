@@ -60,7 +60,7 @@ public static class DepositEndpoints
             }
             var settlement = new DepositSettlement { InvoiceId = id, Amount = request.Amount,
                 Kind = request.Kind, Reason = request.Reason.Trim(), IdempotencyKey = request.IdempotencyKey,
-                TargetInvoiceId = request.TargetInvoiceId, RecordedAt = DateTimeOffset.UtcNow.ToString("O") };
+                TargetInvoiceId = request.TargetInvoiceId, RecordedAt = ApiSupport.UtcIsoString(DateTimeOffset.UtcNow) };
             db.DepositSettlements.Add(settlement);
             invoice.Version++;
             await db.SaveChangesAsync(cancellationToken);

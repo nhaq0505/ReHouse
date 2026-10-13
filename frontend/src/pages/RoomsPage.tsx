@@ -5,7 +5,7 @@ import type { MenuProps, TableProps } from 'antd';
 import { FileAddOutlined, CopyOutlined, EditOutlined, EllipsisOutlined, HomeOutlined, LinkOutlined, PlusOutlined, UserAddOutlined, RollbackOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, formatVnd, type Room } from '../api';
 import { roomTheme } from '../design/roomTheme';
 import './RoomsPage.css';
@@ -27,6 +27,7 @@ function RoomsContent() {
   const numberRule = [{ required: true, message: t("Vui lòng nhập giá trị.") }, { type: 'number' as const, min: 0, message: t("Giá trị không được nhỏ hơn 0.") }];
   const { message, modal } = App.useApp();
   const client = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [moveoutRoom, setMoveoutRoom] = useState<Room | null>(null);
   const [mode, setMode] = useState<RoomMode>(null);
@@ -84,7 +85,7 @@ function RoomsContent() {
     { key: 'edit', icon: <EditOutlined />, label: t("Sửa thông tin phòng") },
     { key: 'duplicate', icon: <CopyOutlined />, label: t("Nhân bản phòng") },
     { key: 'supplemental', icon: <FileAddOutlined />, label: t("Tạo hóa đơn bổ sung"), disabled: !room.occupancy },
-    ...(room.occupancy?.depositInvoiceId ? [{ key: 'deposit', label: <a href={`/invoices?invoice=${room.occupancy.depositInvoiceId}`}>{t("Thu / quyết toán cọc")}</a> }] : []),
+    ...(room.occupancy?.depositInvoiceId ? [{ key: 'deposit', label: <Link to={`/invoices?invoice=${room.occupancy.depositInvoiceId}`}>{t("Thu / quyết toán cọc")}</Link> }] : []),
     room.occupancy ? { key: 'moveout', danger: true, label: t("Trả phòng & quyết toán") } : { key: 'occupancy', icon: <UserAddOutlined />, label: t("Thêm người thuê") },
     { type: 'divider' },
     { key: 'archive', danger: true, label: t("Xóa phòng") },
@@ -102,7 +103,7 @@ function RoomsContent() {
 
   const renewLink = (room: Room) => modal.confirm({ title: t("Thu hồi link của {0}?", [room.name]), content: t("Tạo liên kết riêng để người thuê xem hóa đơn và thanh toán. Nếu đã cấp link trước đó, link cũ sẽ hết hiệu lực."), className: 'room-editor', centered: true, autoFocusButton: 'cancel', okText: t("Thu hồi & tạo link mới"), cancelText: t("Hủy"), okButtonProps: { danger: true }, onOk: () => rotateMutation.mutateAsync(room.id) });
   const issueLink = (room: Room) => { setLinkLanguage(getLanguage()); if (room.occupancy?.token && room.occupancy.url) setLinkInfo({ token: room.occupancy.token, url: room.occupancy.url, room }); else renewLink(room); };
-  useEffect(() => { if (searchParams.get('create') === '1' && buildingsQuery.isSuccess && buildingsQuery.data.length > 0) { openCreate(); const next = new URLSearchParams(searchParams); next.delete('create'); setSearchParams(next, { replace: true }); } }, [searchParams, buildingsQuery.isSuccess]);
+  useEffect(() => { if (searchParams.get('create') === '1' && buildingsQuery.isSuccess && buildingsQuery.data.length > 0) { openCreate(); const next = new URLSearchParams(searchParams); next.delete('create'); setSearchParams(next, { replace: true }); } else if (searchParams.get('links') === '1') { setStatusFilter('occupied'); const next = new URLSearchParams(searchParams); next.delete('links'); setSearchParams(next, { replace: true }); } }, [searchParams, buildingsQuery.isSuccess]);
 
   const roomStatus = (room: Room) => room.isArchived ? <Tag className="archived-state-tag">{t("Đã lưu trữ")}</Tag> : <Tag className={`room-state ${room.occupancy ? 'room-state-occupied' : 'room-state-vacant'}`}>{room.occupancy ? t("Đang thuê") : t("Còn trống")}</Tag>;
   const roomActions = (room: Room) => <div className="room-actions">
@@ -131,7 +132,7 @@ function RoomsContent() {
 
   return <div className="rooms-workspace">
     <PageTitle title={t("Phòng & người thuê")} subtitle={t("Quản lý phòng, người thuê và link hóa đơn.")} extra={archiveFilter === 'Active' ? <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!activeBuildings.length}>{t("Tạo phòng trọ")}</Button> : undefined} />
-    {!buildingsQuery.isPending && !buildingsQuery.isError && activeBuildings.length === 0 && archiveFilter === 'Active' && <AlertBanner onCreate={() => window.location.assign('/buildings?create=1')} />}
+    {!buildingsQuery.isPending && !buildingsQuery.isError && activeBuildings.length === 0 && archiveFilter === 'Active' && <AlertBanner onCreate={() => navigate('/buildings?create=1')} />}
     {buildingsQuery.isError && <LoadError error={buildingsQuery.error} onRetry={() => void buildingsQuery.refetch()} />}
     {roomsQuery.isError ? <LoadError error={roomsQuery.error} onRetry={() => void roomsQuery.refetch()} /> : <SectionCard className="room-directory">
       <div className="room-directory-toolbar">

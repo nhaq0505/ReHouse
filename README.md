@@ -49,6 +49,8 @@ Cookie của bản Production yêu cầu kết nối bảo mật. `localhost` d�
 
 Khi đưa lên máy chủ, cấu hình HTTPS qua reverse proxy và đặt `PUBLIC_BASE_URL` đúng tên miền; không dùng tài khoản demo. Đặt `TRUSTED_PROXIES` thành IP của reverse proxy (ngăn cách bằng dấu phẩy) để backend nhận đúng HTTPS/host từ forwarded headers và kiểm tra nguồn yêu cầu. Proxy phải chuyển tiếp `Host`, `X-Forwarded-Proto`, `X-Forwarded-For`; không cấu hình tin mọi proxy. Phiên bản hiện tại cần được kiểm thử trên dữ liệu thực trước khi vận hành rộng.
 
+Pilot trên VPS hiện chỉ bind API vào `127.0.0.1:8080`, chưa có domain/HTTPS và chưa nhận dữ liệu khách thuê. Truy cập QA qua SSH tunnel; xem [runbook triển khai và khôi phục](docs/deployment.md) trước mọi thay đổi trên host.
+
 ## payOS
 
 Chủ trọ vào phần cấu hình thanh toán và nhập Client ID, API Key, Checksum Key của kênh payOS riêng. Backend mã hóa thông tin, không trả khóa bí mật về giao diện. Thiếu cấu hình thì không tạo link thanh toán giả.

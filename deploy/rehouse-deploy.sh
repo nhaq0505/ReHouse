@@ -84,6 +84,15 @@ wait_for_db() {
 
 wait_for_db || fail 'PostgreSQL did not become healthy; the current app was left running'
 
+if [[ ! -e "$state_dir/current-image" ]]; then
+  if ! docker volume inspect rehouse_data_protection_keys >/dev/null 2>&1; then
+    docker volume create rehouse_data_protection_keys >/dev/null
+  fi
+  docker run --rm --network none --volume rehouse_data_protection_keys:/app/data \
+    --entrypoint /bin/sh "$image_ref" -c 'test -d /app/data/keys && test -w /app/data/keys' >/dev/null || \
+    fail 'could not initialize the fresh DataProtection volume; the current app was left running'
+fi
+
 backup_ref=${previous_image:-$image_ref}
 backup_dir=$("$backup_command" "$backup_ref") || fail 'pre-deploy database/key backup failed; the current app was left running'
 new_compose_started=0
@@ -106,7 +115,7 @@ wait_for_app() {
         app_uid=$(docker exec "$app_id" id -u 2>/dev/null || true)
         app_gid=$(docker exec "$app_id" id -g 2>/dev/null || true)
         keys_owner=$(docker exec "$app_id" stat -c '%u:%g' /app/data/keys 2>/dev/null || true)
-        if [[ -n "$app_uid" && -n "$app_gid" && "$keys_owner" == "$app_uid:$app_gid" ]] && \
+        if [[ "$app_uid" =~ ^[1-9][0-9]*$ && "$app_gid" =~ ^[0-9]+$ && "$keys_owner" == "$app_uid:$app_gid" ]] && \
            docker exec "$app_id" /bin/sh -c 'test -d /app/data/keys && test -w /app/data/keys' >/dev/null 2>&1; then
           return 0
         fi

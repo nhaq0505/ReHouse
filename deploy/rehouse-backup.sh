@@ -42,6 +42,15 @@ compose() {
   IMAGE_REF="$selected_image" docker compose --project-name rehouse --env-file "$runtime_env" --file "$compose_file" "$@"
 }
 
+assert_fresh_empty_database() {
+  [[ ! -e "$state_dir/current-image" ]] || fail 'the deployed DataProtection volume is missing; refusing an incomplete backup'
+  local table_count
+  table_count=$(compose "$image_ref" exec -T db psql --no-psqlrc -At -v ON_ERROR_STOP=1 \
+    -U room_rental -d room_rental -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'" 2>/dev/null) || \
+    fail 'cannot verify an empty first-deployment database; refusing an incomplete backup'
+  [[ "$table_count" == 0 ]] || fail 'the DataProtection volume is empty while application tables exist; refusing an incomplete backup'
+}
+
 [[ -n "$image_ref" ]] || fail 'no image reference is available for Compose'
 db_id=$(compose "$image_ref" ps -q db 2>/dev/null || true)
 [[ -n "$db_id" ]] || fail 'PostgreSQL is not running'
@@ -50,16 +59,23 @@ stamp=$(date -u +%Y%m%dT%H%M%SZ)
 backup_dir=$(mktemp -d "$backup_root/rehouse-$stamp-XXXXXX")
 chmod 0700 "$backup_dir"
 cleanup_failed_backup() {
-  rm -rf -- "$backup_dir"
+  local status=$?
+  if [[ "$status" -ne 0 && -n "${backup_dir:-}" && -d "$backup_dir" ]]; then
+    rm -rf -- "$backup_dir"
+  fi
 }
-trap cleanup_failed_backup ERR
+trap cleanup_failed_backup EXIT
 
 compose "$image_ref" exec -T db pg_dump -U room_rental -d room_rental -Fc > "$backup_dir/database.dump"
 
 keys_mount=$(docker volume inspect --format '{{.Mountpoint}}' rehouse_data_protection_keys 2>/dev/null || true)
 if [[ -n "$keys_mount" && -d "$keys_mount" ]]; then
+  if ! find "$keys_mount" -type f -print -quit | grep -q .; then
+    assert_fresh_empty_database
+  fi
   tar -C "$keys_mount" -czf "$backup_dir/data-protection-keys.tar.gz" .
 else
+  assert_fresh_empty_database
   tar -czf "$backup_dir/data-protection-keys.tar.gz" --files-from /dev/null
 fi
 
@@ -76,5 +92,5 @@ for ((index = 10; index < ${#existing_backups[@]}; index++)); do
   rm -rf -- "${existing_backups[index]}"
 done
 
-trap - ERR
+trap - EXIT
 printf '%s\n' "$backup_dir"

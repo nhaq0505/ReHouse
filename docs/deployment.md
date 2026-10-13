@@ -1,10 +1,10 @@
 # Rehouse pilot deployment
 
-Updated 13 October 2026. The VPS pilot is a fresh, isolated deployment on `<YOUR_VPS_IP>`; it does not import the Mac database or its payment settings.
+Updated 13 October 2026. The VPS pilot is a fresh, isolated deployment on `<YOUR_VPS_IP>`; it does not import the Mac database or its payment settings. [GitHub Actions run 38338681266](https://github.com/nhaq0505/rehouse/actions/runs/38338681266) built and deployed the first immutable image successfully. Production sign-in, `/auth/me`, `/admin/owners`, logout, and the Secure cookie passed through an SSH tunnel.
 
 ## Host and access
 
-The host runs Ubuntu 24.04 with Docker Engine and the Compose plugin already installed. The old `webphim` containers, images, volumes, Caddy state, backup files, deployment account and its scheduled backup were removed after review. Ubuntu, SSH on port 22, Docker, containerd and the QEMU guest agent remain installed and active. Ports 80 and 443 are free.
+The host runs Ubuntu 24.04 with Docker Engine and the Compose plugin already installed. The old `webphim` containers, images, volumes, Caddy state, backup files, deployment account and its scheduled backup were removed after review. Ubuntu, SSH on port 22, Docker, containerd and the QEMU guest agent remain installed and active. Rehouse and PostgreSQL are healthy; the API binds only to `127.0.0.1:8080`. Ports 80 and 443 are free. No tenant data or Mac data has been imported.
 
 The deployment account is `rehouse-deploy`. Its authorized key accepts only a command of this form:
 
@@ -15,6 +15,8 @@ deploy ghcr.io/nhaq0505/rehouse@sha256:<64 lowercase hexadecimal characters>
 The key cannot open a shell, allocate a terminal, forward ports, or use an agent/X11 tunnel. The wrapper validates the exact GHCR repository and digest before invoking the root-owned deployment helper through a single sudo rule. The Actions runner sends its package token on stdin; the helper creates a temporary Docker configuration under `/run`, logs into GHCR, pulls the digest, and removes the credentials before starting the app.
 
 The GitHub workflow builds the image. The VPS only pulls an immutable digest and starts it. Production Compose and helper files live under `/opt/rehouse` and `/usr/local`; runtime secrets live in `/etc/rehouse/runtime.env` with root-only permissions.
+
+The workflow requires the GitHub Actions secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_SSH_KEY`, and `DEPLOY_KNOWN_HOSTS`. Pin the server host key in `DEPLOY_KNOWN_HOSTS`; do not disable SSH host-key checking.
 
 ## Runtime configuration
 
@@ -45,7 +47,7 @@ The pilot fits the 2 vCPU / 2 GB RAM host with a 1 GB swap file and `vm.swappine
 
 The named volumes are `rehouse_postgres_data` and `rehouse_data_protection_keys`. Backups are written to `/var/backups/rehouse` and contain a PostgreSQL custom-format dump, a DataProtection key archive, the creation time and the image digest. A systemd timer makes a daily backup; deployment also creates a backup before each app replacement. The newest 10 backup sets are kept on the same VPS. These local backups do not protect against loss of the VPS or its disk; copy them off-host before treating the pilot as the only copy of business data.
 
-The current API initializes PostgreSQL with `EnsureCreated` plus additive SQL changes; there is no complete versioned migration system yet. Keep future schema changes backward-compatible and additive. The deploy helper checks `/api/health`; if the candidate fails, it restores the previous app digest and leaves PostgreSQL untouched. If a new schema is incompatible with the old image, restore the matching database and key backup explicitly. Restore replaces current database contents:
+The current API initializes PostgreSQL with `EnsureCreated` plus additive SQL changes; there is no complete versioned migration system yet. Keep future schema changes backward-compatible and additive. The deploy helper checks `/api/health`, a live PostgreSQL query, the bootstrap admin row, and key-volume ownership. If the candidate fails, it restores the previous app digest and leaves PostgreSQL untouched. If a new schema is incompatible with the old image, explicitly restore the matching database and key backup. Restore builds and validates a separate database first, then swaps it into place while the app is stopped; the prior database and key volume remain available until the restored app passes its smoke checks. Restore replaces current database contents:
 
 ```sh
 sudo /usr/local/sbin/rehouse-restore /var/backups/rehouse/rehouse-<timestamp>-<suffix> --replace-current-data
@@ -53,15 +55,20 @@ sudo /usr/local/sbin/rehouse-restore /var/backups/rehouse/rehouse-<timestamp>-<s
 
 The restore helper uses the image digest recorded in the backup manifest. Preserve backups until the restored app passes its health check and the data has been reviewed.
 
+If a first deployment fails after creating PostgreSQL tables but before writing a DataProtection key, the backup helper refuses to create a keyless backup. Recover only while the pilot is still empty: restore the pre-deploy backup from that first attempt with the command above. It contains the zero-table database and empty key directory; the restored app then initializes the schema and bootstrap admin again. Do not bypass this guard or use that empty backup after tenant data has been entered.
+
 ## Provision and operate
 
-From the workspace, provision the host after reviewing the scripts. It uses the existing root SSH key and copies only the public CI deployment key:
+From the workspace, provision the host after reviewing the scripts. Pass all target paths explicitly; the script has no default VPS or SSH-key path. It uses the existing root SSH key and copies only the public CI deployment key:
 
 ```sh
-deploy/provision-vps.sh
+REHOUSE_VPS_HOST=<YOUR_VPS_IP> \
+REHOUSE_ROOT_SSH_KEY=/path/to/root-ssh-key \
+REHOUSE_CICD_PUBLIC_KEY=/path/to/rehouse-cicd.pub \
+  deploy/provision-vps.sh
 ```
 
-The initial install creates the restricted deployment user, root-owned Compose/helpers, generated runtime secrets, a daily backup timer and the 1 GB swap file. It does not start the app; the first successful GitHub Actions deployment creates the fresh PostgreSQL database and initial admin.
+The initial install creates the restricted deployment user, root-owned Compose/helpers, generated runtime secrets, a daily backup timer and the 1 GB swap file. The current pilot is running the first CI image with a fresh PostgreSQL database and the internal bootstrap admin. For QA, open an SSH tunnel; do not expose port 8080 directly. The host currently has no domain, HTTPS ingress, public login or public payment flow.
 
 Useful host commands:
 

@@ -6,7 +6,7 @@ Cập nhật: **13/10/2026 — Asia/Ho_Chi_Minh**.
 
 ## 1. Trạng thái hiện tại
 
-**Đã hoàn thành MVP, đợt sửa FE và trang thử nghiệm evondevKit tại /rooms. Skill đã cài cục bộ cho dự án. Webhook payOS đã tự đăng ký/xác minh qua giao diện (mục 14); đã quan sát một giao dịch payOS 30.000 VND ở trạng thái Paid trong dữ liệu local, chưa kiểm thử đủ các tình huống vận hành. Chưa triển khai toàn bộ app lên máy chủ công khai. Camera/AI chưa làm.**
+**Đã hoàn thành MVP, đợt sửa FE, trang thử nghiệm evondevKit tại /rooms và pilot Rehouse trên VPS. Pilot chạy riêng với database mới, chỉ truy cập loopback qua SSH tunnel; chưa có domain/HTTPS hoặc public login/payment. Webhook payOS đã tự đăng ký/xác minh qua giao diện (mục 14); đã quan sát một giao dịch payOS 30.000 VND ở trạng thái Paid trong dữ liệu local, chưa kiểm thử đủ các tình huống vận hành. Camera/AI chưa làm.**
 
 **Quick status 13/10:** API cục bộ đã chuyển từ SQLite sang PostgreSQL 17 bằng snapshot nhất quán và importer riêng; đối chiếu toàn bộ 13 bảng/404 dòng, tiền, kiểu dữ liệu, quan hệ/unique và khóa DataProtection đều khớp. API Development đang ở `localhost:5080`, PostgreSQL chỉ bind `127.0.0.1:15432`; đây là chuyển đổi cục bộ trên một máy, chưa phải triển khai công khai hay HA. Xem mục 25 và [hướng dẫn SQLite → PostgreSQL](sqlite-to-postgres-migration.md). Quy trình schema migrations đầy đủ, restore drill định kỳ, phối hợp nhiều instance, telemetry production và autoscaling vẫn chưa sẵn sàng.
 
@@ -19,8 +19,9 @@ Yêu cầu gần nhất: triển khai **Trả phòng & quyết toán**. Đã gom
 - Database ứng dụng hiện tại: PostgreSQL trong container `rehouse-pg-migration-db`, database `room_rental`, chỉ bind `127.0.0.1:15432`.
 - SQLite nguồn được giữ nguyên; snapshot đóng băng trước cutover nằm trong `backend/RoomRental.Api/.local-data/sqlite-to-postgres/room-rental-final-frozen-20261013.db`. Không đổi lại SQLite chỉ bằng cách sửa provider/connection string; xem mục 25 về delta sau cutover.
 - Dữ liệu được lưu thật trong database, không phải giao diện giả lập.
-- Tại lần bàn giao, thư mục **chưa là Git repository**, chưa có commit hoặc PR.
+- Workspace được khởi tạo thành GitHub repository `nhaq0505/rehouse`; image production đầu tiên đã build và deploy thành công trong [Actions run 38338681266](https://github.com/nhaq0505/rehouse/actions/runs/38338681266).
 - Đã khôi phục tài khoản chủ trọ mẫu và để tab demo ở trang tổng quan sau kiểm tra FE. Các tiến trình dev có thể dừng khi phiên làm việc kết thúc; kiểm tra trước khi khởi động thêm để tránh trùng cổng.
+- **VPS pilot 13/10:** Đã dọn đúng phạm vi ứng dụng `webphim` cũ sau khi duyệt inventory; cài đặt và chạy Rehouse mới với PostgreSQL riêng, chưa import dữ liệu Mac. SSH và dịch vụ hệ thống được giữ nguyên. Health/API, truy vấn database, admin bootstrap, đăng nhập Production, `/auth/me`, `/admin/owners`, logout và Secure cookie đã kiểm tra qua SSH tunnel. API chỉ nghe `127.0.0.1:8080`; chưa có domain/HTTPS hoặc truy cập công khai. Xem [deployment runbook](deployment.md).
 
 ## 2. Bối cảnh và các quyết định đã chốt
 
@@ -54,7 +55,7 @@ Người dùng đã yêu cầu triển khai bằng agent Luna reasoning max. Đ�
 | 9 | Docker, bảo mật, kiểm tra SQLite/PostgreSQL | Hoàn thành kiểm tra cục bộ; chưa triển khai công khai |
 | 10 | Rà soát và sửa FE theo phản hồi | Hoàn thành; bổ sung pilot evondevKit /rooms, xem mục 12 |
 | 11 | UAT trên dữ liệu sử dụng thực, payOS thật | Chưa thực hiện |
-| 12 | Migration, triển khai, sao lưu và khôi phục vận hành | Chưa hoàn thành; hiện schema dùng EnsureCreated |
+| 12 | Migration, triển khai, sao lưu và khôi phục vận hành | Pilot VPS chạy image CI; backup và rollback đã cài. Restore đã thử trên database tạm, không chạm database live. Chưa hoàn thành migrations hoặc public HTTPS; schema vẫn dùng EnsureCreated |
 | 13 | Camera và AI nhận diện qua API | Hoãn theo yêu cầu người dùng; chưa triển khai |
 
 ## 4. Những gì đang dùng được
@@ -126,7 +127,7 @@ Không coi đợt sửa này là xác nhận mọi tình huống FE đã hoàn h
 | `tests/` | Kiểm thử HTTP nghiệp vụ và fixture webhook SQLite |
 | `Dockerfile`, `compose.yaml`, `.env.example` | Build frontend/backend, PostgreSQL và cấu hình vận hành |
 
-Tài liệu chi tiết: [README](../README.md), [API contract](api-contract.md), [phạm vi/giới hạn](implementation-notes.md), [kiểm tra MVP](verification.md), [rà soát FE](frontend-review.md), [hướng dẫn tests](../tests/README.md).
+Tài liệu chi tiết: [README](../README.md), [API contract](api-contract.md), [phạm vi/giới hạn](implementation-notes.md), [kiểm tra MVP](verification.md), [rà soát FE](frontend-review.md), [hướng dẫn triển khai VPS](deployment.md), [hướng dẫn tests](../tests/README.md).
 
 Ảnh kiểm tra trong `artifacts/`, gồm `frontend-review-desktop.png` và `frontend-review-current.png`. Ảnh là minh chứng tại thời điểm chụp, không phải dữ liệu chuẩn để viết test.
 

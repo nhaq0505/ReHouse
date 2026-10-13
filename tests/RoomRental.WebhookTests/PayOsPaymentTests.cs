@@ -20,12 +20,17 @@ internal static class PayOsPaymentTests
     public static async Task RunAsync()
     {
         await SignedQrRoundTripAndPendingReuseAsync();
+        await MissingProviderExpiryUsesPersistedRequestFallbackAsync();
+        await ExpiredLocalQrRemainsPendingUntilProviderConfirmsExpiryAsync();
+        await ProviderConfirmedTerminalStatusAllowsNewOrderNextTryAsync("EXPIRED");
+        await ProviderConfirmedTerminalStatusAllowsNewOrderNextTryAsync("CANCELLED");
         await LegacyPendingUsesHostedFallbackAsync();
         await ProviderPaidStatusAloneDoesNotConfirmAsync();
         await ReconcilePaidStatusWithoutMoneyDoesNotConfirmAsync();
         await InvalidCreateResponseIsRejectedAsync(CreateResponseFault.InvalidSignature, "invalid checkout signature is rejected");
         await InvalidCreateResponseIsRejectedAsync(CreateResponseFault.WrongAmount, "checkout amount mismatch is rejected");
         await InvalidCreateResponseIsRejectedAsync(CreateResponseFault.WrongOrder, "checkout order mismatch is rejected");
+        await InvalidCreateResponseIsRejectedAsync(CreateResponseFault.ExpiredAtMismatch, "unexpected signed checkout expiry is rejected");
         await WebhookRemainsTheOnlyPaymentConfirmationAsync();
     }
 
@@ -42,8 +47,8 @@ internal static class PayOsPaymentTests
         Assert(first.OrderCode > 0, "checkout order code is returned");
         Assert(first.AccountName == "Synthetic QA Owner" && first.AccountNumber == "0000000000" && first.BankBin == "999999",
             "signed destination account metadata round-trips");
-        Assert(first.Description == handler.LastDescription && first.Status == "pending" && first.ExpiresAt == handler.ExpiresAt,
-            "signed description, status, and Unix expiry round-trip");
+        Assert(first.Description == handler.LastDescription && first.Status == "pending",
+            "signed description and pending status round-trip");
 
         var stored = await fixture.Db.PayOsAttempts.SingleAsync();
         Assert(stored.OrderCode == first.OrderCode && stored.Amount == first.Amount && stored.Status == PaymentAttemptStatus.Pending,
@@ -52,13 +57,95 @@ internal static class PayOsPaymentTests
                stored.AccountNumber == first.AccountNumber && stored.BankBin == first.BankBin && stored.Description == first.Description &&
                stored.ProviderStatus == "PENDING" && stored.ExpiresAt == first.ExpiresAt,
             "verified QR metadata persists with its signed payment attempt");
+        Assert(stored.ExpiresAt == stored.CreatedAt.AddSeconds(600).ToUnixTimeSeconds() && handler.LastRequestedExpiry == stored.ExpiresAt,
+            "new payment order requests and persists a Unix expiry exactly 600 seconds after reservation");
+        Assert(handler.LastRequestSignatureValid,
+            "expiredAt remains outside the payOS request signature's documented canonical fields");
 
         var reused = await service.CreateOrGetCheckoutAsync(fixture.OwnerId, fixture.Invoice, "synthetic-tenant-token", default);
-        Assert(reused.OrderCode == first.OrderCode && reused.CheckoutUrl == first.CheckoutUrl && reused.QrCode == first.QrCode,
-            "pending checkout reuses the same stored order and QR metadata");
+        var expiryAfterReuse = (await fixture.Db.PayOsAttempts.SingleAsync()).ExpiresAt;
+        Assert(reused.OrderCode == first.OrderCode && reused.CheckoutUrl == first.CheckoutUrl && reused.QrCode == first.QrCode &&
+               reused.ExpiresAt == first.ExpiresAt && expiryAfterReuse == first.ExpiresAt,
+            "pending checkout reuses the same stored order, QR, and original expiry without extending it");
         Assert(handler.CreateCalls == 1 && await fixture.Db.PayOsAttempts.CountAsync() == 1,
             "pending reuse does not create another provider order or local attempt");
         Assert(handler.UnexpectedExternalRequests == 0, "all provider traffic is intercepted in-process");
+    }
+
+    private static async Task ExpiredLocalQrRemainsPendingUntilProviderConfirmsExpiryAsync()
+    {
+        using var fixture = new PayOsFixture();
+        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeSeconds();
+        const long orderCode = 8_765_432_104;
+        fixture.Db.PayOsAttempts.Add(new PayOsAttempt
+        {
+            OwnerId = fixture.OwnerId,
+            InvoiceId = fixture.Invoice.Id,
+            OrderCode = orderCode,
+            Amount = 100_000,
+            CheckoutUrl = HostedCheckoutUrl,
+            QrCode = NonPayableQr,
+            Status = PaymentAttemptStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-11),
+            ExpiresAt = expiresAt
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var handler = new FakePayOsHandler(ChecksumKey);
+        handler.AddKnownOrder(orderCode, 100_000);
+        var service = fixture.CreateService(handler);
+        var result = await service.CreateOrGetCheckoutAsync(fixture.OwnerId, fixture.Invoice, "synthetic-tenant-token", default);
+        var stored = await fixture.Db.PayOsAttempts.SingleAsync();
+
+        Assert(result.Status == "pending" && result.ExpiresAt == expiresAt && stored.Status == PaymentAttemptStatus.Pending && stored.ExpiresAt == expiresAt,
+            "a locally elapsed QR expiry does not mark the order failed or change its expiry");
+        Assert(handler.CreateCalls == 0 && handler.ReconcileCalls == 1 && await fixture.Db.PayOsAttempts.CountAsync() == 1,
+            "an elapsed pending order is reconciled with the provider rather than replaced locally");
+    }
+
+    private static async Task MissingProviderExpiryUsesPersistedRequestFallbackAsync()
+    {
+        using var fixture = new PayOsFixture();
+        var handler = new FakePayOsHandler(ChecksumKey) { CreateFault = CreateResponseFault.ExpiryOmitted };
+        var service = fixture.CreateService(handler);
+        var result = await service.CreateOrGetCheckoutAsync(fixture.OwnerId, fixture.Invoice, "synthetic-tenant-token", default);
+        var stored = await fixture.Db.PayOsAttempts.SingleAsync();
+
+        Assert(result.ExpiresAt == handler.LastRequestedExpiry && stored.ExpiresAt == handler.LastRequestedExpiry,
+            "when create response omits expiredAt, the stored request expiry is returned as the fallback");
+    }
+
+    private static async Task ProviderConfirmedTerminalStatusAllowsNewOrderNextTryAsync(string terminalStatus)
+    {
+        using var fixture = new PayOsFixture();
+        const long orderCode = 8_765_432_105;
+        fixture.Db.PayOsAttempts.Add(new PayOsAttempt
+        {
+            OwnerId = fixture.OwnerId,
+            InvoiceId = fixture.Invoice.Id,
+            OrderCode = orderCode,
+            Amount = 100_000,
+            CheckoutUrl = HostedCheckoutUrl,
+            QrCode = NonPayableQr,
+            Status = PaymentAttemptStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-11),
+            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeSeconds()
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var handler = new FakePayOsHandler(ChecksumKey) { ReconcileProviderStatus = terminalStatus };
+        handler.AddKnownOrder(orderCode, 100_000);
+        var service = fixture.CreateService(handler);
+        var providerConfirmed = false;
+        try { await service.CreateOrGetCheckoutAsync(fixture.OwnerId, fixture.Invoice, "synthetic-tenant-token", default); }
+        catch (ApiException exception) when (exception.StatusCode == StatusCodes.Status409Conflict) { providerConfirmed = true; }
+        Assert(providerConfirmed && await fixture.Db.PayOsAttempts.SingleAsync() is { Status: PaymentAttemptStatus.Failed },
+            $"provider-confirmed {terminalStatus} marks the old attempt terminal");
+
+        var next = await service.CreateOrGetCheckoutAsync(fixture.OwnerId, fixture.Invoice, "synthetic-tenant-token", default);
+        Assert(next.Status == "pending" && handler.ReconcileCalls == 1 && handler.CreateCalls == 1 &&
+               await fixture.Db.PayOsAttempts.CountAsync() == 2,
+            $"a new payment order can be created on the next request after provider confirms {terminalStatus}");
     }
 
     private static async Task LegacyPendingUsesHostedFallbackAsync()
@@ -86,6 +173,8 @@ internal static class PayOsPaymentTests
             "legacy pending checkout without QR metadata remains explicitly QR-less");
         Assert(result.CheckoutUrl == HostedCheckoutUrl && result.Status == "pending",
             "legacy pending checkout retains its hosted-page fallback");
+        Assert(result.ExpiresAt is null && (await fixture.Db.PayOsAttempts.SingleAsync()).ExpiresAt is null,
+            "legacy pending attempts without stored expiry do not get a fabricated deadline");
         Assert(handler.CreateCalls == 0 && await fixture.Db.PayOsAttempts.CountAsync() == 1,
             "legacy checkout reuse creates no second payment attempt");
     }
@@ -212,7 +301,7 @@ internal static class PayOsPaymentTests
     }
 }
 
-internal enum CreateResponseFault { None, InvalidSignature, WrongAmount, WrongOrder }
+internal enum CreateResponseFault { None, InvalidSignature, WrongAmount, WrongOrder, ExpiredAtMismatch, ExpiryOmitted }
 
 internal sealed class FakePayOsHandler(string checksumKey) : HttpMessageHandler, IHttpClientFactory
 {
@@ -222,7 +311,8 @@ internal sealed class FakePayOsHandler(string checksumKey) : HttpMessageHandler,
     public int ReconcileCalls { get; private set; }
     public int Calls { get; private set; }
     public int UnexpectedExternalRequests { get; private set; }
-    public long ExpiresAt { get; } = DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds();
+    public long? LastRequestedExpiry { get; private set; }
+    public bool LastRequestSignatureValid { get; private set; }
     public string? LastDescription { get; private set; }
     public string CreateProviderStatus { get; init; } = "PENDING";
     public string ReconcileProviderStatus { get; init; } = "PENDING";
@@ -253,7 +343,18 @@ internal sealed class FakePayOsHandler(string checksumKey) : HttpMessageHandler,
             var body = requestJson.RootElement;
             var orderCode = body.GetProperty("orderCode").GetInt64();
             var amount = body.GetProperty("amount").GetInt32();
+            LastRequestedExpiry = body.GetProperty("expiredAt").GetInt32();
             LastDescription = body.GetProperty("description").GetString();
+            var requestSignatureFields = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["amount"] = amount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["cancelUrl"] = body.GetProperty("cancelUrl").GetString()!,
+                ["description"] = LastDescription ?? string.Empty,
+                ["orderCode"] = orderCode.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["returnUrl"] = body.GetProperty("returnUrl").GetString()!
+            };
+            LastRequestSignatureValid = body.GetProperty("signature").GetString() == PayOsSignature.Create(checksumKey, requestSignatureFields);
+            if (!LastRequestSignatureValid) throw new InvalidOperationException("The request signature included unexpected fields.");
             _knownOrders[orderCode] = amount;
             var responseOrderCode = CreateFault == CreateResponseFault.WrongOrder ? orderCode + 1 : orderCode;
             var responseAmount = CreateFault == CreateResponseFault.WrongAmount ? amount + 1 : amount;
@@ -290,11 +391,14 @@ internal sealed class FakePayOsHandler(string checksumKey) : HttpMessageHandler,
             ["bin"] = "999999",
             ["checkoutUrl"] = "https://pay.payos.vn/web/synthetic-qa-link",
             ["description"] = description,
-            ["expiredAt"] = ExpiresAt.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["orderCode"] = orderCode.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["paymentLinkId"] = "synthetic-qa-link-id",
             ["status"] = status
         };
+        if (CreateFault != CreateResponseFault.ExpiryOmitted)
+            data["expiredAt"] = (CreateFault == CreateResponseFault.ExpiredAtMismatch
+                ? LastRequestedExpiry!.Value + 60
+                : LastRequestedExpiry!.Value).ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (includeQr) data["qrCode"] = "SYNTHETIC-QA-QR-NOT-PAYABLE";
         return data;
     }

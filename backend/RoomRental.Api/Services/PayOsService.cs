@@ -19,6 +19,7 @@ public sealed class PayOsService(
 {
     private readonly IDataProtector _protector = protectionProvider.CreateProtector("RoomRental.OwnerPayOsCredentials.v1");
     private const string ApiBaseUrl = "https://api-merchant.payos.vn";
+    private const int CheckoutExpirySeconds = 600;
 
     public async Task<string> CreateOrGetCheckoutUrlAsync(Guid ownerId, Invoice invoice, string tenantToken, CancellationToken cancellationToken) =>
         (await CreateOrGetCheckoutAsync(ownerId, invoice, tenantToken, cancellationToken)).CheckoutUrl;
@@ -41,6 +42,8 @@ public sealed class PayOsService(
             var currentInvoice = await db.Invoices.SingleOrDefaultAsync(row => row.Id == invoice.Id && row.OwnerId == ownerId, cancellationToken)
                 ?? throw new ApiException(StatusCodes.Status404NotFound, "Invoice was not found.");
             await db.Entry(currentInvoice).ReloadAsync(cancellationToken);
+            if (currentInvoice.LifecycleState != InvoiceLifecycleState.Issued)
+                throw new ApiException(StatusCodes.Status409Conflict, "Draft invoices cannot accept payOS payments. Publish the invoice first.");
             var outstanding = ApiSupport.RoundVnd(currentInvoice.Total - currentInvoice.Paid);
             if (outstanding <= 0) throw new ApiException(StatusCodes.Status409Conflict, "This invoice is already paid.");
 
@@ -60,6 +63,8 @@ public sealed class PayOsService(
                 var amount = decimal.ToInt32(outstanding);
                 if (amount <= 0) throw new ApiException(StatusCodes.Status400BadRequest, "Payment amount must be at least 1 VND.");
 
+                var createdAt = DateTimeOffset.UtcNow;
+                var expiresAt = checked((int)createdAt.AddSeconds(CheckoutExpirySeconds).ToUnixTimeSeconds());
                 attempt = new PayOsAttempt
                 {
                     OwnerId = ownerId,
@@ -67,9 +72,11 @@ public sealed class PayOsService(
                     OrderCode = NewOrderCode(),
                     Amount = amount,
                     Status = PaymentAttemptStatus.Pending,
-                    CreatedAt = DateTimeOffset.UtcNow
+                    CreatedAt = createdAt,
+                    ExpiresAt = expiresAt
                 };
                 db.PayOsAttempts.Add(attempt);
+                currentInvoice.Version++;
                 await db.SaveChangesAsync(cancellationToken);
             }
             await transaction.CommitAsync(cancellationToken);
@@ -120,6 +127,7 @@ public sealed class PayOsService(
             buyerName = invoice.TenantName,
             cancelUrl,
             returnUrl,
+            expiredAt = reservedAttempt.ExpiresAt!.Value,
             signature = PayOsSignature.Create(paymentCredentials.ChecksumKey, signedFields)
         };
 
@@ -153,6 +161,9 @@ public sealed class PayOsService(
                 !data.TryGetProperty("checkoutUrl", out var checkoutUrlElement) || string.IsNullOrWhiteSpace(checkoutUrlElement.GetString()))
                 throw new ApiException(StatusCodes.Status502BadGateway, "payOS returned an invalid or unsigned payment link. Reconcile the order before retrying.");
 
+            if (TryGetLong(data, "expiredAt", out var providerExpiresAt) && providerExpiresAt != reservedAttempt.ExpiresAt)
+                throw new ApiException(StatusCodes.Status502BadGateway, "payOS returned a payment link with an unexpected expiry. Reconcile the order before retrying.");
+
             reservedAttempt.CheckoutUrl = checkoutUrlElement.GetString();
             reservedAttempt.PaymentLinkId = data.TryGetProperty("paymentLinkId", out var linkId) ? linkId.GetString() : null;
             reservedAttempt.QrCode = ReadString(data, "qrCode");
@@ -161,7 +172,9 @@ public sealed class PayOsService(
             reservedAttempt.BankBin = ReadString(data, "bin");
             reservedAttempt.Description = ReadString(data, "description");
             reservedAttempt.ProviderStatus = ReadString(data, "status");
-            reservedAttempt.ExpiresAt = TryGetLong(data, "expiredAt", out var expiresAt) ? expiresAt : null;
+            // The create request's Unix expiry is persisted before contacting payOS.
+            // The response schema may omit it; if signed metadata includes it, the
+            // check above requires the exact requested timestamp.
             await db.SaveChangesAsync(cancellationToken);
             return ToCheckoutDto(reservedAttempt);
         }
@@ -316,6 +329,8 @@ public sealed class PayOsService(
 
         var invoice = await db.Invoices.SingleAsync(row => row.Id == trackedAttempt.InvoiceId && row.OwnerId == ownerId, cancellationToken);
         await db.Entry(invoice).ReloadAsync(cancellationToken);
+        if (invoice.LifecycleState != InvoiceLifecycleState.Issued)
+            throw new ApiException(StatusCodes.Status409Conflict, "A draft invoice cannot receive a payOS payment.");
         if (amount != trackedAttempt.Amount || amount > invoice.Total - invoice.Paid)
             throw new ApiException(StatusCodes.Status409Conflict, "Payment exceeds the invoice balance.");
 
@@ -331,6 +346,7 @@ public sealed class PayOsService(
         });
         db.ProcessedWebhooks.Add(new ProcessedWebhook { OwnerId = ownerId, Reference = reference, OrderCode = trackedAttempt.OrderCode });
         invoice.Paid += amount;
+        invoice.Version++;
         InvoiceService.RecalculateStatus(invoice);
         trackedAttempt.Status = PaymentAttemptStatus.Paid;
         trackedAttempt.ProviderReference = reference;

@@ -1,6 +1,6 @@
 # Kế hoạch và bàn giao dự án Quản Lý Phòng
 
-Cập nhật: **13/10/2026 — Asia/Ho_Chi_Minh**.
+Cập nhật: **14/10/2026 — Asia/Ho_Chi_Minh**.
 
 Đây là tài liệu đọc đầu tiên khi agent mới tiếp tục dự án. Tài liệu ghi lại yêu cầu đã chốt, kế hoạch, trạng thái thực tế và cách tiếp tục; mã nguồn và kết quả kiểm tra mới hơn là căn cứ khi có khác biệt. Sau mỗi đợt làm việc, cập nhật tài liệu này để tránh mất ngữ cảnh.
 
@@ -10,7 +10,9 @@ Cập nhật: **13/10/2026 — Asia/Ho_Chi_Minh**.
 
 **Quick status 13/10:** API cục bộ đã chuyển từ SQLite sang PostgreSQL 17 bằng snapshot nhất quán và importer riêng; đối chiếu toàn bộ 13 bảng/404 dòng, tiền, kiểu dữ liệu, quan hệ/unique và khóa DataProtection đều khớp. API Development đang ở `localhost:5080`, PostgreSQL chỉ bind `127.0.0.1:15432`; đây là chuyển đổi cục bộ trên một máy, không phải quy trình migrate VPS hay HA. VPS pilot là một triển khai riêng với database mới và HTTPS công khai. Xem mục 25 và [hướng dẫn SQLite → PostgreSQL](sqlite-to-postgres-migration.md). Quy trình schema migrations đầy đủ, restore drill định kỳ, phối hợp nhiều instance, telemetry production và autoscaling vẫn chưa sẵn sàng.
 
-Yêu cầu gần nhất: triển khai **Trả phòng & quyết toán**. Đã gom luồng chốt điện cuối kỳ, công nợ, cọc/hoàn cọc và kết thúc lượt thuê trong một drawer; xem mục 18. Các mục 15–17 là lịch sử các tính năng cọc, nhân bản phòng và hóa đơn bổ sung đã hoàn tất.
+**Cập nhật local 14/10:** Ở checkpoint báo cáo/lưu trữ trước thay đổi chính sách tại mục 32, các suite trên DB dùng thử đã xanh: SQLite 38/38; PostgreSQL chạy 34 test, 32 pass và 2 SQLite-only test skip. Báo cáo tính tổng trên toàn bộ tập lọc, khoản cọc dùng nội bộ không bị tính thành tiền mặt mới, lịch sử giữ snapshot dãy/phòng, Excel dùng ô số/ngày có kiểu và giữ text chống công thức. Sau QA clone, root đã nâng cấp schema trên PostgreSQL Development thật từ backup; digest tài chính từng hóa đơn không đổi, không reset/seed hay thêm dữ liệu test. Source và schema chỉ thay đổi local; chưa push/deploy và không tạo thanh toán thật.
+
+Yêu cầu gần nhất: bỏ tính tiền thuê theo ngày vào/ra, luôn tính đủ giá thuê tháng, và đổi trả phòng thành luồng ghi nhận hoàn cọc thủ công với phần còn giữ được kiểm toán. Trạng thái và bằng chứng mới nhất ở mục 32; mục 18 và các mô tả trả phòng trước đó giữ nguyên làm lịch sử. Các mục 15–17 là lịch sử các tính năng cọc, nhân bản phòng và hóa đơn bổ sung đã hoàn tất.
 
 - Workspace: `/Users/nguyenhoanhquan/Documents/Project Cá Nhân/Quản Lý Phòng`.
 - Frontend demo: `http://localhost:5173/dashboard`.
@@ -57,6 +59,7 @@ Người dùng đã yêu cầu triển khai bằng agent Luna reasoning max. Đ�
 | 11 | UAT trên dữ liệu sử dụng thực, payOS thật | Chưa thực hiện |
 | 12 | Migration, triển khai, sao lưu và khôi phục vận hành | VPS public HTTPS đang chạy, backup/rollback đã cài; populated/empty restore đã thử trên database tạm, không chạm database live. Chưa có migrations đầy đủ, off-host backup hoặc HA; schema vẫn dùng EnsureCreated |
 | 13 | Camera và AI nhận diện qua API | Hoãn theo yêu cầu người dùng; chưa triển khai |
+| 14 | Báo cáo thu tiền/công nợ/cọc, Excel và lưu trữ mềm dãy/phòng | Đã triển khai local; SQLite 38/38, PostgreSQL 32 pass + 2 SQLite-only skip; chưa deploy |
 
 ## 4. Những gì đang dùng được
 
@@ -67,6 +70,8 @@ Người dùng đã yêu cầu triển khai bằng agent Luna reasoning max. Đ�
 - Tạo phòng, thiết lập giá thuê, đơn giá điện, phí nước cố định/theo người, phí dịch vụ, chỉ số điện ban đầu; sửa thông tin và phí phòng.
 - Thêm người thuê với tên, điện thoại, số người, ngày vào; ghi nhận chuyển đi.
 - Mở link khách đang dùng, sao chép hoặc mở portal khách; thu hồi và tạo link mới qua xác nhận riêng.
+- Xem báo cáo **Thu tiền / Công nợ / Tiền cọc** theo ngày, kỳ hóa đơn, dãy và phòng; phân trang nhưng tổng tiền tính trên toàn bộ kết quả lọc; xuất từng báo cáo ra `.xlsx` với ô ngày/số có kiểu.
+- Lưu trữ mềm dãy/phòng đã ngừng dùng và khôi phục; mặc định danh sách chỉ hiện mục đang hoạt động. Không thể lưu trữ khi còn lượt thuê đang hoạt động, hóa đơn nháp/chưa thanh toán, cọc còn giữ hoặc giao dịch payOS đang chờ. Khôi phục dãy chỉ khôi phục phòng được lưu trữ cùng đợt.
 - Nhập chỉ số điện theo tháng; ngăn chỉ số giảm, kỳ tương lai, bản ghi trùng và các trường hợp không hợp lệ theo lượt thuê/thứ tự kỳ.
 - Chốt điện và lập hóa đơn; kiểm tra/tạo hóa đơn còn thiếu không tạo trùng.
 - Xem chi tiết hóa đơn và các thành phần tiền; ghi nhận thu tiền mặt/chuyển khoản ngoài, thu một phần hoặc toàn bộ.
@@ -85,6 +90,7 @@ Người dùng đã yêu cầu triển khai bằng agent Luna reasoning max. Đ�
 - Link khách ngẫu nhiên, token băm và bản mã phục vụ cấp lại; không ghi token vào log hoặc tài liệu bàn giao.
 - Khóa payOS được mã hóa bằng DataProtection. Phải giữ khóa DataProtection khi giữ database.
 - Hóa đơn lưu mức phí đã chốt; sửa giá phòng không sửa hóa đơn cũ.
+- Hóa đơn có lifecycle Draft/Issued; luồng publish và correction đủ điều kiện ghi revision/version và actor/reason audit. Không có sửa hoặc xóa tự do mọi hóa đơn.
 - Ghi nhận tiền có idempotency; webhook lặp chỉ tạo một khoản thu; xác minh chữ ký, chủ nhận, order và số tiền.
 - Khi tạo checkout gặp kết quả không chắc chắn, giữ giao dịch để đối soát, không tạo thêm checkout có thể dẫn tới thu trùng.
 - Không đổi khóa payOS, ghi nhận thu ngoài hoặc chuyển người thuê đi khi còn giao dịch pending chưa được xử lý, theo quy tắc hiện tại.
@@ -115,16 +121,16 @@ Không coi đợt sửa này là xác nhận mọi tình huống FE đã hoàn h
 | Vị trí | Nội dung |
 | --- | --- |
 | `backend/RoomRental.Api/Program.cs` | Khởi động, provider database, auth, proxy, middleware, jobs |
-| `backend/RoomRental.Api/Domain/` | Entities và DTO |
+| `backend/RoomRental.Api/Domain/` | Entities và DTO, gồm `ReportDtos.cs` cho hợp đồng báo cáo |
 | `backend/RoomRental.Api/Data/` | DbContext, khởi tạo schema và demo |
-| `backend/RoomRental.Api/Endpoints/` | Auth, admin, dãy/phòng/lượt thuê, hóa đơn, thanh toán |
+| `backend/RoomRental.Api/Endpoints/` | Auth, admin, dãy/phòng/lượt thuê, hóa đơn, thanh toán, báo cáo (`ReportsEndpoints.cs`) và lưu trữ mềm |
 | `backend/RoomRental.Api/Services/` | Tính hóa đơn, token khách, payOS, chữ ký, bảo mật request |
 | `frontend/src/App.tsx`, `auth.tsx`, `api.ts` | Routes, gate tài khoản, auth state, hợp đồng gọi API |
 | `frontend/src/components/AppShell.tsx` | Sidebar, menu compact/drawer, khung trang |
 | `frontend/src/components/ResponsiveTable.tsx` | Bảng/thẻ theo chiều rộng thực của vùng nội dung |
 | `frontend/src/styles.css` | Thiết kế và responsive; lưu ý các quy tắc tương phản nút/menu cuối file |
 | `frontend/src/pages/` | Toàn bộ trang chủ trọ, admin, auth và portal khách |
-| `tests/` | Kiểm thử HTTP nghiệp vụ và fixture webhook SQLite |
+| `tests/` | Kiểm thử HTTP nghiệp vụ, báo cáo/lưu trữ mềm và fixture webhook SQLite |
 | `Dockerfile`, `compose.yaml`, `.env.example` | Build frontend/backend, PostgreSQL và cấu hình vận hành |
 
 Tài liệu chi tiết: [README](../README.md), [API contract](api-contract.md), [phạm vi/giới hạn](implementation-notes.md), [kiểm tra MVP](verification.md), [rà soát FE](frontend-review.md), [hướng dẫn triển khai VPS](deployment.md), [hướng dẫn tests](../tests/README.md).
@@ -178,10 +184,11 @@ Docker: sao chép `.env.example` thành `.env`, thay mật khẩu/URL phù hợp
 ### Kết quả kiểm tra đã có
 
 - MVP: backend build 0 lỗi/0 cảnh báo; frontend build thành công.
-- SQLite: 12/12 test gồm fixture webhook; PostgreSQL 17: 11/11 test nghiệp vụ, fixture SQLite không áp dụng.
+- Build mới nhất: `dotnet build backend/RoomRental.Api` pass với 0 warning/0 error. Full-suite trên DB dùng thử: SQLite 38/38 pass; PostgreSQL clone chạy 34 test, 32 pass và hai fixture chỉ dành cho SQLite được skip. Reports/archive riêng 6/6 pass, bao gồm ba loại Excel và kiểm tra chống formula injection.
 - Docker Production: build, khởi động, admin bootstrap đăng nhập; giữ dữ liệu/phiên khi dựng lại với cùng volume.
 - Audit NuGet và npm ở đợt MVP không phát hiện lỗ hổng theo nguồn kiểm tra lúc đó.
 - Đợt sửa FE mới nhất: TypeScript và production build thành công; vẫn có cảnh báo kích thước chunk Ant Design dùng chung.
+- Reports ở khung 375px không tràn ngang; các luồng draft, correction/audit và archive/restore đã được kiểm tra trực quan. Source audit cuối vẫn do root thực hiện.
 - Đã kiểm tra trực quan các màn hình chủ trọ, admin, auth và portal khách; thử các chiều rộng 320, 390, 447, 768, 992, 1280px, form tạo dãy/phòng, chi tiết hóa đơn, link khách hiện có, drawer và phân trang thẻ.
 - Không có thanh toán ngân hàng thật trong các lần kiểm tra. Không suy ra kết quả giao dịch thật từ fixture/webhook dùng khóa giả.
 - Docker QA trước đó đã dừng và dọn riêng các tài nguyên QA. Các sửa FE mới nhất đã kiểm tra bằng Vite và production build; **chưa dựng lại image Docker sau đợt sửa FE**.
@@ -190,7 +197,7 @@ Docker: sao chép `.env.example` thành `.env`, thay mật khẩu/URL phù hợp
 
 Đây là kế hoạch tiếp tục, không phải các việc đã hoàn thành hay một yêu cầu mới được người dùng giao.
 
-1. **UAT MVP cùng người dùng:** chủ trọ mới đăng ký/chờ duyệt, tạo dãy/phòng, thêm khách, chốt điện, kiểm tra hóa đơn, thu một phần, mở link khách và kết thúc lượt thuê. Bổ sung kiểm tra trực quan trạng thái chờ duyệt, thông báo lỗi và dữ liệu dài/nhiều phòng.
+1. **Hoàn tất review local hiện tại:** root đang làm source audit cuối; xem lại thay đổi và trạng thái trước khi kết thúc. Chưa push/deploy. Sau đó UAT cùng người dùng: chủ trọ mới đăng ký/chờ duyệt, tạo dãy/phòng, thêm khách, chốt điện, xem báo cáo/xuất Excel, lưu trữ/khôi phục, mở link khách và kết thúc lượt thuê.
 2. **Kiểm chứng payOS thật:** HTTPS callback origin đã có, nhưng VPS chưa có khóa payOS/owner settings và chưa thực hiện giao dịch thật. Chỉ thêm khóa do chủ trọ cung cấp và thử checkout/webhook/đối soát khi có sự đồng ý rõ ràng; kiểm tra webhook lặp, sai số tiền, mất callback và giao dịch hủy/hết hạn. Không tạo giao dịch thật chỉ để smoke test hạ tầng.
 3. **Hoàn thiện vận hành công khai:** bổ sung EF/versioned migrations, sao lưu off-host và restore drill định kỳ, giám sát lỗi/job, rà soát/luân chuyển tài khoản quản trị. Caddy HTTPS, redirect và proxy trust đã được cấu hình. PostgreSQL vẫn là container một máy, không phải HA.
 4. **Tối ưu FE tiếp theo nếu cần:** giảm bundle thư viện dùng chung, bổ sung kiểm thử UI cho luồng có rủi ro thực tế. Không thay stack hoặc viết lại giao diện chỉ để tối ưu cảnh báo build.
@@ -199,9 +206,9 @@ Docker: sao chép `.env.example` thành `.env`, thay mật khẩu/URL phù hợp
 
 ## 9. Giới hạn cần nhớ
 
-- Mỗi phòng có một chỉ số điện/một tháng; chưa hỗ trợ hai lượt thuê thay nhau cùng tháng hoặc tự chia tiền theo số ngày.
+- Có thể bắt đầu lượt thuê mới trong cùng tháng sau khi hoàn tất chuyển đi của lượt trước; hóa đơn cuối kỳ ghi ngày kết thúc đã chọn. Chưa có báo cáo phân bổ doanh thu theo ngày cho nhiều lượt thuê trong cùng kỳ.
 - Hạn thanh toán mặc định: ngày 5 tháng sau; chưa có UI cấu hình riêng.
-- Chưa có chỉnh sửa/điều chỉnh hóa đơn đã chốt, tiền cọc, hợp đồng điện tử, hóa đơn thuế, hoàn tiền tự động, chỉ số nước hoặc chia công tơ.
+- Không có sửa/xóa tự do hóa đơn đã phát hành; chỉ dùng correction/publish có điều kiện và audit. Chưa có hợp đồng điện tử, hóa đơn thuế, hoàn tiền tự động, chỉ số nước hoặc chia công tơ.
 - Schema dùng `EnsureCreated`, chưa có quy trình migration vận hành hoàn chỉnh.
 - Mất khóa DataProtection có thể làm mất khả năng giải mã cấu hình payOS/link khách dù database vẫn còn.
 - Không xóa database hoặc chạy `docker compose down -v` để giải quyết lỗi nâng cấp nếu cần giữ dữ liệu.
@@ -378,20 +385,20 @@ Nguồn chi tiết: `README.md`, `skills/ui-ux/SKILL.md`, `references/review.md`
 - Backend thực restart session40135 ở port5080, FE5173 giữ nguyên. Gateway92271/tunnel49064 tiếp tục. QA38895/27901 và tab QA đóng sau kiểm tra.
 
 
-## 18. Trả phòng & quyết toán — 12/10/2026
+## 18. Trả phòng & quyết toán — 12/10/2026, bổ sung guard ngày cuối kỳ 13/10/2026
 
 - Phòng & người thuê → ⋯ → Trả phòng & quyết toán (thay Ghi nhận chuyển đi trong UI). Drawer 780px, co theo viewport, bốn bước: chốt điện/khoản còn lại → thu nợ/khấu trừ → ghi nhận hoàn cọc → kết thúc lượt thuê. Giữ Ant/roomTheme, không đổi brand/dark mode. Chọn bố cục tuần tự theo yêu cầu triển khai của người dùng.
 - GET /api/rooms/{id}/moveout trả occupancyId/tenantName/roomName/electricityRate/meterBaseline/invoices/pendingInvoiceIds. UI khóa vào occupancy khi mở từ phòng, báo đóng/mở lại nếu khách đã đổi trong lúc thao tác.
-- POST /api/rooms/{id}/final-invoice body {requestId,occupancyId,currentReading,additionalAmount,description?}. Phải đúng lượt thuê đang hoạt động. Meter baseline = max InitialReading, tất cả chỉ số tháng và hóa đơn chốt cuối của phòng (qua các lượt thuê). Chỉ số tối đa 1e9, 3 chữ số thập phân; thêm phí nguyên VND >=0, tổng <=2147483647. AdditionalAmount>0 cần nội dung, 450 ký tự. Tính điện từ phần tăng * giá điện hiện tại, làm tròn VND; không cộng lại rent/water/service hàng tháng tự động.
-- Hóa đơn cuối là Supplemental, IsFinalMeterReading=true, ElectricityAmount/ServiceAmount là điện và phí còn lại. Tổng 0 vẫn có bản ghi chốt, Status=Paid, không có receipt giả. Chỉ một bản ghi chốt cho một lượt thuê (filtered unique index). RequestId=Invoice.Id, retry chính xác trả bản cũ; sai payload 409. Sau chốt, API nhập điện tháng chặn để tránh hóa đơn trùng. Chưa có sửa/hủy bản chốt; cần kiểm tra số trước khi xác nhận.
+- POST `/api/rooms/{id}/final-invoice` nhận requestId, occupancyId, currentReading, additionalAmount, description, optional `endDate` và các dòng phí itemized. Phải đúng lượt thuê đang hoạt động. Meter baseline = max InitialReading, tất cả chỉ số tháng và hóa đơn chốt cuối của phòng (qua các lượt thuê). Chỉ số tối đa 1e9, 3 chữ số thập phân; các khoản VND phải là số nguyên trong giới hạn. `endDate` bỏ trống dùng ngày Việt Nam hiện tại; ngày chọn phải nằm trong khoảng thuê và không đứng trước chỉ số cùng kỳ đã ghi sau đó.
+- Hóa đơn cuối là Supplemental, IsFinalMeterReading=true, giữ BillingStartDate/BillingEndDate và số ngày tính phí. Nếu chưa có hóa đơn tháng, bản xem trước tính tiền thuê theo số ngày, điện, nước, dịch vụ và khoản phát sinh; nếu đã có hóa đơn tháng thì có thể điều chỉnh hóa đơn đó khi đủ điều kiện, còn invoice cuối ghi các khoản còn lại (không cộng trùng rent/water). Request kiểu cũ vẫn giữ cách tính tương thích. Tổng 0 vẫn có bản ghi chốt, Status=Paid, không có receipt giả. Chỉ một bản ghi chốt cho một lượt thuê; retry chính xác trả bản cũ, sai payload 409. Sau chốt, API nhập điện tháng chặn để tránh hóa đơn trùng.
 - Deposit deduction mở rộng target từ Monthly sang Monthly/Supplemental cùng lượt thuê, vẫn transaction/held/debt/pending/idempotency guards. DepositLedger ở trang hóa đơn cũng cập nhật lựa chọn và invalidate moveout.
 - Drawer hiển thị debt non-Deposit, held actual Paid trừ settled, số thu thêm/hoàn sau khấu trừ. Mỗi hóa đơn có Trừ cọc (min held/debt), Ghi nhận đã thu thêm (cho phép thu từng phần), Đối soát payOS. Hoàn cọc chỉ bật khi hết nợ, cọc vẫn còn và không có pending cọc. Đây là ghi nhận hoàn ngoài hệ thống, không chuyển tiền thật.
-- POST /api/rooms/{id}/complete-moveout {occupancyId,finalInvoiceId}: transaction serializable, scope đúng owner/phòng/lượt thuê và final invoice; chặn pending bất kỳ, non-Deposit unpaid, held>0. EndDate hôm nay, inactive, revoke token, cập nhật baseline công tơ. Exact retry lượt thuê đã kết thúc trả success và không tác động khách mới. Legacy end-occupancy giữ để tương thích, thêm chặn non-Deposit debt nếu lượt thuê đã có chốt; vẫn cho kết thúc chưa chốt theo hành vi cũ. UI mới dùng complete-moveout.
+- POST `/api/rooms/{id}/complete-moveout` {occupancyId,finalInvoiceId}: transaction serializable, scope đúng owner/phòng/lượt thuê và final invoice; chặn hóa đơn nháp/chưa thanh toán, pending payment, cọc còn giữ và các nghĩa vụ chưa quyết toán. EndDate lấy từ BillingEndDate đã chọn; chuyển inactive, thu hồi token, cập nhật baseline công tơ. Exact retry lượt thuê đã kết thúc trả success và không tác động khách mới. Alias legacy `/end-occupancy` cũng yêu cầu hóa đơn final đã phát hành, các điều kiện quyết toán và BillingEndDate hợp lệ; không còn đường kết thúc bỏ qua hóa đơn final.
 - InvoiceDto/model thêm bool IsFinalMeterReading; SQLite/PG initializer cộng cột boolean mặc địnhfalse/index unique, không thay đổi hóa đơn cũ. Đã backup DB thực .local-data/pre-moveout-upgrade.db; sau nâng cấp số hóa đơn/tổng tiền vẫn 32/124665000/Paid6850000. Không thử trả phòng trên DB thực.
 - Build backend 0 warning/error; FE TypeScript/Vite pass (chunk warning cũ). Full SQLite QA **20/20 pass**: meter delta/no duplicate rent, monthly+Supplemental deduction, refund guard, pending payOS, zero final, owner scope/stale occupancy, final replay/conflict, chặn readings sau chốt, complete replay không chấm dứt khách mới, meter baseline mới115 thay vì110. Không chạy PostgreSQL đợt này (Docker daemon chưa sẵn sàng).
 - UI QA trên127.0.0.1:5174: chốt 100→105 với phí50000, debt210000/held240000; trừ cọc vào tháng40000, bổ sung120000, cuối50000; ghi nhận hoàn30000; hoàn tất phòng trống. Không chuyển tiền thật. Case không cọc: điện5kWh*3500 + thêm32500 =50000; ghi nhận thu25000 hai lần, debt về0, chứng minh khóa idempotency không chặn hai khoản thu hợp lệ giống nhau sau thành công. Case thứ hai được giữ trong DB QA, không phải DB người dùng.
 - Responsive ở375px: document width375, drawer client/scroll width375, không tràn ngang; chưa quét toàn bộ mọi breakpoint. Ảnh artifacts/moveout-ready.png và artifacts/moveout-mobile.png dùng dữ liệu QA. Đã reset viewport.
-- Giới hạn: không tự tính tiền thuê theo ngày; chủ trọ nhập phí/tiền thuê còn lại đã thỏa thuận, tránh khoản đã có trên hóa đơn khác. Không hỗ trợ bỏ nợ/non-Deposit writeoff trong luồng mới. Cọc chưa thu không coi là tiền đang giữ và không tự thu thêm lúc trả phòng. Chưa có biên bản xuất PDF, sửa điện cuối kỳ, đổi công tơ hoặc thử thanh toán cuối kỳ bằng tiền thật.
+- Giới hạn: việc chia phí giữa hóa đơn tháng và invoice cuối kỳ tuân theo preview/itemized fields; không hỗ trợ bỏ nợ/non-Deposit writeoff trong luồng mới. Cọc chưa thu không coi là tiền đang giữ và không tự thu thêm lúc trả phòng. Chưa có biên bản xuất PDF, đổi công tơ hoặc thử thanh toán cuối kỳ bằng tiền thật.
 - Backend thực port5080 session13144; FE5173, gateway92271/cloudflared49064 giữ nguyên. QA36193/48494 và tab QA đóng khi kết thúc; docs/README/api-contract cập nhật.
 
 
@@ -481,3 +488,60 @@ Nguồn chi tiết: `README.md`, `skills/ui-ux/SKILL.md`, `references/review.md`
 - CI run `38356760544` confirmed the normal desktop table, then browser review found the room/tenant column still too narrow. A follow-up assigns widths totaling 980px: room 220, kind 140, period 120, each amount 90, status 130 and action 100; room/tenant text wraps across two lines and can break at unusually long tokens. Final [CI run `38357433938`](https://github.com/nhaq0505/rehouse/actions/runs/38357433938) succeeded and deployed commit `35560bf`. Public desktop QA at 1440px confirmed the normal table, two Paid rows, total 20.000 VND, paid 20.000 VND and due 0; room width was 239.75px, rows were 91.125px tall, names wrapped to two lines, and document width stayed 1440px without global overflow. Final mobile QA at 375×812 confirmed two compact invoice records, four filter controls, default list of two Paid invoices totaling/paid 20.000 VND with due 0, and document width 360px (within the 375px viewport). Desktop and mobile verification are complete.
 - Local-only screenshot follow-up, pending publish: removed `fixed: 'right'` from the invoice action column so Ant Design no longer draws the fixed-column shadow stripe; the Details action remains available. Frontend build passes with the existing bundle-size warning. Local UI is running at `http://127.0.0.1:5173/invoices`, API at `http://127.0.0.1:5080` (`/api/health` returns 200), and the existing Development PostgreSQL stays loopback-bound at `127.0.0.1:15432`. API started with `SeedDemo=false`; no database reset/seed or production/payment activity. Local browser QA completed: at 1440px the normal table showed 0 fixed-right cells, 3 Details buttons and no vertical shadow; opening the first Details button showed invoice P101 with total 4.060.000 VND, then it was closed without writes. At 375×812, the document width was 360px and 3 compact invoice records were shown. Screenshot: `/tmp/rehouse-invoice-review/local-no-stripe.png`. This fix has not been committed, pushed, or deployed.
 - Kiểm tra frontend: `npm run i18n:build`, `npm run i18n:check` pass với 568 khóa × 4 catalog; `npm run build` pass (cảnh báo chunk lớn hiện có vẫn xuất hiện).
+
+## 28. Báo cáo, lưu trữ mềm và local PostgreSQL upgrade — 13–14/10/2026
+
+- Backend local có ba API báo cáo theo chủ trọ: `/api/reports/receipts`, `/api/reports/debt`, `/api/reports/deposits`; từng loại có route `/{reportType}/export.xlsx`. API nhận lọc ngày, dãy/phòng và phân trang. Tổng tiền truy vấn theo toàn bộ tập lọc, không theo trang hiện tại. Thu cọc mới được tách riêng; khoản ghi có nội bộ từ quyết toán cọc không được tính thành tiền mặt mới. Công nợ là số dư hiện tại của hóa đơn đã phát hành, lọc ngày theo kỳ hóa đơn và có cả hóa đơn cọc còn nợ. Báo cáo cọc hiển thị phát sinh trong kỳ cùng số dư cọc đang giữ hiện tại.
+- Các ô số/ngày trong Excel có kiểu dữ liệu phù hợp; nội dung do người dùng nhập được ghi thành text có bảo vệ chống formula injection. Export giới hạn số dòng và trả lỗi rõ khi vượt giới hạn thay vì cắt dữ liệu âm thầm.
+- Dãy/phòng dùng archive fields (`ArchivedAt`, `ArchivedBy`, `ArchiveBatchId`) và không bị xóa vật lý. Lưu trữ bị chặn khi còn occupancy, hóa đơn nháp/chưa thanh toán, cọc đang giữ hoặc payOS đang chờ. Lưu trữ dãy và phòng con là giao dịch nguyên tử; khôi phục dãy chỉ khôi phục phòng nằm trong cùng archive batch. Danh sách nghiệp vụ mặc định chỉ hiện mục active; báo cáo giữ lịch sử qua snapshot BuildingId/RoomId/tên.
+- Invoice lưu `BuildingId` snapshot; initializer backfill giá trị cho hóa đơn cũ và tạo các cột archive bổ sung. Schema vẫn chưa có versioned EF migrations. Hai hosted service có công tắc `EnableInvoiceSweep` và `EnablePaymentReconciliation`, mặc định bật nếu không cấu hình; chỉ tắt rõ ràng trên database clone QA hoặc runtime local hiện tại để tránh job nền/provider call trong quá trình kiểm tra.
+- **Ưu tiên 1 — correction có kiểm soát:** đủ điều kiện correction dùng version/request ID để chống ghi lặp, kiểm tra trạng thái thu tiền/pending trước khi sửa và ghi revision trước/sau cùng actor/reason để audit. Không cho sửa/xóa tự do hóa đơn đã phát hành.
+- **Ưu tiên 2 — Draft và identity theo occupancy:** hóa đơn kỳ lẻ có thể ở Draft đến khi chủ trọ publish; Draft chưa phải khoản phải thu/không được tính vào debt. Reading/hóa đơn gắn với `OccupancyId`, cho phép khách mới vào lại cùng tháng sau khi khách cũ đã chuyển đi và không nhận nhầm trạng thái đã chốt của occupancy trước.
+- Cùng tháng có thể bắt đầu occupancy mới sau khi kết thúc occupancy trước; dashboard đối chiếu meter reading bằng `OccupancyId` để lượt thuê mới không kế thừa trạng thái đã chốt của người cũ. Alias `/end-occupancy` yêu cầu hóa đơn final đã phát hành và các điều kiện quyết toán, đồng thời dùng `BillingEndDate` đã chọn trên hóa đơn. Chặn chuyển đi nếu đã có meter measurement cùng kỳ sau `BillingEndDate`; số tiền VND phải là số nguyên, không nhận phần lẻ.
+- Các test reports/archive vẫn 6/6 pass, gồm owner isolation, batch restore, block active tenant, snapshot lịch sử, tính tổng và typed XLSX cho cả ba báo cáo. Test module Excel cần chạy với Python 3.9 trên môi trường này vì Expat của Python 3.14 báo lỗi khi parse XML trong workbook; workbook vẫn xác nhận bằng Python 3.9.
+- QA webhook cần được ghi đúng phạm vi: một lần chạy sớm của agent trên API port 5082 dùng DB disposable riêng `/workspace/.local-data/billing-upgrade-qa/qa.db` nhưng kế thừa HTTPS callback. Khi test cấu hình, nó đã gửi 4 POST đăng ký/xác nhận webhook với khóa giả và tất cả thất bại; không có webhook được xác minh, giao dịch hay receipt nào được tạo. Không được mô tả lần chạy này là “không có request ra provider”. Root dùng DB clone riêng `backend/RoomRental.Api/.local-data/billing-upgrade-qa/qa.db` với HTTP localhost callback trong các suite sau; lần chạy đó không đăng ký webhook hoặc gọi provider. Không có khoản thanh toán thật.
+- Root đã xác nhận full-suite mới nhất xanh. FE build/i18n có 746 khóa × 4 catalog; report layout ở 375px không tràn ngang, draft/correction/audit và lưu trữ/khôi phục đã được kiểm tra bằng CUA. Moveout preview ban đầu cho phép finalize; chỉnh tiền thuê làm nút finalize tắt, sau tính lại preview giữ tiền thuê 1.700.000 VND và bật lại.
+- PostgreSQL Development `room_rental` đã được backup rồi nâng cấp schema. Sau nâng cấp: 32 hóa đơn hiện có, tổng 124.665.000 VND, đã trả 6.850.000 VND; toàn bộ vẫn `Issued`, `Version=1`, `SchemaUpgrades=1`. Digest tài chính theo từng hóa đơn giống hệt trước/sau; suite dùng thử không ghi vào DB thật. API `localhost:5080` khỏe (`/api/health` 200).
+- Runtime hiện tại dùng `SeedDemo=false`, `EnableInvoiceSweep=false`, `EnablePaymentReconciliation=false` do DB thật còn một PayOS attempt `Pending`; các job có default bật khi không đặt cấu hình. Giữ hai job tắt cho đến khi xử lý QA này an toàn; không dùng lần chạy này để đối soát khoản pending hoặc gửi yêu cầu thanh toán.
+- Source và schema vẫn local; chưa push/deploy. UAT với người dùng và kiểm tra payment thật chưa thực hiện.
+
+## 29. Quy tắc hết hạn QR payOS 10 phút — 14/10/2026
+
+- Order mới lưu `ExpiresAt = CreatedAt + 600 giây` trước khi gọi provider và gửi cùng giá trị `expiredAt` dưới dạng Unix timestamp `Int32`. Nếu response có `expiredAt` đã ký, giá trị phải khớp; nếu response bỏ trường này thì dùng deadline đã lưu. Canonical request signature không đổi. Xem [payOS API](https://payos.vn/docs/api/).
+- Retry pending giữ nguyên deadline. Đồng hồ cục bộ hoặc QR hết hạn không tự chuyển attempt sang failed: chỉ trạng thái provider đã reconcile `CANCELLED`/`EXPIRED` mới kết thúc attempt; request tiếp theo sau đó mới được tạo order mới. Pending legacy thiếu `ExpiresAt` vẫn giữ null, không gán hạn hồi tố.
+- FakeHttpClient service suite pass **58 assertions** cho 600-second deadline, signed response mismatch/fallback, giữ hạn khi reuse, legacy null expiry, không tự fail theo đồng hồ và tạo order tiếp theo sau provider-confirmed terminal status. Đây là kiểm thử local giả lập, không gọi payOS và không tạo payment thật. Không chạy API integration suite trong phạm vi expiry này. API local đã restart và `/api/health` trả 200.
+- Cập nhật này chỉ sửa tài liệu, không chạy thêm test hoặc gọi provider. Runtime local vẫn `SeedDemo=false`, invoice sweep và payment reconciliation đang tắt vì còn một PayOS attempt Pending; chưa push/deploy.
+
+## 30. Cô lập cuộn trong drawer hóa đơn và trả phòng — 14/10/2026
+
+- CSS chỉ áp dụng cho `.ant-drawer-content.invoice-drawer` và `.ant-drawer-content.moveout-drawer`: content dùng `overflow:hidden`, body là pane `overflow:auto` duy nhất với `overscroll-behavior:contain`. Drawer menu mobile và drawer toàn cục không đổi.
+- CUA chỉ đọc trên invoice P102: desktop 1440×900, cuộn body 0→912→462 trong khi header giữ y=0 và main y=213; mobile 375×812, body 0→1245→0 và chiều rộng trang vẫn 375px. Content hidden, body auto/contain.
+- Moveout P102 desktop preview: body 0→841→0; header/main giữ vị trí, content hidden và body contain. Chỉ mở preview; không chốt, lưu, thu tiền hay gọi payOS. Frontend và root build đều pass.
+- Giới hạn: screenshot trạng thái ổn định không còn vùng trắng, nhưng CUA không tái hiện transient white flicker trước sửa, nên chưa chứng minh chính xác compositor/root cause của hiện tượng ban đầu. Thay đổi và kiểm tra chỉ local, chưa push/deploy.
+
+## 31. Khoảng trắng trong drawer vẫn còn được báo cáo — 14/10/2026
+
+- Tại thời điểm audit ban đầu, người dùng vẫn báo vùng trắng sau cô lập scroll ở mục 30. Read-only audit xác nhận cuộn native của trình duyệt, không có React scroll handlers; pane cuộn lồng đúng và portal lock chỉ đổi khi drawer mở/đóng.
+- Giả thuyết ban đầu là tương tác compositor của Mac Edge giữa topbar sticky, trong suốt có `backdrop-filter: blur(10px)` và mask/overlay. Frontend thử đổi topbar thành nền đục `#fff` và bỏ backdrop filter; khi mới có build pass, chưa xác nhận candidate đã xử lý symptom. Native Edge A/B chưa hoàn tất vì người dùng chuyển app làm gián đoạn điều khiển.
+- Sau reload trong IAB, computed topbar là `backdrop-filter: none`, nền `rgb(255, 255, 255)`; body giữ `overflow:hidden`, pane body `overflow:auto`/`overscroll-behavior:contain`. Trên mobile, pane cuộn tới 1306.5px trong khi header và main giữ y=0. Khi được hỏi vị trí, người dùng xác nhận vùng trắng ảnh hưởng **toàn trang**; sau candidate topbar opaque và hard reload, người dùng báo **“Đã hết”**. Issue được xem là đã hết trong kiểm tra local của người dùng sau candidate.
+- Kết quả này cho thấy tương quan giữa candidate CSS và symptom đã biến mất sau hard reload; chưa có GPU/compositor diagnostics để chứng minh nguyên nhân gốc. Thay đổi chỉ local, chưa push/deploy; cập nhật này chỉ sửa tài liệu, không chạy test.
+
+## 32. Tính đủ tiền thuê tháng và trả phòng chỉ ghi nhận hoàn cọc — 14/10/2026
+
+- Chính sách mới thay thế luồng tính theo ngày và hóa đơn cuối kỳ được mô tả trong mục 18 và các ghi chú trả phòng trước đó. Mỗi lần lưu chỉ số kỳ tháng tạo hóa đơn `Monthly` trạng thái `Issued` ngay theo đủ `Room.Rent`, bất kể ngày vào giữa tháng hoặc độ dài 28/30/31 ngày. Không còn tạo Draft mới để chờ tính tiền lẻ theo ngày. Draft cũ vẫn hiện để chủ nhà xem/sửa/phát hành, nhưng phải xử lý trước khi trả phòng.
+- Luồng trả phòng chỉ hiển thị công nợ, trạng thái cọc và các chặn; người dùng nhập một số tiền hoàn thủ công. Không có chốt công tơ cuối, invoice cuối hoặc khoản phí/tiền thuê bổ sung trong drawer. Xác nhận đóng occupancy vào ngày Việt Nam hiện tại, thu hồi guest link, đưa phòng về trống và cập nhật baseline bằng số đo gần nhất đã có. `GET /api/rooms/{id}/moveout` vẫn là summary đọc; preview tính lẻ và route tạo final invoice đã bị bỏ.
+- `POST /api/rooms/{id}/complete-moveout` nhận `{occupancyId, requestId, refundAmount, expectedHeld, expectedDepositVersion}`; alias `/end-occupancy` dùng cùng handler. Serializable transaction kiểm tra owner/phòng/occupancy và held/version snapshot; chặn Draft, PayOS pending, hóa đơn đã phát hành chưa thanh toán (kể cả hóa đơn cọc) và refund vượt số cọc đang giữ. Ghi đồng thời settlement hoàn tiền và phần cọc còn giữ (`Deduction`), không tạo receipt giả và không chuyển tiền ngân hàng. Audit lưu actor, thời điểm, request/fingerprint, số hoàn và số giữ; retry payload giống hệt trả kết quả cũ, payload khác bị conflict. `GET /moveout-completions` theo owner vẫn đọc được lịch sử kể cả phòng đã archive.
+- FE build và i18n kiểm tra pass (789 source keys × 4 catalog). CUA chỉ đọc trên phòng P102: drawer mới không có datepicker, final-meter hoặc fee input; công nợ 4.200.000 VND khóa nút hoàn tất đúng, case không có cọc hiển thị đúng; viewport 447px không tràn ngang. Không thực hiện refund/payment mutation bằng CUA; ảnh QA `/tmp/rehouse-refund-only-local.png`.
+- Build API pass với 0 warning/error. Trên SQLite dùng thử, chạy riêng và pass `test_api_integration.py` 17/17, `test_billing_upgrade.py` 13/13, `test_reports_archive.py` 6/6 và `test_payos_fixture.py` 4/4 (40 test qua các lần chạy tách biệt, không phải một full-suite run). Một lần chạy full lặp lại bị auth limiter HTTP 429; sau reset limiter, các module kiểm tra trên được chạy riêng. PostgreSQL clone: billing 13 test, 11 pass và 2 SQLite-only skip. FakeHttpClient payOS suite pass 58 assertions; không gọi provider thật.
+- PostgreSQL Development thật sau lần restart: 33 invoice, tổng 124.675.000 VND, đã trả 6.850.000 VND, digest tài chính `4f3b2fd5b796ff4f19ec78a2a9146f0f`; số liệu và digest giữ nguyên, `MoveoutCompletions=0`. API `localhost:5080` khỏe. Runtime vẫn `SeedDemo=false`, `EnableInvoiceSweep=false`, `EnablePaymentReconciliation=false`; dữ liệu thật không bị mutate. Source/docs local only; chưa commit, push hay deploy.
+
+## 33. Thu gọn mặc định phần điều chỉnh hóa đơn — 14/10/2026
+
+- Trong drawer chi tiết hóa đơn, phần điều chỉnh mặc định đóng; bấm tiêu đề điều chỉnh để mở/đóng form. Trường, guard, xác nhận lưu và audit history không đổi; lịch sử điều chỉnh vẫn nằm riêng và hiển thị bên dưới. Form được render sẵn để giữ giá trị hóa đơn đã nạp trong khi phần nội dung đóng.
+- Chọn hóa đơn khác hoặc đóng rồi mở lại drawer sẽ đưa phần điều chỉnh về trạng thái đóng. Root CUA đã kiểm tra invoice P102: form mặc định ẩn, mở ra giữ tiền thuê 3.000.000 VND, điện 1.000.000 VND và chỉ số 1220; Enter bật/tắt được `aria-expanded`; lịch sử luôn nhìn thấy bên ngoài phần thu gọn. Đóng/mở lại drawer trở về trạng thái đóng. Ảnh `/tmp/rehouse-invoice-correction-collapsed.png`; chỉ đọc, không lưu điều chỉnh hay gọi provider. `npm run build` pass; thay đổi local, không commit/push.
+
+## 34. Phân cách hàng nghìn trong các ô tiền VND — 14/10/2026
+
+- Component `MoneyInput` dùng dấu phẩy để nhóm hàng nghìn ở toàn bộ 23 ô nhập tiền hiện có: cấu hình phòng/tiền cọc, hóa đơn/thu tiền/điều chỉnh, bản nháp kỳ đọc, trả cọc và quyết toán cọc. Parser chỉ bỏ dấu phẩy phân nhóm; giá trị Form/API vẫn là số, thao tác xóa tiếp tục để trống và `precision={0}` giữ cách xử lý số VND nguyên hiện có của Ant InputNumber. KWh và số người vẫn dùng InputNumber thường, không nhóm.
+- Root CUA chỉ đọc trên hóa đơn P102: ô thu tiền nạp sẵn `4,200,000`; gõ `1234567` rồi blur thành `1,234,567`; paste `2,345,678` giữ nguyên; xóa rồi blur để trống; khôi phục `4200000` hiển thị `4,200,000`. Điều chỉnh nạp tiền thuê `3,000,000`; gõ `1234567` rồi blur thành `1,234,567`; khôi phục `3000000`. Số đo kWh vẫn là `1220.000`. Ảnh `/tmp/rehouse-money-input-comma.png`; không submit, ghi receipt/điều chỉnh hay gọi provider.
+- `npm run build` và `npm run i18n:check` pass; i18n có 789 khóa nguồn × 4 catalog và không thêm chuỗi dịch. Build có cảnh báo hiện hữu về một bundle lớn hơn 500 kB. `git diff --check` pass; chỉ local, chưa commit/push.

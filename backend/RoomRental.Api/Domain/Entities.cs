@@ -3,6 +3,7 @@ namespace RoomRental.Api.Domain;
 public enum UserRole { Admin, Owner }
 public enum OwnerStatus { Pending, Approved, Rejected, Suspended }
 public enum InvoiceStatus { Unpaid, Partial, Paid }
+public enum InvoiceLifecycleState { Draft, Issued }
 public enum PaymentAttemptStatus { Pending, Paid, Failed }
 
 public sealed class AppUser
@@ -33,6 +34,9 @@ public sealed class Building
     public Guid OwnerId { get; set; }
     public required string Name { get; set; }
     public string? Address { get; set; }
+    public DateTimeOffset? ArchivedAt { get; set; }
+    public Guid? ArchivedBy { get; set; }
+    public Guid? ArchiveBatchId { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -47,6 +51,9 @@ public sealed class Room
     public bool WaterPerPerson { get; set; }
     public decimal ServiceFee { get; set; }
     public decimal InitialReading { get; set; }
+    public DateTimeOffset? ArchivedAt { get; set; }
+    public Guid? ArchivedBy { get; set; }
+    public Guid? ArchiveBatchId { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -74,6 +81,15 @@ public sealed class MonthlyReading
     public decimal PreviousReading { get; set; }
     public decimal CurrentReading { get; set; }
     public decimal Consumption { get; set; }
+    public decimal? MonthlyRentRate { get; set; }
+    public decimal? ElectricityRate { get; set; }
+    public decimal? WaterRate { get; set; }
+    public bool? WaterPerPerson { get; set; }
+    public decimal? ServiceRate { get; set; }
+    public DateOnly? BillingStartDate { get; set; }
+    public DateOnly? BillingEndDate { get; set; }
+    public int? BillableDays { get; set; }
+    public int? MonthDays { get; set; }
     public DateTimeOffset RecordedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -89,16 +105,44 @@ public sealed class DepositSettlement
     public required string RecordedAt { get; set; }
 }
 
+public sealed class MoveoutCompletion
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid RequestId { get; set; }
+    public Guid OwnerId { get; set; }
+    public Guid RoomId { get; set; }
+    public Guid OccupancyId { get; set; }
+    public Guid ActorId { get; set; }
+    public required string RequestFingerprint { get; set; }
+    public decimal HeldBeforeSettlement { get; set; }
+    public decimal RefundAmount { get; set; }
+    public decimal RetainedAmount { get; set; }
+    public DateOnly EndDate { get; set; }
+    public DateTimeOffset CompletedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class Invoice
 {
     public string Kind { get; set; } = "Monthly";
     public string? Description { get; set; }
     public bool IsFinalMeterReading { get; set; }
+    public InvoiceLifecycleState LifecycleState { get; set; } = InvoiceLifecycleState.Issued;
+    public long Version { get; set; } = 1;
+    public decimal? MonthlyRentRate { get; set; }
+    public decimal? ElectricityRate { get; set; }
+    public decimal? WaterRate { get; set; }
+    public bool? WaterPerPerson { get; set; }
+    public decimal? ServiceRate { get; set; }
+    public DateOnly? BillingStartDate { get; set; }
+    public DateOnly? BillingEndDate { get; set; }
+    public int? BillableDays { get; set; }
+    public int? MonthDays { get; set; }
     public List<DepositSettlement> DepositSettlements { get; set; } = [];
 
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid OwnerId { get; set; }
     public Guid RoomId { get; set; }
+    public Guid BuildingId { get; set; }
     public Guid OccupancyId { get; set; }
     public required string RoomName { get; set; }
     public required string BuildingName { get; set; }
@@ -116,6 +160,22 @@ public sealed class Invoice
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Unpaid;
     public DateOnly DueDate { get; set; }
     public DateTimeOffset IssuedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class InvoiceRevision
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid InvoiceId { get; set; }
+    public int Revision { get; set; }
+    public Guid RequestId { get; set; }
+    public required string RequestFingerprint { get; set; }
+    public required string Reason { get; set; }
+    public Guid ActorId { get; set; }
+    public required string ActorName { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public long Version { get; set; }
+    public required string BeforeJson { get; set; }
+    public required string AfterJson { get; set; }
 }
 
 public sealed class PaymentReceipt

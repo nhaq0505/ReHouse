@@ -81,16 +81,16 @@ public static class PaymentEndpoints
                                       select new { Room = room, Building = building }).SingleAsync(cancellationToken);
             var roomDto = await OwnerManagementEndpoints.ToRoomDtoAsync(db, tokenService, roomBuilding.Room, roomBuilding.Building,
                 occupancy, OwnerManagementEndpoints.CurrentVietnamPeriod(), cancellationToken);
-            var invoices = await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().Where(invoice => invoice.OccupancyId == occupancy.Id)
+            var invoices = await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().Where(invoice => invoice.OccupancyId == occupancy.Id && invoice.LifecycleState == InvoiceLifecycleState.Issued)
                 .OrderByDescending(invoice => invoice.Period).ToListAsync(cancellationToken);
             var occupancyDto = roomDto.Occupancy ?? throw new ApiException(StatusCodes.Status404NotFound, "Tenant link is no longer active.");
-            return Results.Ok(new TenantSummaryDto(roomDto, occupancyDto, invoices.Select(InvoiceService.ToDto).ToList()));
+            return Results.Ok(new TenantSummaryDto(roomDto, occupancyDto, invoices.Select(invoice => InvoiceService.ToDto(invoice)).ToList()));
         });
 
         app.MapPost("/api/tenant/{token}/invoices/{id:guid}/payment", async (string token, Guid id, AppDbContext db, PayOsService payOsService, CancellationToken cancellationToken) =>
         {
             var occupancy = await FindTenantAsync(db, token, cancellationToken);
-            var invoice = await db.Invoices.SingleOrDefaultAsync(row => row.Id == id && row.OccupancyId == occupancy.Id, cancellationToken)
+            var invoice = await db.Invoices.SingleOrDefaultAsync(row => row.Id == id && row.OccupancyId == occupancy.Id && row.LifecycleState == InvoiceLifecycleState.Issued, cancellationToken)
                 ?? throw new ApiException(StatusCodes.Status404NotFound, "Invoice was not found for this tenant.");
             var checkout = await payOsService.CreateOrGetCheckoutAsync(invoice.OwnerId, invoice, token, cancellationToken);
             return Results.Ok(checkout);
@@ -99,7 +99,7 @@ public static class PaymentEndpoints
         app.MapPost("/api/tenant/{token}/invoices/{id:guid}/reconcile", async (string token, Guid id, AppDbContext db, PayOsService payOsService, CancellationToken cancellationToken) =>
         {
             var occupancy = await FindTenantAsync(db, token, cancellationToken);
-            var invoice = await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().SingleOrDefaultAsync(row => row.Id == id && row.OccupancyId == occupancy.Id, cancellationToken)
+            var invoice = await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().SingleOrDefaultAsync(row => row.Id == id && row.OccupancyId == occupancy.Id && row.LifecycleState == InvoiceLifecycleState.Issued, cancellationToken)
                 ?? throw new ApiException(StatusCodes.Status404NotFound, "Invoice was not found for this tenant.");
             var status = await payOsService.ReconcileInvoiceAsync(invoice.OwnerId, invoice.Id, cancellationToken);
             var refreshed = await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().SingleAsync(row => row.Id == invoice.Id, cancellationToken);

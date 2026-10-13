@@ -13,7 +13,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Occupancy> Occupancies => Set<Occupancy>();
     public DbSet<MonthlyReading> Readings => Set<MonthlyReading>();
     public DbSet<DepositSettlement> DepositSettlements => Set<DepositSettlement>();
+    public DbSet<MoveoutCompletion> MoveoutCompletions => Set<MoveoutCompletion>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceRevision> InvoiceRevisions => Set<InvoiceRevision>();
     public DbSet<PaymentReceipt> Receipts => Set<PaymentReceipt>();
     public DbSet<OwnerPaymentSettings> PaymentSettings => Set<OwnerPaymentSettings>();
     public DbSet<PaymentWebhookRegistration> PaymentWebhookRegistrations => Set<PaymentWebhookRegistration>();
@@ -53,6 +55,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.OwnerId);
+            entity.HasIndex(x => x.ArchivedAt);
             entity.Property(x => x.Name).HasMaxLength(160);
             entity.Property(x => x.Address).HasMaxLength(500);
         });
@@ -61,6 +64,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.BuildingId);
+            entity.HasIndex(x => x.ArchivedAt);
             entity.Property(x => x.Name).HasMaxLength(100);
             entity.Property(x => x.Rent).HasPrecision(18, 2);
             entity.Property(x => x.ElectricityRate).HasPrecision(18, 2);
@@ -83,12 +87,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         modelBuilder.Entity<MonthlyReading>(entity =>
         {
             entity.HasKey(x => x.Id);
-            entity.HasIndex(x => new { x.RoomId, x.Period }).IsUnique();
+            entity.HasIndex(x => new { x.OccupancyId, x.Period }).IsUnique();
             entity.HasIndex(x => new { x.RoomId, x.Period });
             entity.Property(x => x.Period).HasMaxLength(7);
             entity.Property(x => x.PreviousReading).HasPrecision(18, 3);
             entity.Property(x => x.CurrentReading).HasPrecision(18, 3);
             entity.Property(x => x.Consumption).HasPrecision(18, 3);
+            entity.Property(x => x.MonthlyRentRate).HasPrecision(18, 2);
+            entity.Property(x => x.ElectricityRate).HasPrecision(18, 2);
+            entity.Property(x => x.WaterRate).HasPrecision(18, 2);
+            entity.Property(x => x.ServiceRate).HasPrecision(18, 2);
         });
 
         modelBuilder.Entity<DepositSettlement>(entity =>
@@ -97,15 +105,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasIndex(x => new { x.InvoiceId, x.IdempotencyKey }).IsUnique();
             entity.Property(x => x.Amount).HasPrecision(18, 2);
         });
+        modelBuilder.Entity<MoveoutCompletion>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.RequestId).IsUnique();
+            entity.HasIndex(x => x.OccupancyId).IsUnique();
+            entity.HasIndex(x => new { x.OwnerId, x.CompletedAt });
+            entity.Property(x => x.RequestFingerprint).HasMaxLength(64);
+            entity.Property(x => x.HeldBeforeSettlement).HasPrecision(18, 2);
+            entity.Property(x => x.RefundAmount).HasPrecision(18, 2);
+            entity.Property(x => x.RetainedAmount).HasPrecision(18, 2);
+        });
         modelBuilder.Entity<Invoice>(entity =>
         {
             entity.HasKey(x => x.Id);
-            entity.HasIndex(x => new { x.RoomId, x.Period }).IsUnique().HasFilter("\"Kind\" = 'Monthly'");
+            entity.HasIndex(x => new { x.OccupancyId, x.Period }).IsUnique().HasFilter("\"Kind\" = 'Monthly'");
             entity.HasIndex(x => x.OccupancyId).IsUnique().HasDatabaseName("IX_Invoices_OccupancyId_Deposit")
                 .HasFilter("\"Kind\" = 'Deposit'");
             entity.HasMany(x => x.DepositSettlements).WithOne().HasForeignKey(x => x.InvoiceId);
             entity.HasIndex(x => new { x.OwnerId, x.Period });
             entity.HasIndex(x => x.OccupancyId);
+            entity.HasIndex(x => x.BuildingId);
             entity.Property(x => x.RoomName).HasMaxLength(100);
             entity.Property(x => x.Description).HasMaxLength(500);
             entity.HasIndex(x => x.OccupancyId, "FinalMeterInvoice").IsUnique().HasDatabaseName("IX_Invoices_OccupancyId_FinalMeter").HasFilter("\"IsFinalMeterReading\" = TRUE");
@@ -113,6 +133,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.Period).HasMaxLength(7);
             entity.Property(x => x.TenantName).HasMaxLength(160);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.LifecycleState).HasConversion<string>().HasMaxLength(20)
+                .HasDefaultValue(InvoiceLifecycleState.Issued).HasSentinel(InvoiceLifecycleState.Issued);
+            entity.Property(x => x.Version).IsConcurrencyToken();
             entity.Property(x => x.PreviousReading).HasPrecision(18, 3);
             entity.Property(x => x.CurrentReading).HasPrecision(18, 3);
             entity.Property(x => x.Consumption).HasPrecision(18, 3);
@@ -122,6 +145,23 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.ServiceAmount).HasPrecision(18, 2);
             entity.Property(x => x.Total).HasPrecision(18, 2);
             entity.Property(x => x.Paid).HasPrecision(18, 2);
+            entity.Property(x => x.MonthlyRentRate).HasPrecision(18, 2);
+            entity.Property(x => x.ElectricityRate).HasPrecision(18, 2);
+            entity.Property(x => x.WaterRate).HasPrecision(18, 2);
+            entity.Property(x => x.ServiceRate).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<InvoiceRevision>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.InvoiceId, x.RequestId }).IsUnique();
+            entity.HasIndex(x => new { x.InvoiceId, x.Revision }).IsUnique();
+            entity.HasOne<Invoice>().WithMany().HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(x => x.RequestFingerprint).HasMaxLength(64);
+            entity.Property(x => x.Reason).HasMaxLength(1000);
+            entity.Property(x => x.ActorName).HasMaxLength(160);
+            entity.Property(x => x.BeforeJson).HasColumnType("text");
+            entity.Property(x => x.AfterJson).HasColumnType("text");
         });
 
         modelBuilder.Entity<PaymentReceipt>(entity =>

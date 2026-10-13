@@ -53,8 +53,10 @@ builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<PayOsService>();
 builder.Services.AddScoped<PaymentWebhookService>();
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddHostedService<InvoiceSweepService>();
-builder.Services.AddHostedService<PaymentReconciliationHostedService>();
+if (!bool.TryParse(builder.Configuration["EnableInvoiceSweep"], out var enableInvoiceSweep) || enableInvoiceSweep)
+    builder.Services.AddHostedService<InvoiceSweepService>();
+if (!bool.TryParse(builder.Configuration["EnablePaymentReconciliation"], out var enablePaymentReconciliation) || enablePaymentReconciliation)
+    builder.Services.AddHostedService<PaymentReconciliationHostedService>();
 builder.Services.AddHttpClient("payOS", client => client.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options =>
 {
@@ -146,6 +148,7 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
 app.MapAdminEndpoints();
 app.MapOwnerManagementEndpoints();
+app.MapReportsEndpoints();
 app.MapBillingEndpoints();
 app.MapDepositEndpoints();
 app.MapMoveoutEndpoints();

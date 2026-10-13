@@ -1,8 +1,9 @@
 import { t } from '../i18n/runtime';
 import { useRef } from 'react';
-import { App, Button, Form, Input, InputNumber, Select, Typography } from 'antd';
+import { App, Button, Form, Input, Select, Typography } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, formatVnd, periodLabel, type Invoice } from '../api';
+import MoneyInput from './MoneyInput';
 
 interface Values { amount: number; kind: 'Refund' | 'Deduction'; reason: string; targetInvoiceId?: string; }
 
@@ -13,12 +14,12 @@ export default function DepositLedger({ invoice }: { invoice: Invoice }) {
   const kind = Form.useWatch('kind', form);
   const keys = useRef(new Map<string, string>());
   const targetsQuery = useQuery({ queryKey: ['invoices', 'deposit-targets', invoice.occupancyId], queryFn: () => api.invoices.list() });
-  const targets = (targetsQuery.data || []).filter(x => x.kind !== 'Deposit' && x.occupancyId === invoice.occupancyId && x.outstanding > 0);
+  const targets = (targetsQuery.data || []).filter(x => x.kind !== 'Deposit' && x.lifecycleState !== 'Draft' && x.occupancyId === invoice.occupancyId && x.outstanding > 0);
   const mutation = useMutation({
     mutationFn: (values: Values) => {
       const key = JSON.stringify(values);
       if (!keys.current.has(key)) keys.current.set(key, crypto.randomUUID());
-      return api.invoices.settleDeposit(invoice.id, { ...values, idempotencyKey: keys.current.get(key)! });
+      return api.invoices.settleDeposit(invoice.id, { ...values, idempotencyKey: keys.current.get(key)!, expectedVersion: invoice.version, targetExpectedVersion: values.targetInvoiceId ? targets.find(target => target.id === values.targetInvoiceId)?.version : undefined });
     },
     onSuccess: async () => {
       form.resetFields(); keys.current.clear();
@@ -43,7 +44,7 @@ export default function DepositLedger({ invoice }: { invoice: Invoice }) {
       <Form.Item label={t("Cách quyết toán")} name="kind" rules={[{ required: true }]}><Select options={[
         { value: 'Refund', label: t("Ghi nhận đã hoàn cọc cho khách") }, { value: 'Deduction', label: t("Khấu trừ cọc") }]} /></Form.Item>
       <Form.Item label={t("Số tiền")} name="amount" rules={[{ required: true, type: 'number', min: 1, max: invoice.depositHeld }]}>
-        <InputNumber min={1} max={invoice.depositHeld} precision={0} addonAfter={t("đ")} style={{ width: '100%' }} />
+        <MoneyInput min={1} max={invoice.depositHeld} precision={0} addonAfter={t("đ")} style={{ width: '100%' }} />
       </Form.Item>
       {kind === 'Deduction' && <Form.Item label={t("Trừ vào hóa đơn còn nợ (nếu có)")} name="targetInvoiceId" extra={t("Để trống nếu khấu trừ cho hư hỏng hoặc chi phí khác.")}>
         <Select allowClear loading={targetsQuery.isPending} options={targets.map(x => ({ value: x.id, label: t("{0} · Còn nợ {1}", [x.kind === 'Supplemental' ? t("Bổ sung") : periodLabel(x.period), formatVnd(x.outstanding)]) }))} />

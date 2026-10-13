@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RoomRental.Api.Domain;
@@ -17,6 +18,8 @@ public static class DatabaseInitializer
         await db.Database.EnsureCreatedAsync();
         await UpgradeDepositSchemaAsync(db);
         await UpgradePayOsAttemptCheckoutSchemaAsync(db);
+        await UpgradeBillingSchemaAsync(db);
+        await UpgradeMoveoutCompletionSchemaAsync(db);
         // Additive upgrade for existing MVP databases: keep settings and financial data intact.
         const string webhookTableSql = """
             CREATE TABLE IF NOT EXISTS "PaymentWebhookRegistrations" (
@@ -138,7 +141,7 @@ public static class DatabaseInitializer
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_DepositSettlements_InvoiceId_IdempotencyKey"
                 ON "DepositSettlements" ("InvoiceId", "IdempotencyKey");
             DROP INDEX IF EXISTS "IX_Invoices_RoomId_Period";
-            CREATE UNIQUE INDEX "IX_Invoices_RoomId_Period" ON "Invoices" ("RoomId", "Period") WHERE "Kind" = 'Monthly';
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_Invoices_OccupancyId_Period" ON "Invoices" ("OccupancyId", "Period") WHERE "Kind" = 'Monthly';
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_Invoices_OccupancyId_Deposit" ON "Invoices" ("OccupancyId") WHERE "Kind" = 'Deposit';
             """;
         await db.Database.ExecuteSqlRawAsync(settlementSql.Replace("__GUID__", db.Database.IsSqlite() ? "TEXT" : "uuid")
@@ -207,6 +210,184 @@ public static class DatabaseInitializer
             await db.Database.CloseConnectionAsync();
         }
     }
+
+    private static async Task UpgradeBillingSchemaAsync(AppDbContext db)
+    {
+        await db.Database.OpenConnectionAsync();
+        try
+        {
+            var sqlite = db.Database.IsSqlite();
+            var tables = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
+            {
+                ["Buildings"] = await ReadColumnNamesAsync(db, "Buildings"),
+                ["Rooms"] = await ReadColumnNamesAsync(db, "Rooms"),
+                ["Readings"] = await ReadColumnNamesAsync(db, "Readings"),
+                ["Invoices"] = await ReadColumnNamesAsync(db, "Invoices")
+            };
+            var idType = sqlite ? "TEXT" : "uuid";
+            var moneyType = sqlite ? "TEXT" : "numeric(18,2)";
+            var meterType = sqlite ? "TEXT" : "numeric(18,3)";
+            var boolType = sqlite ? "INTEGER" : "boolean";
+            var dateType = sqlite ? "TEXT" : "date";
+            var offsetType = sqlite ? "INTEGER" : "timestamp with time zone";
+            var zeroGuid = Guid.Empty;
+
+            await using var transaction = await db.Database.BeginTransactionAsync();
+            await AddColumnIfMissingAsync(db, tables["Buildings"], "Buildings", "ArchivedAt", $"{offsetType} NULL");
+            await AddColumnIfMissingAsync(db, tables["Buildings"], "Buildings", "ArchivedBy", $"{idType} NULL");
+            await AddColumnIfMissingAsync(db, tables["Buildings"], "Buildings", "ArchiveBatchId", $"{idType} NULL");
+            await AddColumnIfMissingAsync(db, tables["Rooms"], "Rooms", "ArchivedAt", $"{offsetType} NULL");
+            await AddColumnIfMissingAsync(db, tables["Rooms"], "Rooms", "ArchivedBy", $"{idType} NULL");
+            await AddColumnIfMissingAsync(db, tables["Rooms"], "Rooms", "ArchiveBatchId", $"{idType} NULL");
+
+            await AddColumnIfMissingAsync(db, tables["Invoices"], "Invoices", "BuildingId", sqlite
+                ? $"TEXT NOT NULL DEFAULT '{zeroGuid:D}'"
+                : $"uuid NOT NULL DEFAULT '{zeroGuid:D}'::uuid");
+            await AddColumnIfMissingAsync(db, tables["Invoices"], "Invoices", "LifecycleState", "TEXT NOT NULL DEFAULT 'Issued'");
+            await AddColumnIfMissingAsync(db, tables["Invoices"], "Invoices", "Version", sqlite
+                ? "INTEGER NOT NULL DEFAULT 1"
+                : "bigint NOT NULL DEFAULT 1");
+            foreach (var (name, type) in new (string, string)[]
+            {
+                ("MonthlyRentRate", moneyType), ("ElectricityRate", moneyType), ("WaterRate", moneyType),
+                ("WaterPerPerson", boolType), ("ServiceRate", moneyType), ("BillingStartDate", dateType),
+                ("BillingEndDate", dateType), ("BillableDays", "integer"), ("MonthDays", "integer")
+            })
+                await AddColumnIfMissingAsync(db, tables["Invoices"], "Invoices", name, $"{type} NULL");
+
+            foreach (var (name, type) in new (string, string)[]
+            {
+                ("MonthlyRentRate", moneyType), ("ElectricityRate", moneyType), ("WaterRate", moneyType),
+                ("WaterPerPerson", boolType), ("ServiceRate", moneyType), ("BillingStartDate", dateType),
+                ("BillingEndDate", dateType), ("BillableDays", "integer"), ("MonthDays", "integer")
+            })
+                await AddColumnIfMissingAsync(db, tables["Readings"], "Readings", name, $"{type} NULL");
+
+            await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"Invoices\" SET \"BuildingId\" = (SELECT \"BuildingId\" FROM \"Rooms\" WHERE \"Rooms\".\"Id\" = \"Invoices\".\"RoomId\") WHERE \"BuildingId\" = {zeroGuid}");
+
+            var revisionId = sqlite ? "TEXT" : "uuid";
+            var revisionTime = sqlite ? "INTEGER" : "timestamp with time zone";
+            await ExecuteTrustedSchemaSqlAsync(db, $"""
+                CREATE TABLE IF NOT EXISTS "InvoiceRevisions" (
+                    "Id" {revisionId} PRIMARY KEY,
+                    "InvoiceId" {revisionId} NOT NULL,
+                    "Revision" integer NOT NULL,
+                    "RequestId" {revisionId} NOT NULL,
+                    "RequestFingerprint" TEXT NOT NULL,
+                    "Reason" TEXT NOT NULL,
+                    "ActorId" {revisionId} NOT NULL,
+                    "ActorName" TEXT NOT NULL,
+                    "CreatedAt" {revisionTime} NOT NULL,
+                    "Version" bigint NOT NULL,
+                    "BeforeJson" TEXT NOT NULL,
+                    "AfterJson" TEXT NOT NULL,
+                    FOREIGN KEY ("InvoiceId") REFERENCES "Invoices" ("Id") ON DELETE CASCADE
+                );
+                """);
+
+            await db.Database.ExecuteSqlRawAsync("DROP INDEX IF EXISTS \"IX_Invoices_RoomId_Period\"");
+            await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Invoices_OccupancyId_Period\" ON \"Invoices\" (\"OccupancyId\", \"Period\") WHERE \"Kind\" = 'Monthly'");
+            await db.Database.ExecuteSqlRawAsync("DROP INDEX IF EXISTS \"IX_Readings_RoomId_Period\"");
+            await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS \"IX_Readings_RoomId_Period\" ON \"Readings\" (\"RoomId\", \"Period\")");
+            await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Readings_OccupancyId_Period\" ON \"Readings\" (\"OccupancyId\", \"Period\")");
+            await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS \"IX_Invoices_BuildingId\" ON \"Invoices\" (\"BuildingId\")");
+            await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS \"IX_Buildings_ArchivedAt\" ON \"Buildings\" (\"ArchivedAt\")");
+            await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS \"IX_Rooms_ArchivedAt\" ON \"Rooms\" (\"ArchivedAt\")");
+            await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_InvoiceRevisions_InvoiceId_RequestId\" ON \"InvoiceRevisions\" (\"InvoiceId\", \"RequestId\")");
+            await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_InvoiceRevisions_InvoiceId_Revision\" ON \"InvoiceRevisions\" (\"InvoiceId\", \"Revision\")");
+            await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS \"SchemaUpgrades\" (\"Key\" TEXT PRIMARY KEY, \"AppliedAt\" TEXT NOT NULL)");
+            var appliedAt = DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+            if (sqlite)
+                await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO \"SchemaUpgrades\" (\"Key\", \"AppliedAt\") VALUES ({0}, {1})", "billing-upgrade-v1", appliedAt);
+            else
+                await db.Database.ExecuteSqlRawAsync("INSERT INTO \"SchemaUpgrades\" (\"Key\", \"AppliedAt\") VALUES ({0}, {1}) ON CONFLICT (\"Key\") DO NOTHING", "billing-upgrade-v1", appliedAt);
+            await transaction.CommitAsync();
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
+        }
+    }
+
+    private static async Task UpgradeMoveoutCompletionSchemaAsync(AppDbContext db)
+    {
+        var sqlite = db.Database.IsSqlite();
+        var idType = sqlite ? "TEXT" : "uuid";
+        var moneyType = sqlite ? "TEXT" : "numeric(18,2)";
+        var timeType = sqlite ? "INTEGER" : "timestamp with time zone";
+        var dateType = sqlite ? "TEXT" : "date";
+        await db.Database.OpenConnectionAsync();
+        try
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync();
+            await ExecuteTrustedSchemaSqlAsync(db, $"""
+                CREATE TABLE IF NOT EXISTS "MoveoutCompletions" (
+                    "Id" {idType} PRIMARY KEY,
+                    "RequestId" {idType} NOT NULL,
+                    "OwnerId" {idType} NOT NULL,
+                    "RoomId" {idType} NOT NULL,
+                    "OccupancyId" {idType} NOT NULL,
+                    "ActorId" {idType} NOT NULL,
+                    "RequestFingerprint" TEXT NOT NULL,
+                    "HeldBeforeSettlement" {moneyType} NOT NULL,
+                    "RefundAmount" {moneyType} NOT NULL,
+                    "RetainedAmount" {moneyType} NOT NULL,
+                    "EndDate" {dateType} NOT NULL,
+                    "CompletedAt" {timeType} NOT NULL
+                );
+                """);
+            await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_MoveoutCompletions_RequestId\" ON \"MoveoutCompletions\" (\"RequestId\")");
+            await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_MoveoutCompletions_OccupancyId\" ON \"MoveoutCompletions\" (\"OccupancyId\")");
+            await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS \"IX_MoveoutCompletions_OwnerId_CompletedAt\" ON \"MoveoutCompletions\" (\"OwnerId\", \"CompletedAt\")");
+            await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS \"SchemaUpgrades\" (\"Key\" TEXT PRIMARY KEY, \"AppliedAt\" TEXT NOT NULL)");
+            var appliedAt = DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+            if (sqlite)
+                await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO \"SchemaUpgrades\" (\"Key\", \"AppliedAt\") VALUES ({0}, {1})", "moveout-refund-v1", appliedAt);
+            else
+                await db.Database.ExecuteSqlRawAsync("INSERT INTO \"SchemaUpgrades\" (\"Key\", \"AppliedAt\") VALUES ({0}, {1}) ON CONFLICT (\"Key\") DO NOTHING", "moveout-refund-v1", appliedAt);
+            await transaction.CommitAsync();
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
+        }
+    }
+
+    private static async Task<HashSet<string>> ReadColumnNamesAsync(AppDbContext db, string table)
+    {
+        using var command = db.Database.GetDbConnection().CreateCommand();
+        if (db.Database.IsSqlite())
+        {
+            command.CommandText = $"PRAGMA table_info('{table}')";
+            using var reader = await command.ExecuteReaderAsync();
+            var columns = new HashSet<string>(StringComparer.Ordinal);
+            while (await reader.ReadAsync()) columns.Add(reader.GetString(1));
+            return columns;
+        }
+        command.CommandText = "SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=@table";
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "table";
+        parameter.Value = table;
+        command.Parameters.Add(parameter);
+        using var pgReader = await command.ExecuteReaderAsync();
+        var pgColumns = new HashSet<string>(StringComparer.Ordinal);
+        while (await pgReader.ReadAsync()) pgColumns.Add(pgReader.GetString(0));
+        return pgColumns;
+    }
+
+    private static async Task AddColumnIfMissingAsync(AppDbContext db, HashSet<string> columns, string table, string column, string definition)
+    {
+        if (columns.Contains(column)) return;
+        await ExecuteTrustedSchemaSqlAsync(db, $"ALTER TABLE \"{table}\" ADD COLUMN \"{column}\" {definition}");
+        columns.Add(column);
+    }
+
+    // Callers pass only fixed table/column names and provider-specific SQL type tokens
+    // selected by this initializer. Identifiers and type declarations cannot be bound
+    // as SQL parameters, so keep this suppression scoped to the schema DDL helper.
+    [SuppressMessage("Usage", "EF1002:Risk of vulnerability to SQL injection.",
+        Justification = "Schema DDL uses only hard-coded identifiers and provider-selected type tokens.")]
+    private static Task<int> ExecuteTrustedSchemaSqlAsync(AppDbContext db, string sql) => db.Database.ExecuteSqlRawAsync(sql);
 
     private static async Task SeedDevelopmentAsync(AppDbContext db, TenantTokenService tokenService)
     {

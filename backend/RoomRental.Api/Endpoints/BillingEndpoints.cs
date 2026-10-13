@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RoomRental.Api.Data;
 using RoomRental.Api.Domain;
@@ -20,60 +23,71 @@ public static class BillingEndpoints
                               join building in db.Buildings.AsNoTracking() on room.BuildingId equals building.Id
                               where building.OwnerId == ownerId && reading.Period == requestedPeriod
                               orderby building.Name, room.Name
-                              select new ReadingDto(reading.Id, room.Id, room.Name, building.Name, reading.Period,
-                                  reading.PreviousReading, reading.CurrentReading, reading.Consumption, reading.RecordedAt))
+                              select new { Reading = reading, Room = room, Building = building })
                 .ToListAsync(cancellationToken);
-            return Results.Ok(rows);
+            var occupancyIds = rows.Select(row => row.Reading.OccupancyId).Distinct().ToList();
+            var invoices = await db.Invoices.AsNoTracking().Include(x => x.DepositSettlements)
+                .Where(row => occupancyIds.Contains(row.OccupancyId) && row.Period == requestedPeriod && row.Kind == "Monthly")
+                .ToDictionaryAsync(row => row.OccupancyId, cancellationToken);
+            var result = rows.Select(row =>
+            {
+                invoices.TryGetValue(row.Reading.OccupancyId, out var invoice);
+                return new ReadingDto(row.Reading.Id, row.Room.Id, row.Reading.OccupancyId, row.Room.Name, row.Building.Name,
+                    row.Reading.Period, row.Reading.PreviousReading, row.Reading.CurrentReading, row.Reading.Consumption,
+                    row.Reading.RecordedAt, invoice is null ? null : InvoiceService.ToDto(invoice), invoice?.LifecycleState.ToString() ?? "Issued");
+            }).ToList();
+            return Results.Ok(result);
+        });
+
+        routes.MapPost("/readings/preview", async (ReadingRequest request, HttpContext context, AppDbContext db, CancellationToken ct) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            var work = await PrepareReadingAsync(db, ownerId, request, ct);
+            var rent = ApiSupport.RoundVnd(work.Room.Rent);
+            var electricity = ApiSupport.RoundVnd(work.Consumption * work.Room.ElectricityRate);
+            var water = ApiSupport.RoundVnd(work.Room.WaterPerPerson ? work.Room.WaterFee * work.Occupancy.People : work.Room.WaterFee);
+            var service = ApiSupport.RoundVnd(work.Room.ServiceFee);
+            var total = InvoiceService.ValidateTotal(rent, electricity, water, service);
+            return Results.Ok(new ReadingPreviewDto(work.Room.Id, work.Occupancy.Id, work.Period, work.BillingStartDate,
+                work.BillingEndDate, work.BillableDays, work.MonthDays, rent, work.PreviousReading, work.CurrentReading,
+                work.Consumption, work.Room.ElectricityRate, electricity, work.Room.WaterFee, work.Room.WaterPerPerson,
+                water, work.Room.ServiceFee, service, total));
         });
 
         routes.MapPost("/readings", async (ReadingRequest request, HttpContext context, AppDbContext db, InvoiceService invoiceService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
-            var period = ApiSupport.NormalizePeriod(request.Period);
-            if (request.CurrentReading < 0 || request.CurrentReading > 1_000_000_000)
-                throw new ApiException(StatusCodes.Status400BadRequest, "Chỉ số điện phải là số không âm trong giới hạn cho phép.");
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
-            var (room, building) = await OwnerManagementEndpoints.FindRoomAsync(db, ownerId, request.RoomId, cancellationToken);
-            var occupancy = await db.Occupancies.SingleOrDefaultAsync(row => row.RoomId == room.Id && row.IsActive, cancellationToken)
-                ?? throw new ApiException(StatusCodes.Status409Conflict, "Cần có người thuê đang ở để ghi chỉ số điện.");
-            if (await db.Invoices.AnyAsync(x => x.OccupancyId == occupancy.Id && x.IsFinalMeterReading, cancellationToken))
-                throw new ApiException(409, "Đã chốt điện trả phòng; không thể phát hành thêm hóa đơn tháng cho lượt thuê này.");
-            var startPeriod = occupancy.StartDate.ToString("yyyy-MM");
-            var currentPeriod = OwnerManagementEndpoints.CurrentVietnamPeriod();
-            if (string.CompareOrdinal(period, startPeriod) < 0)
-                throw new ApiException(StatusCodes.Status400BadRequest, "Tháng ghi chỉ số không thể trước tháng bắt đầu thuê.");
-            if (string.CompareOrdinal(period, currentPeriod) > 0)
-                throw new ApiException(StatusCodes.Status400BadRequest, "Không thể nhập chỉ số cho tháng trong tương lai.");
-            if (await db.Invoices.AnyAsync(row => row.RoomId == room.Id && row.Period == period && row.Kind == "Monthly", cancellationToken))
-                throw new ApiException(StatusCodes.Status409Conflict, "Hóa đơn của phòng trong tháng này đã được phát hành.");
-
-            var priorReadings = await db.Readings.Where(row => row.RoomId == room.Id)
-                .OrderByDescending(row => row.Period).ToListAsync(cancellationToken);
-            if (priorReadings.Any(row => string.CompareOrdinal(row.Period, period) == 0))
-                throw new ApiException(StatusCodes.Status409Conflict, "Phòng đã có chỉ số điện cho tháng này.");
-            var newest = priorReadings.FirstOrDefault();
-            if (newest is not null && string.CompareOrdinal(newest.Period, period) > 0)
-                throw new ApiException(StatusCodes.Status409Conflict, "Vui lòng nhập chỉ số theo thứ tự tháng.");
-            var previousReading = Math.Max(newest?.CurrentReading ?? room.InitialReading, await MoveoutEndpoints.MeterBaselineAsync(db, room, cancellationToken));
-            if (request.CurrentReading < previousReading)
-                throw new ApiException(StatusCodes.Status400BadRequest, $"Chỉ số mới không thể thấp hơn chỉ số trước ({previousReading}).");
-
+            var work = await PrepareReadingAsync(db, ownerId, request, cancellationToken);
             var reading = new MonthlyReading
             {
-                RoomId = room.Id,
-                OccupancyId = occupancy.Id,
-                Period = period,
-                PreviousReading = previousReading,
-                CurrentReading = request.CurrentReading,
-                Consumption = request.CurrentReading - previousReading,
+                RoomId = work.Room.Id,
+                OccupancyId = work.Occupancy.Id,
+                Period = work.Period,
+                PreviousReading = work.PreviousReading,
+                CurrentReading = work.CurrentReading,
+                Consumption = work.Consumption,
+                MonthlyRentRate = work.Room.Rent,
+                ElectricityRate = work.Room.ElectricityRate,
+                WaterRate = work.Room.WaterFee,
+                WaterPerPerson = work.Room.WaterPerPerson,
+                ServiceRate = work.Room.ServiceFee,
+                BillingStartDate = work.BillingStartDate,
+                BillingEndDate = work.BillingEndDate,
+                BillableDays = work.BillableDays,
+                MonthDays = work.MonthDays,
                 RecordedAt = DateTimeOffset.UtcNow
             };
             db.Readings.Add(reading);
             await db.SaveChangesAsync(cancellationToken);
-            await invoiceService.GenerateForOwnerAsync(ownerId, period, cancellationToken);
+            Invoice invoice;
+            await invoiceService.GenerateForOwnerAsync(ownerId, work.Period, cancellationToken);
+            invoice = await db.Invoices.Include(x => x.DepositSettlements)
+                .SingleAsync(x => x.OccupancyId == work.Occupancy.Id && x.Period == work.Period && x.Kind == "Monthly", cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return Results.Created($"/api/readings?period={period}", new ReadingDto(reading.Id, room.Id, room.Name, building.Name,
-                reading.Period, reading.PreviousReading, reading.CurrentReading, reading.Consumption, reading.RecordedAt));
+            return Results.Created($"/api/readings?period={work.Period}", new ReadingDto(reading.Id, work.Room.Id, work.Occupancy.Id,
+                work.Room.Name, work.Building.Name, reading.Period, reading.PreviousReading, reading.CurrentReading,
+                reading.Consumption, reading.RecordedAt, InvoiceService.ToDto(invoice), invoice.LifecycleState.ToString()));
         });
 
         routes.MapGet("/invoices", async (string? period, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
@@ -87,7 +101,10 @@ public static class BillingEndpoints
             }
             var rows = await query.OrderByDescending(row => row.Period).ThenBy(row => row.BuildingName).ThenBy(row => row.RoomName)
                 .ToListAsync(cancellationToken);
-            return Results.Ok(rows.Select(InvoiceService.ToDto).ToList());
+            var pendingIds = await db.PayOsAttempts.AsNoTracking().Where(x => x.OwnerId == ownerId && x.Status == PaymentAttemptStatus.Pending)
+                .Select(x => x.InvoiceId).ToListAsync(cancellationToken);
+            var pending = pendingIds.ToHashSet();
+            return Results.Ok(rows.Select(row => InvoiceService.ToDto(row, pending.Contains(row.Id))).ToList());
         });
 
         routes.MapPost("/rooms/{id:guid}/supplemental-invoices", async (Guid id, SupplementalInvoiceRequest request,
@@ -113,7 +130,7 @@ public static class BillingEndpoints
                 ?? throw new ApiException(StatusCodes.Status409Conflict, "Người thuê đã thay đổi hoặc phòng chưa có người thuê. Vui lòng tải lại danh sách.");
             var invoice = new Invoice
             {
-                Id = request.RequestId, OwnerId = ownerId, RoomId = id, OccupancyId = occupancy.Id,
+                Id = request.RequestId, OwnerId = ownerId, RoomId = id, BuildingId = building.Id, OccupancyId = occupancy.Id,
                 Kind = "Supplemental", Description = description, RoomName = room.Name, BuildingName = building.Name,
                 TenantName = occupancy.TenantName, Period = OwnerManagementEndpoints.CurrentVietnamPeriod(),
                 Total = request.Amount, DueDate = request.DueDate
@@ -134,9 +151,198 @@ public static class BillingEndpoints
 
         routes.MapGet("/invoices/{id:guid}", async (Guid id, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
         {
-            var invoice = await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().SingleOrDefaultAsync(row => row.Id == id && row.OwnerId == ApiSupport.OwnerId(context), cancellationToken)
+            var ownerId = ApiSupport.OwnerId(context);
+            var invoice = await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().SingleOrDefaultAsync(row => row.Id == id && row.OwnerId == ownerId, cancellationToken)
                 ?? throw new ApiException(StatusCodes.Status404NotFound, "Invoice was not found.");
+            var pending = await db.PayOsAttempts.AsNoTracking().AnyAsync(x => x.OwnerId == ownerId && x.InvoiceId == id && x.Status == PaymentAttemptStatus.Pending, cancellationToken);
+            var meterPolicy = await MeterCorrectionPolicyAsync(db, invoice, cancellationToken);
+            return Results.Ok(InvoiceService.ToDto(invoice, pending, meterPolicy.Allowed, meterPolicy.Reason));
+        });
+
+        routes.MapPost("/invoices/{id:guid}/publish", async (Guid id, PublishInvoiceRequest request, HttpContext context, AppDbContext db, CancellationToken ct) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            if (request.RequestId == Guid.Empty || request.ExpectedVersion < 1)
+                throw new ApiException(400, "Mã yêu cầu và phiên bản hóa đơn hợp lệ là bắt buộc.");
+            var amounts = new[] { request.Rent, request.ElectricityAmount, request.WaterAmount, request.ServiceAmount };
+            var total = InvoiceService.ValidateTotal(amounts);
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            var invoice = await db.Invoices.Include(x => x.DepositSettlements).SingleOrDefaultAsync(x => x.Id == id && x.OwnerId == ownerId, ct)
+                ?? throw new ApiException(404, "Invoice was not found.");
+            var reason = string.IsNullOrWhiteSpace(request.Reason) ? "Owner published the partial-month draft." : request.Reason.Trim();
+            if (reason.Length > 1000) throw new ApiException(400, "Reason must be 1,000 characters or fewer.");
+            var fingerprint = Fingerprint(new { request.ExpectedVersion, request.Rent, request.ElectricityAmount, request.WaterAmount, request.ServiceAmount, reason });
+            var priorRevision = await db.InvoiceRevisions.SingleOrDefaultAsync(x => x.InvoiceId == id && x.RequestId == request.RequestId, ct);
+            if (priorRevision is not null)
+            {
+                if (priorRevision.RequestFingerprint != fingerprint) throw new ApiException(409, "This request ID was already used for different invoice changes.");
+                await transaction.CommitAsync(ct);
+                return Results.Ok(InvoiceService.ToDto(invoice));
+            }
+            if (invoice.LifecycleState != InvoiceLifecycleState.Draft || invoice.Kind != "Monthly")
+                throw new ApiException(409, "Only a monthly draft can be published.");
+            if (invoice.Version != request.ExpectedVersion) throw new ApiException(409, "Invoice changed. Refresh it and retry.");
+            if (invoice.Paid != 0 || await db.Receipts.AnyAsync(x => x.InvoiceId == id, ct))
+                throw new ApiException(409, "A draft with a recorded payment cannot be edited or published.");
+            if (await db.PayOsAttempts.AnyAsync(x => x.InvoiceId == id && x.Status == PaymentAttemptStatus.Pending, ct))
+                throw new ApiException(409, "Reconcile the pending payOS attempt before publishing this invoice.");
+
+            var before = SerializeSnapshot(invoice);
+            invoice.Rent = request.Rent;
+            invoice.ElectricityAmount = request.ElectricityAmount;
+            invoice.WaterAmount = request.WaterAmount;
+            invoice.ServiceAmount = request.ServiceAmount;
+            invoice.Total = total;
+            invoice.LifecycleState = InvoiceLifecycleState.Issued;
+            invoice.Version++;
+            InvoiceService.RecalculateStatus(invoice);
+            var after = SerializeSnapshot(invoice);
+            await AddRevisionAsync(db, invoice, request.RequestId, fingerprint, reason, ApiSupport.UserId(context), before, after, ct);
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
             return Results.Ok(InvoiceService.ToDto(invoice));
+        });
+
+        routes.MapGet("/invoices/{id:guid}/corrections", async (Guid id, HttpContext context, AppDbContext db, CancellationToken ct) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            var invoice = await db.Invoices.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.OwnerId == ownerId, ct)
+                ?? throw new ApiException(404, "Invoice was not found.");
+            var revisions = await (from revision in db.InvoiceRevisions.AsNoTracking()
+                                   join actor in db.Users.AsNoTracking() on revision.ActorId equals actor.Id
+                                   where revision.InvoiceId == id
+                                   orderby revision.Revision
+                                   select new InvoiceCorrectionDto(revision.Id, revision.Revision, revision.RequestId, revision.Reason,
+                                       revision.ActorId, actor.Name, revision.CreatedAt, revision.Version, revision.BeforeJson, revision.AfterJson))
+                .ToListAsync(ct);
+            var pending = await db.PayOsAttempts.AsNoTracking().AnyAsync(x => x.OwnerId == ownerId && x.InvoiceId == id && x.Status == PaymentAttemptStatus.Pending, ct);
+            var meterPolicy = await MeterCorrectionPolicyAsync(db, invoice, ct);
+            return Results.Ok(new { invoiceId = id, version = invoice.Version, hasPendingPayment = pending,
+                canCorrectMeter = meterPolicy.Allowed, meterCorrectionBlockedReason = meterPolicy.Reason, items = revisions });
+        });
+
+        routes.MapPost("/invoices/{id:guid}/corrections", async (Guid id, InvoiceCorrectionRequest request, HttpContext context, AppDbContext db, CancellationToken ct) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            var actorId = ApiSupport.UserId(context);
+            var reason = request.Reason?.Trim();
+            if (request.RequestId == Guid.Empty || request.ExpectedVersion < 1 || string.IsNullOrWhiteSpace(reason) || reason.Length > 1000)
+                throw new ApiException(400, "Mã yêu cầu, phiên bản và lý do hợp lệ là bắt buộc.");
+            if (request.Description is { Length: > 500 }) throw new ApiException(400, "Description must be 500 characters or fewer.");
+            if (request.CurrentReading is < 0 or > 1_000_000_000 || (request.CurrentReading is decimal meter && decimal.Round(meter, 3) != meter))
+                throw new ApiException(400, "Chỉ số mới phải nằm trong giới hạn và có tối đa ba chữ số thập phân.");
+
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            var invoice = await db.Invoices.Include(x => x.DepositSettlements).SingleOrDefaultAsync(x => x.Id == id && x.OwnerId == ownerId, ct)
+                ?? throw new ApiException(404, "Invoice was not found.");
+            var fingerprint = Fingerprint(new { request.ExpectedVersion, Reason = reason, request.Rent, request.ElectricityAmount,
+                request.WaterAmount, request.ServiceAmount, request.CurrentReading, request.DueDate, request.Description, request.Amount });
+            var prior = await db.InvoiceRevisions.SingleOrDefaultAsync(x => x.InvoiceId == id && x.RequestId == request.RequestId, ct);
+            if (prior is not null)
+            {
+                if (prior.RequestFingerprint != fingerprint) throw new ApiException(409, "This request ID was already used for different invoice changes.");
+                await transaction.CommitAsync(ct);
+                return Results.Ok(new { invoice = InvoiceService.ToDto(invoice), correction = ToCorrectionDto(prior) });
+            }
+            if (invoice.Version != request.ExpectedVersion) throw new ApiException(409, "Invoice changed. Refresh it and retry.");
+            if (invoice.LifecycleState != InvoiceLifecycleState.Issued || invoice.Paid != 0 || await db.Receipts.AnyAsync(x => x.InvoiceId == id, ct))
+                throw new ApiException(409, "Only an issued invoice with no recorded receipts can be corrected.");
+            if (await db.PayOsAttempts.AnyAsync(x => x.OwnerId == ownerId && x.InvoiceId == id && x.Status == PaymentAttemptStatus.Pending, ct))
+                throw new ApiException(409, "Reconcile the pending payOS attempt before correcting this invoice.");
+            if (invoice.Kind == "Deposit" && invoice.DepositSettlements.Count != 0)
+                throw new ApiException(409, "A deposit invoice with settlement records cannot be corrected.");
+
+            var before = SerializeSnapshot(invoice);
+            var changed = false;
+            if (invoice.Kind == "Monthly")
+            {
+                if (request.Amount is not null) throw new ApiException(400, "Use monthly charge fields to correct a monthly invoice.");
+                var meterChanged = request.CurrentReading is not null;
+                MonthlyReading? reading = null;
+                if (meterChanged)
+                {
+                    var policy = await MeterCorrectionPolicyAsync(db, invoice, ct);
+                    if (!policy.Allowed) throw new ApiException(409, policy.Reason ?? "Meter correction is no longer allowed.");
+                    reading = await db.Readings.SingleOrDefaultAsync(x => x.OccupancyId == invoice.OccupancyId && x.Period == invoice.Period, ct)
+                        ?? throw new ApiException(409, "The source meter reading no longer exists.");
+                    if (request.CurrentReading < reading.PreviousReading)
+                        throw new ApiException(400, "Chỉ số mới không thể thấp hơn chỉ số trước.");
+                    reading.CurrentReading = request.CurrentReading is decimal currentReading
+                        ? currentReading
+                        : throw new ApiException(400, "Chỉ số mới là bắt buộc.");
+                    reading.Consumption = reading.CurrentReading - reading.PreviousReading;
+                    invoice.CurrentReading = reading.CurrentReading;
+                    invoice.Consumption = reading.Consumption;
+                    changed = true;
+                }
+                if (request.Rent is decimal rent) { invoice.Rent = ValidateCharge(rent); changed = true; }
+                if (request.ElectricityAmount is decimal electricity) { invoice.ElectricityAmount = ValidateCharge(electricity); changed = true; }
+                else if (meterChanged && invoice.ElectricityRate is decimal rate)
+                {
+                    invoice.ElectricityAmount = ApiSupport.RoundVnd(invoice.Consumption * rate);
+                    changed = true;
+                }
+                if (request.WaterAmount is decimal water) { invoice.WaterAmount = ValidateCharge(water); changed = true; }
+                if (request.ServiceAmount is decimal service) { invoice.ServiceAmount = ValidateCharge(service); changed = true; }
+                if (request.CurrentReading is not null && reading is not null) changed = true;
+                invoice.Total = InvoiceService.ValidateTotal(invoice.Rent, invoice.ElectricityAmount, invoice.WaterAmount, invoice.ServiceAmount);
+            }
+            else if (invoice.Kind == "Deposit")
+            {
+                if (request.Rent is not null || request.ElectricityAmount is not null || request.WaterAmount is not null || request.ServiceAmount is not null || request.CurrentReading is not null)
+                    throw new ApiException(400, "Use the amount field to correct a deposit invoice.");
+                if (request.Amount is decimal amount) { invoice.Total = ValidateCharge(amount); changed = true; }
+            }
+            else if (invoice.IsFinalMeterReading)
+            {
+                var overlappingMonthly = await db.Invoices.AsNoTracking().AnyAsync(x => x.OccupancyId == invoice.OccupancyId &&
+                    x.Period == invoice.Period && x.Kind == "Monthly" && x.Id != invoice.Id, ct);
+                if (overlappingMonthly && (request.Rent is > 0 || request.WaterAmount is > 0))
+                    throw new ApiException(409, "Không thể thêm tiền thuê hoặc tiền nước vì kỳ này đã có hóa đơn tháng.");
+                if (request.CurrentReading is decimal currentReading)
+                {
+                    var policy = await MeterCorrectionPolicyAsync(db, invoice, ct);
+                    if (!policy.Allowed) throw new ApiException(409, policy.Reason ?? "Meter correction is no longer allowed.");
+                    if (currentReading < invoice.PreviousReading) throw new ApiException(400, "Chỉ số mới không thể thấp hơn chỉ số trước.");
+                    invoice.CurrentReading = currentReading;
+                    invoice.Consumption = currentReading - invoice.PreviousReading;
+                    var occupancy = await db.Occupancies.SingleAsync(x => x.Id == invoice.OccupancyId, ct);
+                    if (!occupancy.IsActive)
+                    {
+                        // Completion copied this final anchor into the room baseline. Keep
+                        // that baseline synchronized when the latest final reading changes.
+                        var room = await db.Rooms.SingleAsync(x => x.Id == invoice.RoomId, ct);
+                        room.InitialReading = currentReading;
+                    }
+                    if (request.ElectricityAmount is null && invoice.ElectricityRate is decimal rate)
+                        invoice.ElectricityAmount = ApiSupport.RoundVnd(invoice.Consumption * rate);
+                    changed = true;
+                }
+                if (request.Rent is decimal rent) { invoice.Rent = ValidateCharge(rent); changed = true; }
+                if (request.ElectricityAmount is decimal electricity) { invoice.ElectricityAmount = ValidateCharge(electricity); changed = true; }
+                if (request.WaterAmount is decimal water) { invoice.WaterAmount = ValidateCharge(water); changed = true; }
+                if (request.ServiceAmount is decimal service) { invoice.ServiceAmount = ValidateCharge(service); changed = true; }
+                if (request.Amount is not null) throw new ApiException(400, "Use meter or charge fields to correct a final meter invoice.");
+                invoice.Total = InvoiceService.ValidateTotal(invoice.Rent, invoice.ElectricityAmount, invoice.WaterAmount, invoice.ServiceAmount);
+            }
+            else
+            {
+                if (request.Rent is not null || request.ElectricityAmount is not null || request.WaterAmount is not null || request.ServiceAmount is not null || request.CurrentReading is not null)
+                    throw new ApiException(400, "Use the amount field to correct this invoice.");
+                if (request.Amount is decimal amount) { invoice.Total = ValidateCharge(amount); changed = true; }
+            }
+            if (request.DueDate is DateOnly dueDate) { invoice.DueDate = dueDate; changed = true; }
+            if (request.Description is string description) { invoice.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(); changed = true; }
+            if (!changed) throw new ApiException(400, "Supply at least one invoice field to correct.");
+            invoice.Version++;
+            InvoiceService.RecalculateStatus(invoice);
+            var after = SerializeSnapshot(invoice);
+            var revision = await AddRevisionAsync(db, invoice, request.RequestId, fingerprint, reason, actorId, before, after, ct);
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            var policyAfter = await MeterCorrectionPolicyAsync(db, invoice, ct);
+            var pendingAfter = await db.PayOsAttempts.AsNoTracking().AnyAsync(x => x.InvoiceId == id && x.Status == PaymentAttemptStatus.Pending, ct);
+            return Results.Ok(new { invoice = InvoiceService.ToDto(invoice, pendingAfter, policyAfter.Allowed, policyAfter.Reason), correction = ToCorrectionDto(revision) });
         });
 
         routes.MapPost("/invoices/{id:guid}/reconcile", async (Guid id, HttpContext context, AppDbContext db, PayOsService payOsService, CancellationToken cancellationToken) =>
@@ -156,7 +362,7 @@ public static class BillingEndpoints
             if (string.IsNullOrWhiteSpace(idempotencyKey)) idempotencyKey = request.IdempotencyKey?.Trim();
             if (idempotencyKey is { Length: > 100 })
                 throw new ApiException(StatusCodes.Status400BadRequest, "Idempotency key must be 100 characters or fewer.");
-            var amount = ApiSupport.RoundVnd(request.Amount);
+            var amount = ValidateCharge(request.Amount);
             if (amount <= 0) throw new ApiException(StatusCodes.Status400BadRequest, "Receipt amount must be positive.");
             var note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
             if (note is { Length: > 500 }) throw new ApiException(StatusCodes.Status400BadRequest, "Receipt note must be 500 characters or fewer.");
@@ -179,10 +385,16 @@ public static class BillingEndpoints
                         amount = priorReceipt.Amount,
                         paid = invoice.Paid,
                         outstanding = Math.Max(0, invoice.Total - invoice.Paid),
-                        status = invoice.Status.ToString()
+                        status = invoice.Status.ToString(),
+                        version = invoice.Version
                     });
                 }
             }
+
+            if (invoice.LifecycleState != InvoiceLifecycleState.Issued)
+                throw new ApiException(409, "Draft invoices cannot receive payments. Publish the invoice first.");
+            if (request.ExpectedVersion is long expectedVersion && invoice.Version != expectedVersion)
+                throw new ApiException(409, "Invoice changed. Refresh it and retry the receipt.");
 
             var pendingAttempt = await db.PayOsAttempts.AnyAsync(row => row.InvoiceId == id && row.OwnerId == ownerId && row.Status == PaymentAttemptStatus.Pending, cancellationToken);
             if (pendingAttempt)
@@ -202,6 +414,7 @@ public static class BillingEndpoints
             };
             db.Receipts.Add(receipt);
             invoice.Paid += amount;
+            invoice.Version++;
             InvoiceService.RecalculateStatus(invoice);
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -212,8 +425,154 @@ public static class BillingEndpoints
                 amount = receipt.Amount,
                 paid = invoice.Paid,
                 outstanding = Math.Max(0, invoice.Total - invoice.Paid),
-                status = invoice.Status.ToString()
+                status = invoice.Status.ToString(),
+                version = invoice.Version
             });
         });
+    }
+
+    private sealed record ReadingWork(Room Room, Building Building, Occupancy Occupancy, string Period,
+        decimal PreviousReading, decimal CurrentReading, decimal Consumption, DateOnly BillingStartDate,
+        DateOnly BillingEndDate, int BillableDays, int MonthDays);
+
+    private static async Task<ReadingWork> PrepareReadingAsync(AppDbContext db, Guid ownerId, ReadingRequest request, CancellationToken ct)
+    {
+        var period = ApiSupport.NormalizePeriod(request.Period);
+        if (request.CurrentReading < 0 || request.CurrentReading > 1_000_000_000 || decimal.Round(request.CurrentReading, 3) != request.CurrentReading)
+            throw new ApiException(400, "Chỉ số điện phải là số không âm tối đa ba chữ số thập phân trong giới hạn cho phép.");
+        var (room, building) = await OwnerManagementEndpoints.FindRoomAsync(db, ownerId, request.RoomId, ct);
+        if (room.ArchivedAt is not null || building.ArchivedAt is not null)
+            throw new ApiException(409, "Không thể ghi chỉ số cho phòng hoặc dãy đã lưu trữ.");
+        var occupancy = await db.Occupancies.SingleOrDefaultAsync(row => row.RoomId == room.Id && row.IsActive, ct)
+            ?? throw new ApiException(409, "Cần có người thuê đang ở để ghi chỉ số điện.");
+        if (await db.Invoices.AnyAsync(x => x.OccupancyId == occupancy.Id && x.IsFinalMeterReading, ct))
+            throw new ApiException(409, "Đã chốt điện trả phòng; không thể phát hành thêm hóa đơn tháng cho lượt thuê này.");
+        var (periodStart, periodEnd, monthDays) = InvoiceService.PeriodDates(period);
+        if (periodStart > OwnerManagementEndpoints.TodayVietnam())
+            throw new ApiException(400, "Không thể nhập chỉ số cho tháng trong tương lai.");
+        if (string.CompareOrdinal(period, occupancy.StartDate.ToString("yyyy-MM")) < 0)
+            throw new ApiException(400, "Tháng ghi chỉ số không thể trước tháng bắt đầu thuê.");
+        if (await db.Readings.AnyAsync(row => row.OccupancyId == occupancy.Id && row.Period == period, ct))
+            throw new ApiException(409, "Lượt thuê đã có chỉ số điện cho tháng này.");
+        if (await db.Invoices.AnyAsync(row => row.OccupancyId == occupancy.Id && row.Period == period && row.Kind == "Monthly", ct))
+            throw new ApiException(409, "Hóa đơn của lượt thuê trong tháng này đã được tạo.");
+
+        var priorReadings = await db.Readings.AsNoTracking().Where(row => row.RoomId == room.Id)
+            .OrderByDescending(row => row.Period).ThenByDescending(row => row.RecordedAt).ToListAsync(ct);
+        var newest = priorReadings.FirstOrDefault();
+        if (newest is not null && string.CompareOrdinal(newest.Period, period) > 0)
+            throw new ApiException(409, "Vui lòng nhập chỉ số theo thứ tự tháng.");
+
+        // Equal-period readings are valid when a different occupancy moved into the
+        // same physical room later that month. MeterBaselineAsync carries the old
+        // tenant's final anchor forward instead of resetting the room meter.
+        var previousReading = Math.Max(newest?.CurrentReading ?? room.InitialReading,
+            await MoveoutEndpoints.MeterBaselineAsync(db, room, ct));
+        if (request.CurrentReading < previousReading)
+            throw new ApiException(400, $"Chỉ số mới không thể thấp hơn chỉ số trước ({previousReading}).");
+
+        var days = monthDays;
+        return new ReadingWork(room, building, occupancy, period, previousReading, request.CurrentReading,
+            request.CurrentReading - previousReading, periodStart, periodEnd, days, monthDays);
+    }
+
+    private static decimal ValidateCharge(decimal amount)
+    {
+        if (amount < 0 || amount > int.MaxValue || amount != decimal.Truncate(amount))
+            throw new ApiException(400, "Khoản thu phải là số VND nguyên từ 0 đến giới hạn thanh toán.");
+        return amount;
+    }
+
+    private static readonly JsonSerializerOptions AuditJsonOptions = new(JsonSerializerDefaults.Web);
+
+    internal static string Fingerprint(object request) => Convert.ToHexString(SHA256.HashData(
+        Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request, AuditJsonOptions))));
+
+    internal static string SerializeSnapshot(Invoice invoice) => JsonSerializer.Serialize(new
+    {
+        invoice.Id,
+        version = invoice.Version,
+        lifecycleState = invoice.LifecycleState.ToString(),
+        invoice.Kind,
+        invoice.Period,
+        invoice.BuildingId,
+        invoice.RoomId,
+        invoice.OccupancyId,
+        invoice.Rent,
+        invoice.ElectricityAmount,
+        invoice.WaterAmount,
+        invoice.ServiceAmount,
+        invoice.Total,
+        invoice.CurrentReading,
+        invoice.PreviousReading,
+        invoice.Consumption,
+        invoice.DueDate,
+        invoice.Description,
+        invoice.BillingStartDate,
+        invoice.BillingEndDate,
+        invoice.BillableDays,
+        invoice.MonthDays,
+        invoice.MonthlyRentRate,
+        invoice.ElectricityRate,
+        invoice.WaterRate,
+        invoice.WaterPerPerson,
+        invoice.ServiceRate
+    }, AuditJsonOptions);
+
+    internal static async Task<InvoiceRevision> AddRevisionAsync(AppDbContext db, Invoice invoice, Guid requestId, string fingerprint,
+        string reason, Guid actorId, string before, string after, CancellationToken ct)
+    {
+        var actorName = await db.Users.AsNoTracking().Where(x => x.Id == actorId).Select(x => x.Name).SingleOrDefaultAsync(ct)
+            ?? "Unknown user";
+        var lastRevision = await db.InvoiceRevisions.Where(x => x.InvoiceId == invoice.Id)
+            .OrderByDescending(x => x.Revision).Select(x => (int?)x.Revision).FirstOrDefaultAsync(ct) ?? 0;
+        var revision = new InvoiceRevision
+        {
+            InvoiceId = invoice.Id,
+            Revision = checked(lastRevision + 1),
+            RequestId = requestId,
+            RequestFingerprint = fingerprint,
+            Reason = reason,
+            ActorId = actorId,
+            ActorName = actorName,
+            CreatedAt = DateTimeOffset.UtcNow,
+            Version = invoice.Version,
+            BeforeJson = before,
+            AfterJson = after
+        };
+        db.InvoiceRevisions.Add(revision);
+        return revision;
+    }
+
+    private static InvoiceCorrectionDto ToCorrectionDto(InvoiceRevision revision) => new(revision.Id, revision.Revision,
+        revision.RequestId, revision.Reason, revision.ActorId, revision.ActorName, revision.CreatedAt, revision.Version,
+        revision.BeforeJson, revision.AfterJson);
+
+    private static async Task<(bool Allowed, string? Reason)> MeterCorrectionPolicyAsync(AppDbContext db, Invoice invoice, CancellationToken ct)
+    {
+        if (invoice.LifecycleState != InvoiceLifecycleState.Issued) return (false, "Draft invoices must be published before correction.");
+        if (invoice.Paid != 0) return (false, "An invoice with a recorded payment cannot be corrected.");
+        if (invoice.Kind != "Monthly" && !invoice.IsFinalMeterReading) return (false, "This invoice has no editable meter anchor.");
+
+        DateTimeOffset anchorAt;
+        if (invoice.Kind == "Monthly")
+        {
+            var reading = await db.Readings.AsNoTracking().SingleOrDefaultAsync(x => x.OccupancyId == invoice.OccupancyId && x.Period == invoice.Period, ct);
+            if (reading is null) return (false, "The source meter reading is missing.");
+            anchorAt = reading.RecordedAt;
+        }
+        else anchorAt = invoice.IssuedAt;
+
+        var readingAnchors = await db.Readings.AsNoTracking().Where(x => x.RoomId == invoice.RoomId)
+            .Select(x => new { x.Period, x.RecordedAt }).ToListAsync(ct);
+        var hasLaterReading = readingAnchors.Any(x => string.CompareOrdinal(x.Period, invoice.Period) > 0 ||
+            (x.Period == invoice.Period && x.RecordedAt > anchorAt));
+        if (hasLaterReading) return (false, "A later meter reading already anchors this room. Correcting this reading is blocked.");
+        var finalAnchors = await db.Invoices.AsNoTracking().Where(x => x.RoomId == invoice.RoomId && x.IsFinalMeterReading && x.Id != invoice.Id)
+            .Select(x => new { x.Period, x.IssuedAt }).ToListAsync(ct);
+        var hasLaterFinal = finalAnchors.Any(x => string.CompareOrdinal(x.Period, invoice.Period) > 0 ||
+            (x.Period == invoice.Period && x.IssuedAt > anchorAt));
+        if (hasLaterFinal) return (false, "A later move-out reading already anchors this room. Correcting this reading is blocked.");
+        return (true, null);
     }
 }

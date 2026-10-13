@@ -1,5 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace RoomRental.Api.Services;
 
@@ -80,6 +83,16 @@ public sealed class ApiExceptionMiddleware(RequestDelegate next, ILogger<ApiExce
         {
             // The client has gone away; there is no response left to write.
         }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            logger.LogInformation(exception, "A concurrent update was rejected for {Path}.", context.Request.Path);
+            await WriteConflictAsync(context, "The record changed while you were editing it. Refresh and retry.");
+        }
+        catch (Exception exception) when (IsDatabaseConflict(exception))
+        {
+            logger.LogInformation(exception, "A database concurrency conflict was rejected for {Path}.", context.Request.Path);
+            await WriteConflictAsync(context, "Another request changed this record. Refresh and retry.");
+        }
         catch (Exception exception)
         {
             var requestPath = context.Request.Path.StartsWithSegments("/api/tenant")
@@ -92,5 +105,26 @@ public sealed class ApiExceptionMiddleware(RequestDelegate next, ILogger<ApiExce
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new { message = "An unexpected server error occurred." });
         }
+    }
+
+    private static async Task WriteConflictAsync(HttpContext context, string message)
+    {
+        if (context.Response.HasStarted) throw new InvalidOperationException("The response has already started.");
+        context.Response.Clear();
+        context.Response.StatusCode = StatusCodes.Status409Conflict;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new { message });
+    }
+
+    private static bool IsDatabaseConflict(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException postgres && postgres.SqlState is "40001" or "40P01" or "23505" or "55P03")
+                return true;
+            if (current is SqliteException sqlite && sqlite.SqliteErrorCode is 5 or 6 or 19)
+                return true;
+        }
+        return false;
     }
 }

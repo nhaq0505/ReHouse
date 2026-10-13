@@ -16,19 +16,22 @@ public static class OwnerManagementEndpoints
             var ownerId = ApiSupport.OwnerId(context);
             var roomIds = await (from room in db.Rooms.AsNoTracking()
                                  join building in db.Buildings.AsNoTracking() on room.BuildingId equals building.Id
-                                 where building.OwnerId == ownerId
+                                 where building.OwnerId == ownerId && building.ArchivedAt == null && room.ArchivedAt == null
                                  select room.Id).ToListAsync(cancellationToken);
             var occupiedRooms = await db.Occupancies.AsNoTracking().CountAsync(row => roomIds.Contains(row.RoomId) && row.IsActive, cancellationToken);
-            var invoiceTotals = await db.Invoices.AsNoTracking().Where(row => row.OwnerId == ownerId && row.Kind != "Deposit")
+            var invoiceTotals = await db.Invoices.AsNoTracking().Where(row => row.OwnerId == ownerId &&
+                    row.LifecycleState == InvoiceLifecycleState.Issued && row.Kind != "Deposit")
                 .Select(row => new { row.Total, row.Paid }).ToListAsync(cancellationToken);
             var billed = invoiceTotals.Sum(row => row.Total);
             var paid = invoiceTotals.Sum(row => row.Paid);
             var period = CurrentVietnamPeriod();
             var roomCount = roomIds.Count;
-            var readingRoomIds = await db.Readings.AsNoTracking().Where(row => roomIds.Contains(row.RoomId) && row.Period == period)
-                .Select(row => row.RoomId).ToListAsync(cancellationToken);
-            var pendingReadings = await db.Occupancies.AsNoTracking()
-                .CountAsync(row => row.IsActive && roomIds.Contains(row.RoomId) && !readingRoomIds.Contains(row.RoomId), cancellationToken);
+            var activeOccupancyIds = await db.Occupancies.AsNoTracking()
+                .Where(row => row.IsActive && roomIds.Contains(row.RoomId)).Select(row => row.Id).ToListAsync(cancellationToken);
+            var readingOccupancyIds = await db.Readings.AsNoTracking()
+                .Where(row => activeOccupancyIds.Contains(row.OccupancyId) && row.Period == period)
+                .Select(row => row.OccupancyId).Distinct().ToListAsync(cancellationToken);
+            var pendingReadings = activeOccupancyIds.Count - readingOccupancyIds.Count;
             return Results.Ok(new
             {
                 totalRooms = roomCount,
@@ -40,11 +43,14 @@ public static class OwnerManagementEndpoints
             });
         });
 
-        routes.MapGet("/buildings", async (HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
+        routes.MapGet("/buildings", async (bool? includeArchived, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
-            var rows = await db.Buildings.AsNoTracking().Where(row => row.OwnerId == ownerId)
-                .OrderBy(row => row.Name).Select(row => new BuildingDto(row.Id, row.Name, row.Address)).ToListAsync(cancellationToken);
+            var rows = await db.Buildings.AsNoTracking().Where(row => row.OwnerId == ownerId &&
+                    (includeArchived == true || row.ArchivedAt == null))
+                .OrderBy(row => row.Name).ThenBy(row => row.Id)
+                .Select(row => new { row.Id, row.Name, row.Address, isArchived = row.ArchivedAt != null,
+                    archivedAt = row.ArchivedAt, archiveBatchId = row.ArchiveBatchId }).ToListAsync(cancellationToken);
             return Results.Ok(rows);
         });
 
@@ -60,25 +66,97 @@ public static class OwnerManagementEndpoints
             return Results.Created($"/api/buildings/{building.Id}", new BuildingDto(building.Id, building.Name, building.Address));
         });
 
-        routes.MapGet("/rooms", async (string? period, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
+        routes.MapDelete("/buildings/{id:guid}", async (Guid id, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var building = await db.Buildings.SingleOrDefaultAsync(row => row.Id == id && row.OwnerId == ownerId, cancellationToken)
+                ?? throw new ApiException(StatusCodes.Status404NotFound, "Building was not found.");
+            if (building.ArchivedAt is not null)
+                throw new ApiException(StatusCodes.Status409Conflict, "Dãy trọ đã được lưu trữ.");
+
+            var rooms = await db.Rooms.Where(room => room.BuildingId == building.Id && room.ArchivedAt == null)
+                .OrderBy(room => room.Name).ThenBy(room => room.Id).ToListAsync(cancellationToken);
+            foreach (var room in rooms)
+            {
+                var blockReason = await RoomArchiveBlockReasonAsync(db, ownerId, room.Id, cancellationToken);
+                if (blockReason is not null)
+                    throw new ApiException(StatusCodes.Status409Conflict,
+                        $"Không thể lưu trữ dãy vì phòng {room.Name}: {blockReason}");
+            }
+
+            var archivedAt = DateTimeOffset.UtcNow;
+            var batchId = Guid.NewGuid();
+            building.ArchivedAt = archivedAt;
+            building.ArchivedBy = ownerId;
+            building.ArchiveBatchId = batchId;
+            foreach (var room in rooms)
+            {
+                room.ArchivedAt = archivedAt;
+                room.ArchivedBy = ownerId;
+                room.ArchiveBatchId = batchId;
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { archived = true, archiveBatchId = batchId });
+        });
+
+        routes.MapPost("/buildings/{id:guid}/restore", async (Guid id, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var building = await db.Buildings.SingleOrDefaultAsync(row => row.Id == id && row.OwnerId == ownerId, cancellationToken)
+                ?? throw new ApiException(StatusCodes.Status404NotFound, "Building was not found.");
+            if (building.ArchivedAt is null)
+                throw new ApiException(StatusCodes.Status409Conflict, "Dãy trọ chưa được lưu trữ.");
+
+            var batchId = building.ArchiveBatchId;
+            building.ArchivedAt = null;
+            building.ArchivedBy = null;
+            building.ArchiveBatchId = null;
+            var restoredRoomIds = batchId is Guid archiveBatchId
+                ? await db.Rooms.Where(room => room.BuildingId == building.Id && room.ArchiveBatchId == archiveBatchId)
+                    .Select(room => room.Id).ToListAsync(cancellationToken)
+                : [];
+            if (batchId is Guid batch)
+            {
+                var rooms = await db.Rooms.Where(room => room.BuildingId == building.Id && room.ArchiveBatchId == batch)
+                    .ToListAsync(cancellationToken);
+                foreach (var room in rooms)
+                {
+                    room.ArchivedAt = null;
+                    room.ArchivedBy = null;
+                    room.ArchiveBatchId = null;
+                }
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { restored = true, restoredRoomIds });
+        });
+
+        routes.MapGet("/rooms", async (string? period, bool? includeArchived, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
             var readingPeriod = period is null ? CurrentVietnamPeriod() : ApiSupport.NormalizePeriod(period);
             var rows = await (from room in db.Rooms.AsNoTracking()
                               join building in db.Buildings.AsNoTracking() on room.BuildingId equals building.Id
-                              where building.OwnerId == ownerId
-                              orderby building.Name, room.Name
+                              where building.OwnerId == ownerId && (includeArchived == true || (room.ArchivedAt == null && building.ArchivedAt == null))
+                              orderby building.Name, room.Name, room.Id
                               select new { Room = room, Building = building }).ToListAsync(cancellationToken);
             var roomIds = rows.Select(row => row.Room.Id).ToList();
             var activeOccupancies = await db.Occupancies.AsNoTracking()
                 .Where(row => row.IsActive && roomIds.Contains(row.RoomId))
                 .ToListAsync(cancellationToken);
             var occupancyByRoom = activeOccupancies.ToDictionary(row => row.RoomId);
-            var result = new List<RoomDto>(rows.Count);
+            var result = new List<object>(rows.Count);
             foreach (var row in rows)
             {
                 occupancyByRoom.TryGetValue(row.Room.Id, out var occupancy);
-                result.Add(await ToRoomDtoAsync(db, tokenService, row.Room, row.Building, occupancy, readingPeriod, cancellationToken));
+                var dto = await ToRoomDtoAsync(db, tokenService, row.Room, row.Building, occupancy, readingPeriod, cancellationToken);
+                result.Add(new { dto.Id, dto.BuildingId, dto.BuildingName, dto.Name, dto.Rent, dto.ElectricityRate, dto.WaterFee,
+                    dto.WaterPerPerson, dto.ServiceFee, dto.InitialReading, dto.PreviousReading, dto.Occupancy,
+                    isArchived = row.Room.ArchivedAt is not null, archivedAt = row.Room.ArchivedAt,
+                    archiveBatchId = row.Room.ArchiveBatchId, buildingArchived = row.Building.ArchivedAt is not null });
             }
             return Results.Ok(result);
         });
@@ -86,8 +164,8 @@ public static class OwnerManagementEndpoints
         routes.MapPost("/rooms", async (RoomCreateRequest request, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
-            var building = await db.Buildings.SingleOrDefaultAsync(row => row.Id == request.BuildingId && row.OwnerId == ownerId, cancellationToken)
-                ?? throw new ApiException(StatusCodes.Status404NotFound, "Building was not found.");
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var building = await FindBuildingAsync(db, ownerId, request.BuildingId, cancellationToken);
             ValidateFees(request.Name, request.Rent, request.ElectricityRate, request.WaterFee, request.ServiceFee, request.InitialReading);
             var room = new Room
             {
@@ -102,19 +180,25 @@ public static class OwnerManagementEndpoints
             };
             db.Rooms.Add(room);
             await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return Results.Created($"/api/rooms/{room.Id}", await ToRoomDtoAsync(db, tokenService, room, building, null, CurrentVietnamPeriod(), cancellationToken));
         });
 
-        routes.MapGet("/rooms/{id:guid}", async (Guid id, string? period, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
+        routes.MapGet("/rooms/{id:guid}", async (Guid id, string? period, bool? includeArchived, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
         {
-            var row = await FindRoomAsync(db, ApiSupport.OwnerId(context), id, cancellationToken);
+            var row = await FindRoomAsync(db, ApiSupport.OwnerId(context), id, cancellationToken, includeArchived == true);
             var occupancy = await db.Occupancies.AsNoTracking().SingleOrDefaultAsync(item => item.RoomId == id && item.IsActive, cancellationToken);
             var readingPeriod = period is null ? CurrentVietnamPeriod() : ApiSupport.NormalizePeriod(period);
-            return Results.Ok(await ToRoomDtoAsync(db, tokenService, row.Room, row.Building, occupancy, readingPeriod, cancellationToken));
+            var dto = await ToRoomDtoAsync(db, tokenService, row.Room, row.Building, occupancy, readingPeriod, cancellationToken);
+            return Results.Ok(new { dto.Id, dto.BuildingId, dto.BuildingName, dto.Name, dto.Rent, dto.ElectricityRate, dto.WaterFee,
+                dto.WaterPerPerson, dto.ServiceFee, dto.InitialReading, dto.PreviousReading, dto.Occupancy,
+                isArchived = row.Room.ArchivedAt is not null, archivedAt = row.Room.ArchivedAt,
+                archiveBatchId = row.Room.ArchiveBatchId, buildingArchived = row.Building.ArchivedAt is not null });
         });
 
         routes.MapMethods("/rooms/{id:guid}", ["PATCH"], async (Guid id, RoomUpdateRequest request, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
         {
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
             var (room, building) = await FindRoomAsync(db, ApiSupport.OwnerId(context), id, cancellationToken);
             ValidateFees(request.Name, request.Rent, request.ElectricityRate, request.WaterFee, request.ServiceFee, 0);
             room.Name = request.Name.Trim();
@@ -124,8 +208,56 @@ public static class OwnerManagementEndpoints
             room.WaterPerPerson = request.WaterPerPerson;
             room.ServiceFee = ApiSupport.RoundVnd(request.ServiceFee);
             await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             var occupancy = await db.Occupancies.AsNoTracking().SingleOrDefaultAsync(item => item.RoomId == id && item.IsActive, cancellationToken);
             return Results.Ok(await ToRoomDtoAsync(db, tokenService, room, building, occupancy, CurrentVietnamPeriod(), cancellationToken));
+        });
+
+        routes.MapDelete("/rooms/{id:guid}", async (Guid id, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var row = await (from room in db.Rooms
+                             join building in db.Buildings on room.BuildingId equals building.Id
+                             where room.Id == id && building.OwnerId == ownerId
+                             select new { Room = room, Building = building }).SingleOrDefaultAsync(cancellationToken)
+                ?? throw new ApiException(StatusCodes.Status404NotFound, "Room was not found.");
+            if (row.Room.ArchivedAt is not null)
+                throw new ApiException(StatusCodes.Status409Conflict, "Phòng đã được lưu trữ.");
+            if (row.Building.ArchivedAt is not null)
+                throw new ApiException(StatusCodes.Status409Conflict, "Không thể lưu trữ phòng khi dãy trọ đã được lưu trữ.");
+            var blockReason = await RoomArchiveBlockReasonAsync(db, ownerId, row.Room.Id, cancellationToken);
+            if (blockReason is not null)
+                throw new ApiException(StatusCodes.Status409Conflict, $"Không thể lưu trữ phòng: {blockReason}");
+
+            var batchId = Guid.NewGuid();
+            row.Room.ArchivedAt = DateTimeOffset.UtcNow;
+            row.Room.ArchivedBy = ownerId;
+            row.Room.ArchiveBatchId = batchId;
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { archived = true, archiveBatchId = batchId });
+        });
+
+        routes.MapPost("/rooms/{id:guid}/restore", async (Guid id, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var row = await (from room in db.Rooms
+                             join building in db.Buildings on room.BuildingId equals building.Id
+                             where room.Id == id && building.OwnerId == ownerId
+                             select new { Room = room, Building = building }).SingleOrDefaultAsync(cancellationToken)
+                ?? throw new ApiException(StatusCodes.Status404NotFound, "Room was not found.");
+            if (row.Room.ArchivedAt is null)
+                throw new ApiException(StatusCodes.Status409Conflict, "Phòng chưa được lưu trữ.");
+            if (row.Building.ArchivedAt is not null)
+                throw new ApiException(StatusCodes.Status409Conflict, "Cần khôi phục dãy trọ trước khi khôi phục phòng.");
+            row.Room.ArchivedAt = null;
+            row.Room.ArchivedBy = null;
+            row.Room.ArchiveBatchId = null;
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { restored = true });
         });
 
         routes.MapPost("/rooms/{id:guid}/occupancy", async (Guid id, OccupancyRequest request, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
@@ -143,8 +275,6 @@ public static class OwnerManagementEndpoints
             if (request.StartDate > today)
                 throw new ApiException(StatusCodes.Status400BadRequest, "Start date cannot be in the future.");
             var currentPeriod = CurrentVietnamPeriod();
-            if (await db.Readings.AnyAsync(row => row.RoomId == id && row.Period == currentPeriod, cancellationToken))
-                throw new ApiException(StatusCodes.Status409Conflict, "A meter reading already exists for this room this month. Start the new occupancy next month to keep readings tied to the correct tenant.");
 
             if (request.DepositAmount < 0 || request.DepositAmount > int.MaxValue || request.DepositAmount != decimal.Truncate(request.DepositAmount))
                 throw new ApiException(400, "Tiền cọc phải là số nguyên VND từ 0 đến 2.147.483.647.");
@@ -162,46 +292,21 @@ public static class OwnerManagementEndpoints
             db.Occupancies.Add(occupancy);
             if (request.DepositAmount > 0)
                 db.Invoices.Add(new Invoice { OwnerId = ownerId, RoomId = room.Id, OccupancyId = occupancy.Id,
-                    RoomName = room.Name, BuildingName = building.Name, TenantName = occupancy.TenantName,
+                    BuildingId = building.Id, RoomName = room.Name, BuildingName = building.Name, TenantName = occupancy.TenantName,
                     Period = currentPeriod, Kind = "Deposit", Total = request.DepositAmount, DueDate = today });
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return Results.Ok(await ToRoomDtoAsync(db, tokenService, room, building, occupancy, currentPeriod, cancellationToken));
         });
 
-        routes.MapPost("/rooms/{id:guid}/end-occupancy", async (Guid id, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
-        {
-            var ownerId = ApiSupport.OwnerId(context);
-            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
-            var (room, _) = await FindRoomAsync(db, ownerId, id, cancellationToken);
-            var occupancy = await db.Occupancies.SingleOrDefaultAsync(row => row.RoomId == room.Id && row.IsActive, cancellationToken)
-                ?? throw new ApiException(StatusCodes.Status409Conflict, "This room has no active occupancy.");
-            var hasPendingPayment = await (from attempt in db.PayOsAttempts
-                                           join invoice in db.Invoices on attempt.InvoiceId equals invoice.Id
-                                           where invoice.OccupancyId == occupancy.Id && attempt.Status == PaymentAttemptStatus.Pending
-                                           select attempt.Id).AnyAsync(cancellationToken);
-            if (hasPendingPayment)
-                throw new ApiException(StatusCodes.Status409Conflict, "Reconcile or finish the pending payOS payment before ending this occupancy.");
-            var deposit = await db.Invoices.Include(x => x.DepositSettlements)
-                .SingleOrDefaultAsync(x => x.OccupancyId == occupancy.Id && x.Kind == "Deposit", cancellationToken);
-            if (deposit is not null && deposit.Paid > deposit.DepositSettlements.Sum(x => x.Amount))
-                throw new ApiException(409, "Vui lòng ghi nhận hoàn hoặc khấu trừ toàn bộ cọc đang giữ trước khi kết thúc lượt thuê.");
-            if (await db.Invoices.AnyAsync(x => x.OccupancyId == occupancy.Id && x.IsFinalMeterReading, cancellationToken) &&
-                await db.Invoices.AnyAsync(x => x.OccupancyId == occupancy.Id && x.Kind != "Deposit" && x.Paid < x.Total, cancellationToken))
-                throw new ApiException(409, "Cần quyết toán hết công nợ sau khi chốt trả phòng.");
-            room.InitialReading = Math.Max(room.InitialReading, await MoveoutEndpoints.MeterBaselineAsync(db, room, cancellationToken));
-            occupancy.IsActive = false;
-            occupancy.EndDate = TodayVietnam();
-            occupancy.TenantTokenHash = null;
-            occupancy.ProtectedTenantToken = null;
-            await db.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            return Results.Ok(new { success = true });
-        });
+        routes.MapPost("/rooms/{id:guid}/end-occupancy", async (Guid id, CompleteMoveoutRequest request,
+            HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
+            await MoveoutEndpoints.CompleteMoveoutAsync(id, request, context, db, cancellationToken));
 
         routes.MapPost("/rooms/{id:guid}/rotate-link", async (Guid id, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
             _ = await FindRoomAsync(db, ownerId, id, cancellationToken);
             var occupancy = await db.Occupancies.SingleOrDefaultAsync(row => row.RoomId == id && row.IsActive, cancellationToken)
                 ?? throw new ApiException(StatusCodes.Status409Conflict, "This room has no active occupancy.");
@@ -209,27 +314,82 @@ public static class OwnerManagementEndpoints
             occupancy.TenantTokenHash = token.Hash;
             occupancy.ProtectedTenantToken = token.ProtectedToken;
             await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return Results.Ok(new RotateLinkDto(token.Token, tokenService.Url(token.Token)));
         });
     }
 
-    internal static async Task<(Room Room, Building Building)> FindRoomAsync(AppDbContext db, Guid ownerId, Guid roomId, CancellationToken cancellationToken)
+    internal static async Task<Building> FindBuildingAsync(AppDbContext db, Guid ownerId, Guid buildingId, CancellationToken cancellationToken)
+    {
+        var building = await db.Buildings.SingleOrDefaultAsync(row => row.Id == buildingId && row.OwnerId == ownerId, cancellationToken)
+            ?? throw new ApiException(StatusCodes.Status404NotFound, "Building was not found.");
+        if (building.ArchivedAt is not null)
+            throw new ApiException(StatusCodes.Status409Conflict, "Dãy trọ đã được lưu trữ. Khôi phục dãy trước khi tạo phòng.");
+        return building;
+    }
+
+    internal static async Task<(Room Room, Building Building)> FindRoomAsync(AppDbContext db, Guid ownerId, Guid roomId,
+        CancellationToken cancellationToken, bool allowArchived = false)
     {
         var row = await (from room in db.Rooms
                          join building in db.Buildings on room.BuildingId equals building.Id
                          where room.Id == roomId && building.OwnerId == ownerId
                          select new { Room = room, Building = building }).SingleOrDefaultAsync(cancellationToken);
-        return row is null
-            ? throw new ApiException(StatusCodes.Status404NotFound, "Room was not found.")
-            : (row.Room, row.Building);
+        if (row is null) throw new ApiException(StatusCodes.Status404NotFound, "Room was not found.");
+        if (!allowArchived && row.Building.ArchivedAt is not null)
+            throw new ApiException(StatusCodes.Status409Conflict, "Dãy trọ đã được lưu trữ. Khôi phục dãy trước khi tiếp tục.");
+        if (!allowArchived && row.Room.ArchivedAt is not null)
+            throw new ApiException(StatusCodes.Status409Conflict, "Phòng đã được lưu trữ. Khôi phục phòng trước khi tiếp tục.");
+        return (row.Room, row.Building);
+    }
+
+    private static async Task<string?> RoomArchiveBlockReasonAsync(AppDbContext db, Guid ownerId, Guid roomId, CancellationToken ct)
+    {
+        if (await db.Occupancies.AnyAsync(row => row.RoomId == roomId && row.IsActive, ct))
+            return "còn người thuê đang ở.";
+        if (await db.Invoices.AnyAsync(invoice => invoice.OwnerId == ownerId && invoice.RoomId == roomId &&
+                invoice.LifecycleState == InvoiceLifecycleState.Draft, ct))
+            return "còn hóa đơn nháp.";
+        if (await db.Invoices.AnyAsync(invoice => invoice.OwnerId == ownerId && invoice.RoomId == roomId &&
+                invoice.LifecycleState == InvoiceLifecycleState.Issued && invoice.Kind != "Deposit" && invoice.Total > invoice.Paid, ct))
+            return "còn hóa đơn đã phát hành chưa thu đủ.";
+
+        var depositRows = await db.Invoices.AsNoTracking()
+            .Where(invoice => invoice.OwnerId == ownerId && invoice.RoomId == roomId &&
+                              invoice.LifecycleState == InvoiceLifecycleState.Issued && invoice.Kind == "Deposit")
+            .Select(invoice => new { invoice.Id, invoice.Total, invoice.Paid }).ToListAsync(ct);
+        if (depositRows.Any(invoice => invoice.Paid < invoice.Total))
+            return "còn khoản cọc chưa thu đủ.";
+        var depositIds = depositRows.Select(invoice => invoice.Id).ToList();
+        if (depositIds.Count > 0)
+        {
+            var settlements = await db.DepositSettlements.AsNoTracking().Where(row => depositIds.Contains(row.InvoiceId))
+                .Select(row => new { row.InvoiceId, row.Amount }).ToListAsync(ct);
+            var settledByInvoice = settlements.GroupBy(row => row.InvoiceId)
+                .ToDictionary(group => group.Key, group => group.Sum(row => row.Amount));
+            if (depositRows.Any(invoice => invoice.Paid > settledByInvoice.GetValueOrDefault(invoice.Id)))
+                return "còn tiền cọc đang giữ.";
+        }
+        if (await (from attempt in db.PayOsAttempts.AsNoTracking()
+                   join invoice in db.Invoices.AsNoTracking() on attempt.InvoiceId equals invoice.Id
+                   where invoice.OwnerId == ownerId && invoice.RoomId == roomId && attempt.Status == PaymentAttemptStatus.Pending
+                   select attempt.Id).AnyAsync(ct))
+            return "còn giao dịch payOS đang chờ đối soát.";
+        return null;
     }
 
     internal static async Task<RoomDto> ToRoomDtoAsync(AppDbContext db, TenantTokenService tokenService, Room room, Building building, Occupancy? occupancy, string period, CancellationToken cancellationToken)
     {
         var readings = await db.Readings.AsNoTracking().Where(row => row.RoomId == room.Id)
-            .OrderByDescending(row => row.Period).ToListAsync(cancellationToken);
-        var currentReading = readings.SingleOrDefault(row => row.Period == period);
-        var priorReading = currentReading ?? readings.FirstOrDefault(row => string.CompareOrdinal(row.Period, period) < 0);
+            .OrderByDescending(row => row.Period).ThenByDescending(row => row.RecordedAt).ToListAsync(cancellationToken);
+        // The physical room can have one reading per occupancy in the same month.
+        // Prefer the active occupancy's reading for the room's current-reading field;
+        // when it has none yet, use only an earlier period as the prior reading.
+        var currentPeriodReadings = readings.Where(row => row.Period == period);
+        var currentReading = occupancy is null
+            ? currentPeriodReadings.FirstOrDefault()
+            : currentPeriodReadings.SingleOrDefault(row => row.OccupancyId == occupancy.Id);
+        var priorReading = readings.FirstOrDefault(row => string.CompareOrdinal(row.Period, period) < 0);
         var previousReading = currentReading is not null ? currentReading.PreviousReading : priorReading?.CurrentReading ?? room.InitialReading;
         if (currentReading is null) previousReading = Math.Max(previousReading, await MoveoutEndpoints.MeterBaselineAsync(db, room, cancellationToken));
         OccupancyDto? occupancyDto = null;

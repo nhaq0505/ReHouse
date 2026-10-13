@@ -20,7 +20,7 @@ import unittest
 import urllib.error
 import urllib.request
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -93,6 +93,8 @@ class ApiSession:
                 body = json.loads(raw.decode("utf-8"))
             except (UnicodeDecodeError, json.JSONDecodeError):
                 body = raw.decode("utf-8", errors="replace")
+        elif "spreadsheetml.sheet" in content_type.lower():
+            body = raw
         else:
             body = raw.decode("utf-8", errors="replace")
         return status, body, response_headers
@@ -285,58 +287,107 @@ class RoomApiIntegrationTests(unittest.TestCase):
         self.assertEqual(len(matching), 1, f"Expected one invoice for {room_id}: {matching!r}")
         return matching[0]
 
+    def moveout_payload(self, session: ApiSession, room_id: str, occupancy_id: str,
+                        refund_amount: int = 0, request_id: str | None = None) -> dict[str, Any]:
+        summary = session.ok("GET", f"/api/rooms/{room_id}/moveout")
+        deposit = summary["deposit"]
+        return {
+            "occupancyId": occupancy_id,
+            "requestId": request_id or str(uuid.uuid4()),
+            "refundAmount": refund_amount,
+            "expectedHeld": summary["heldDeposit"],
+            "expectedDepositVersion": deposit["version"] if deposit is not None else None,
+        }
+
     def test_moveout_zero_balance_scope_and_stale_occupancy(self) -> None:
-        room = self.create_room(self.owner, label="zero-moveout", initial_reading=100)
+        room = self.create_room(self.owner, label="zero-moveout", initial_reading=100, rent=0, electricity_rate=0, water_fee=0, service_fee=0)
         occupancy = self.start_occupancy(self.owner, room["id"])
         path = f"/api/rooms/{room['id']}"
-        body = {"requestId": str(uuid.uuid4()), "occupancyId": occupancy["id"], "currentReading": 100, "additionalAmount": 0}
+        body = self.moveout_payload(self.owner, room["id"], occupancy["id"])
         other, user = self.create_owner(); self.approve(user)
         other.ok("POST", "/api/auth/login", {"email": user["email"], "password": OWNER_PASSWORD})
-        for method, route, payload in [("GET", "/moveout", None), ("POST", "/final-invoice", body), ("POST", "/complete-moveout", {"occupancyId": occupancy["id"], "finalInvoiceId": str(uuid.uuid4())})]:
-            self.assertEqual(other.request(method, path+route, payload)[0], 404)
-        self.assertEqual(self.owner.request("POST", path+"/final-invoice", {**body, "occupancyId": str(uuid.uuid4())})[0], 409)
-        final = self.owner.ok("POST", path+"/final-invoice", body)
-        self.assertEqual(final["status"], "Paid")
-        self.assertEqual(final["total"], 0)
-        self.assertEqual(self.owner.request("POST", path+"/final-invoice", {**body, "currentReading": 101})[0], 409)
-        self.owner.ok("POST", path+"/complete-moveout", {"occupancyId": occupancy["id"], "finalInvoiceId": final["id"]})
+        for method, route, payload in [
+            ("GET", "/moveout", None),
+            ("POST", "/moveout/preview", {"endDate": today_vietnam().isoformat(), "currentReading": 100}),
+            ("POST", "/final-invoice", {"requestId": str(uuid.uuid4()), "occupancyId": occupancy["id"], "currentReading": 100, "additionalAmount": 0}),
+            ("POST", "/complete-moveout", body),
+        ]:
+            self.assertEqual(other.request(method, path + route, payload)[0], 404)
+        self.assertEqual(self.owner.request("POST", path + "/final-invoice", {
+            "requestId": str(uuid.uuid4()), "occupancyId": occupancy["id"], "currentReading": 100, "additionalAmount": 0,
+        })[0], 404)
+        wrong_occupancy = {**body, "occupancyId": str(uuid.uuid4()), "requestId": str(uuid.uuid4())}
+        self.assertEqual(self.owner.request("POST", path + "/complete-moveout", wrong_occupancy)[0], 404)
+        ended = self.owner.ok("POST", path + "/complete-moveout", body)
+        self.assertEqual(ended["endDate"], today_vietnam().isoformat())
+        self.assertEqual(ended["refundAmount"], 0)
+        self.assertEqual(self.owner.ok("POST", path + "/complete-moveout", body)["id"], ended["id"])
+        new = self.start_occupancy(self.owner, room["id"], start_date=today_vietnam().isoformat())
+        self.assertEqual(self.owner.ok("POST", path + "/complete-moveout", body)["occupancyId"], occupancy["id"])
+        self.assertEqual(self.get_room(self.owner, room["id"])["occupancy"]["id"], new["id"])
 
-    def test_moveout_final_meter_deposit_debts_and_completion(self) -> None:
+    def test_moveout_manual_refund_retention_debts_and_replay(self) -> None:
         room = self.create_room(self.owner, label="moveout", initial_reading=100, rent=500, electricity_rate=100, water_fee=0, service_fee=0)
-        started = self.owner.ok("POST", f"/api/rooms/{room['id']}/occupancy", {"tenantName": "Moveout tenant", "people": 1, "startDate": first_day(period_offset(-1)), "depositAmount": 3000})
+        started = self.owner.ok("POST", f"/api/rooms/{room['id']}/occupancy", {
+            "tenantName": "Moveout tenant", "people": 1, "startDate": first_day(period_offset(-1)), "depositAmount": 3000,
+        })
         occupancy = started["occupancy"]
-        deposit = occupancy["depositInvoiceId"]
-        self.owner.ok("POST", f"/api/invoices/{deposit}/receipts", {"amount": 3000, "idempotencyKey": str(uuid.uuid4())})
+        deposit_id = occupancy["depositInvoiceId"]
+        self.owner.ok("POST", f"/api/invoices/{deposit_id}/receipts", {"amount": 3000, "idempotencyKey": str(uuid.uuid4())})
         self.owner.ok("POST", "/api/readings", {"roomId": room["id"], "period": period_offset(-1), "currentReading": 110})
         monthly = next(i for i in as_list(self.owner.ok("GET", "/api/invoices")) if i["roomId"] == room["id"] and i["kind"] == "Monthly")
-        body = {"requestId": str(uuid.uuid4()), "occupancyId": occupancy["id"], "currentReading": 115, "additionalAmount": 100, "description": "Remaining fees"}
         path = f"/api/rooms/{room['id']}"
-        self.assertEqual(self.owner.ok("GET", path+"/moveout")["meterBaseline"], 110)
-        self.assertEqual(self.owner.request("POST", path+"/final-invoice", {**body, "currentReading": 109})[0], 400)
-        final = self.owner.ok("POST", path+"/final-invoice", body)
-        self.assertEqual(final["total"], 600)
-        self.assertEqual(final["rent"], 0)
-        self.assertEqual(final["previousReading"], 110)
-        self.assertTrue(final["isFinalMeterReading"])
-        self.assertEqual(self.owner.ok("POST", path+"/final-invoice", body)["id"], final["id"])
-        self.assertEqual(self.owner.request("POST", path+"/final-invoice", {**body, "requestId": str(uuid.uuid4())})[0], 409)
-        self.assertEqual(self.owner.request("POST", "/api/readings", {"roomId": room["id"], "period": period_offset(0), "currentReading": 116})[0], 409)
-        complete = {"occupancyId": occupancy["id"], "finalInvoiceId": final["id"]}
-        self.assertEqual(self.owner.request("POST", path+"/complete-moveout", complete)[0], 409)
-        for invoice in (monthly, final):
-            self.owner.ok("POST", f"/api/invoices/{deposit}/deposit-settlements", {"amount": invoice["total"], "kind": "Deduction", "reason": "Moveout debt", "targetInvoiceId": invoice["id"], "idempotencyKey": str(uuid.uuid4())})
-        self.assertEqual(self.owner.request("POST", path+"/complete-moveout", complete)[0], 409)
-        self.owner.ok("POST", f"/api/invoices/{deposit}/deposit-settlements", {"amount": 900, "kind": "Refund", "reason": "Returned remaining deposit", "idempotencyKey": str(uuid.uuid4())})
-        self.owner.ok("POST", path+"/complete-moveout", complete)
-        self.owner.ok("POST", path+"/complete-moveout", complete)
-        self.assertIsNone(self.get_room(self.owner, room["id"])["occupancy"])
-        self.assertEqual(self.owner.request("GET", f"/api/tenant/{occupancy['token']}")[0], 404)
+        self.assertEqual(self.owner.request("POST", path + "/complete-moveout", self.moveout_payload(self.owner, room["id"], occupancy["id"], 1000))[0], 409)
+        self.assertEqual(self.owner.ok("GET", path + "/moveout")["heldDeposit"], 3000)
+        self.owner.ok("POST", f"/api/invoices/{monthly['id']}/receipts", {
+            "amount": monthly["outstanding"], "idempotencyKey": str(uuid.uuid4()),
+        })
+
+        stale = self.moveout_payload(self.owner, room["id"], occupancy["id"], 900)
+        deposit_before = self.owner.ok("GET", f"/api/invoices/{deposit_id}")
+        self.owner.ok("POST", f"/api/invoices/{deposit_id}/deposit-settlements", {
+            "amount": 100, "kind": "Deduction", "reason": "Manual adjustment before return",
+            "idempotencyKey": str(uuid.uuid4()), "expectedVersion": deposit_before["version"],
+        })
+        status, body, _ = self.owner.request("POST", path + "/complete-moveout", stale)
+        self.assertEqual(status, 409, body)
+        self.assertIn("đã thay đổi", body["message"])
+
+        payload = self.moveout_payload(self.owner, room["id"], occupancy["id"], 900)
+        ended = self.owner.ok("POST", path + "/complete-moveout", payload)
+        self.assertEqual(ended["heldBeforeSettlement"], 2900)
+        self.assertEqual(ended["refundAmount"], 900)
+        self.assertEqual(ended["retainedAmount"], 2000)
+        deposit_after = self.owner.ok("GET", f"/api/invoices/{deposit_id}")
+        self.assertEqual(deposit_after["paid"], 3000)
+        self.assertEqual(deposit_after["depositHeld"], 0)
+        settlements = deposit_after["depositSettlements"]
+        self.assertEqual(sum(x["amount"] for x in settlements if x["kind"] == "Refund"), 900)
+        self.assertEqual(sum(x["amount"] for x in settlements if x["kind"] == "Deduction"), 2100)
+        self.assertEqual(self.owner.ok("GET", path + "/moveout-completions")["items"][0]["actorId"], self.owner_user["id"])
+        self.assertEqual(self.owner.ok("POST", path + "/complete-moveout", payload)["id"], ended["id"])
+        self.assertEqual(self.owner.request("POST", path + "/complete-moveout", {**payload, "refundAmount": 901})[0], 409)
         new = self.start_occupancy(self.owner, room["id"], start_date=today_vietnam().isoformat())
-        self.owner.ok("POST", path+"/complete-moveout", complete)
+        self.assertEqual(self.owner.ok("POST", path + "/complete-moveout", payload)["occupancyId"], occupancy["id"])
         self.assertEqual(self.get_room(self.owner, room["id"])["occupancy"]["id"], new["id"])
         self.owner.ok("POST", "/api/readings", {"roomId": room["id"], "period": period_offset(0), "currentReading": 118})
-        reading = as_list(self.owner.ok("GET", f"/api/readings?period={period_offset(0)}"))
-        self.assertEqual(next(x for x in reading if x["roomId"] == room["id"])["previousReading"], 115)
+        readings = as_list(self.owner.ok("GET", f"/api/readings?period={period_offset(0)}"))
+        self.assertEqual(next(x for x in readings if x["occupancyId"] == new["id"])["previousReading"], 110)
+
+    def test_midmonth_readings_are_issued_at_full_rent_and_moveout_has_no_draft_gate(self) -> None:
+        previous_period = period_offset(-1)
+        room = self.create_room(self.owner, label="moveout-midmonth", rent=3100, electricity_rate=0, water_fee=0, service_fee=0)
+        occupancy = self.start_occupancy(self.owner, room["id"], start_date=f"{previous_period}-15")
+        first = self.save_reading(self.owner, room["id"], previous_period, 101)
+        current = self.save_reading(self.owner, room["id"], period_offset(0), 102)
+        self.assertEqual(first["invoice"]["lifecycleState"], "Issued")
+        self.assertEqual(first["invoice"]["rent"], 3100)
+        self.assertEqual(current["invoice"]["lifecycleState"], "Issued")
+        self.assertEqual(current["invoice"]["rent"], 3100)
+        payload = self.moveout_payload(self.owner, room["id"], occupancy["id"])
+        status, body, _ = self.owner.request("POST", f"/api/rooms/{room['id']}/complete-moveout", payload)
+        self.assertEqual(status, 409, body)
+        self.assertIn("công nợ", body["message"])
 
     def test_supplemental_invoice_scope_validation_replay_and_guest(self) -> None:
         room = self.create_room(self.owner, label="supplemental")
@@ -367,7 +418,12 @@ class RoomApiIntegrationTests(unittest.TestCase):
         other, user = self.create_owner(); self.approve(user)
         other.ok("POST", "/api/auth/login", {"email": user["email"], "password": OWNER_PASSWORD})
         self.assertEqual(other.request("POST", path, {**payload, "requestId": str(uuid.uuid4())})[0], 404)
-        self.owner.ok("POST", f"/api/rooms/{room['id']}/end-occupancy")
+        for invoice in as_list(self.owner.ok("GET", "/api/invoices")):
+            if invoice["roomId"] == room["id"] and invoice["outstanding"] > 0:
+                self.owner.ok("POST", f"/api/invoices/{invoice['id']}/receipts", {
+                    "amount": invoice["outstanding"], "idempotencyKey": str(uuid.uuid4())})
+        self.owner.ok("POST", f"/api/rooms/{room['id']}/complete-moveout",
+                      self.moveout_payload(self.owner, room["id"], occupancy["id"]))
         self.assertEqual(self.owner.request("POST", path, {**payload, "requestId": str(uuid.uuid4())})[0], 409)
         self.assertEqual(self.owner.request("GET", f"/api/tenant/{occupancy['token']}")[0], 404)
 
@@ -387,20 +443,28 @@ class RoomApiIntegrationTests(unittest.TestCase):
         monthly = next(x for x in invoices if x["kind"] == "Monthly")
         self.owner.ok("POST", "/api/invoices/generate", {"period": period_offset(0)})
         self.assertEqual(len([x for x in as_list(self.owner.ok("GET", "/api/invoices")) if x["roomId"] == room["id"]]), 2)
-        self.owner.ok("POST", f"/api/invoices/{deposit_id}/receipts", {"amount": 1000, "idempotencyKey": str(uuid.uuid4())})
-        self.assertEqual(self.owner.ok("GET", f"/api/invoices/{deposit_id}")["depositHeld"], 1000)
         other, other_user = self.create_owner()
         self.approve(other_user)
         other.ok("POST", "/api/auth/login", {"email": other_user["email"], "password": OWNER_PASSWORD})
-        payload = {"amount": 300, "kind": "Deduction", "reason": "Outstanding rent", "idempotencyKey": str(uuid.uuid4()), "targetInvoiceId": monthly["id"]}
-        self.assertEqual(other.request("POST", f"/api/invoices/{deposit_id}/deposit-settlements", payload)[0], 404)
-        self.assertEqual(self.owner.request("POST", f"/api/rooms/{room['id']}/end-occupancy")[0], 409)
-        first = self.owner.ok("POST", f"/api/invoices/{deposit_id}/deposit-settlements", payload)
-        replay = self.owner.ok("POST", f"/api/invoices/{deposit_id}/deposit-settlements", payload)
+        settlement = {"amount": 300, "kind": "Deduction", "reason": "Moveout damages", "idempotencyKey": str(uuid.uuid4()), "targetInvoiceId": None}
+        self.assertEqual(other.request("POST", f"/api/invoices/{deposit_id}/deposit-settlements", settlement)[0], 404)
+        self.owner.ok("POST", f"/api/invoices/{monthly['id']}/receipts", {
+            "amount": monthly["total"], "idempotencyKey": str(uuid.uuid4())})
+        pending = self.moveout_payload(self.owner, room["id"], occupancy["id"], refund_amount=0)
+        status, body, _ = self.owner.request("POST", f"/api/rooms/{room['id']}/complete-moveout", pending)
+        self.assertEqual(status, 409, body)
+        self.assertIn("cọc", body["message"])
+        self.owner.ok("POST", f"/api/invoices/{deposit_id}/receipts", {"amount": 1000, "idempotencyKey": str(uuid.uuid4())})
+        self.assertEqual(self.owner.ok("GET", f"/api/invoices/{deposit_id}")["depositHeld"], 1000)
+        deposit_before = self.owner.ok("GET", f"/api/invoices/{deposit_id}")
+        first = self.owner.ok("POST", f"/api/invoices/{deposit_id}/deposit-settlements", {
+            **settlement, "expectedVersion": deposit_before["version"]})
+        replay = self.owner.ok("POST", f"/api/invoices/{deposit_id}/deposit-settlements", {
+            **settlement, "expectedVersion": deposit_before["version"]})
         self.assertEqual(first["depositHeld"], 700)
         self.assertEqual(len(replay["depositSettlements"]), 1)
-        self.assertEqual(self.owner.ok("GET", f"/api/invoices/{monthly['id']}")["paid"], 300)
-        changed = {**payload, "amount": 301}
+        self.assertEqual(self.owner.ok("GET", f"/api/invoices/{monthly['id']}")["paid"], monthly["total"])
+        changed = {**settlement, "amount": 301}
         self.assertEqual(self.owner.request("POST", f"/api/invoices/{deposit_id}/deposit-settlements", changed)[0], 409)
         refund = {"amount": 701, "kind": "Refund", "reason": "Returned to tenant", "idempotencyKey": str(uuid.uuid4())}
         self.assertEqual(self.owner.request("POST", f"/api/invoices/{deposit_id}/deposit-settlements", refund)[0], 400)
@@ -408,8 +472,14 @@ class RoomApiIntegrationTests(unittest.TestCase):
         settled = self.owner.ok("POST", f"/api/invoices/{deposit_id}/deposit-settlements", refund)
         self.assertEqual(settled["depositHeld"], 0)
         self.assertEqual(settled["paid"], 1000)
-        self.owner.ok("POST", f"/api/rooms/{room['id']}/end-occupancy")
+        monthly_now = self.owner.ok("GET", f"/api/invoices/{monthly['id']}")
+        self.assertEqual(monthly_now["outstanding"], 0)
+        complete = self.moveout_payload(self.owner, room["id"], occupancy["id"], refund_amount=0)
+        ended = self.owner.ok("POST", f"/api/rooms/{room['id']}/end-occupancy", complete)
+        self.assertEqual(ended["refundAmount"], 0)
         self.assertEqual(self.owner.request("GET", f"/api/tenant/{occupancy['token']}")[0], 404)
+        changed_after_close = {**refund, "amount": 1, "idempotencyKey": str(uuid.uuid4())}
+        self.assertEqual(self.owner.request("POST", f"/api/invoices/{deposit_id}/deposit-settlements", changed_after_close)[0], 409)
 
     def test_deposit_amount_validation_and_zero_deposit(self) -> None:
         room = self.create_room(self.owner, label="deposit-validation")
@@ -659,7 +729,7 @@ class RoomApiIntegrationTests(unittest.TestCase):
     def test_new_occupancy_does_not_inherit_previous_tenant_invoice_history(self) -> None:
         room = self.create_room(self.owner, label="occupancy-history")
         previous_period = period_offset(-1)
-        self.start_occupancy(
+        previous_occupancy = self.start_occupancy(
             self.owner,
             room["id"],
             "Previous Tenant",
@@ -671,8 +741,13 @@ class RoomApiIntegrationTests(unittest.TestCase):
         self.save_reading(self.owner, room["id"], previous_period, 120)
         self.owner.ok("POST", "/api/invoices/generate", {"period": previous_period})
         previous_invoice = self.invoice_for_room(self.owner, previous_period, room["id"])
-
-        self.owner.ok("POST", f"/api/rooms/{room['id']}/end-occupancy")
+        blocked = self.moveout_payload(self.owner, room["id"], previous_occupancy["id"])
+        self.assertEqual(self.owner.request("POST", f"/api/rooms/{room['id']}/end-occupancy", blocked)[0], 409)
+        self.owner.ok("POST", f"/api/invoices/{previous_invoice['id']}/receipts", {
+            "amount": previous_invoice["outstanding"], "idempotencyKey": str(uuid.uuid4())})
+        complete = self.moveout_payload(self.owner, room["id"], previous_occupancy["id"])
+        ended = self.owner.ok("POST", f"/api/rooms/{room['id']}/end-occupancy", complete)
+        self.assertEqual(ended["endDate"], today_vietnam().isoformat())
         self.start_occupancy(
             self.owner,
             room["id"],
@@ -702,7 +777,7 @@ class RoomApiIntegrationTests(unittest.TestCase):
             "GET", f"/api/invoices/{previous_invoice['id']}"
         )
         self.assertEqual(retained_debt["tenantName"], previous_invoice["tenantName"])
-        self.assertGreater(retained_debt["outstanding"], 0)
+        self.assertEqual(retained_debt["outstanding"], 0)
 
     def test_invalid_payment_webhook_cannot_mark_invoice_paid(self) -> None:
         room = self.create_room(self.owner, label="invalid-webhook")

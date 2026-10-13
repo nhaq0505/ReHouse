@@ -22,9 +22,11 @@ Keep `WebhookBaseUrl` set to an HTTP localhost URL for this isolated test server
 automatic confirmation rejects it before contacting payOS. Never run the fake-key
 suite against an API configured with a real HTTPS callback origin.
 
-The payOS test stores obviously unusable local credentials only to exercise
-signature rejection. It sends no requests to payOS and does not create a
-payment link.
+With the localhost `WebhookBaseUrl` configuration above, the payOS tests use
+synthetic credentials and reject automatic confirmation before contacting the
+provider; they do not create a payment link. This guarantee depends on testing
+the correctly isolated API instance. Do not reuse an API that inherited a real
+HTTPS callback origin for fake-key tests.
 
 An additional SQLite-only webhook replay fixture is opt-in. It inserts
 synthetic payment attempts directly into the database used by the local
@@ -56,16 +58,70 @@ dotnet run --project tests/RoomRental.WebhookTests
 
 Deposit coverage includes per-occupancy amount validation, zero deposit, separate monthly billing,
 manual collection, held balance, refund/deduction, optional monthly debt credit, idempotency,
-owner scope, moveout protection and signed deposit webhook replay. The full opt-in SQLite
-suite currently has 15 tests. Use a disposable database, never the owner's live data.
+owner scope, moveout protection and signed deposit webhook replay. Use a disposable database,
+never the owner's live data.
 
 Supplemental invoices add creation validation/scope, current occupancy checks, idempotent
 creation, multiple items in the same month, guest/manual receipt and signed webhook replay
-coverage. Full opt-in SQLite suite now contains 17 tests.
+coverage.
 
-Moveout coverage adds final meter delta/idempotency/scope, zero total, monthly/supplemental
-credits, pending payment block, full settlement completion, token revocation, safe replay after
-new occupancy and the new meter baseline. Full opt-in SQLite suite: 20 tests.
+Moveout coverage checks full-month rent remains unchanged, midmonth readings issue immediately,
+same-room occupancy history, outstanding-invoice/Draft/pending-payOS guards, manual refund bounds,
+audited retained deposit, idempotent replay/conflict, owner scope, token revocation and meter
+baseline advancement. Completion no longer requires a final meter invoice.
+
+Billing lifecycle/correction and moveout coverage is in `test_billing_upgrade.py` (13 tests):
+full-month rent for midmonth move-in and different calendar lengths, immediate Issued invoices,
+removed proration routes, Draft compatibility, guarded/idempotent correction with audit,
+integer-VND validation, moveout debt/payment guards, manual refund plus retained-remainder audit,
+and same-room occupancy identity. Run it against a disposable API:
+
+```sh
+python3 -m unittest discover -s tests -p 'test_billing_upgrade.py' -v
+```
+
+## Full-month billing and refund-only moveout — 14/10/2026
+
+The moveout contract and fixtures now follow the full-month billing rule. Saving a monthly
+reading creates an Issued invoice at full room rent regardless of move-in day; there is no new
+midmonth Draft/proration path. Moveout atomically records the manually specified refund and
+retained deposit remainder with audit and idempotency. It blocks unresolved Drafts, unpaid
+issued invoices, pending PayOS, and unpaid deposit invoices. The UI was inspected read-only; no
+refund or payment mutation was performed from CUA.
+
+On disposable SQLite, focused modules passed separately: `test_api_integration.py` 17/17,
+`test_billing_upgrade.py` 13/13, `test_reports_archive.py` 6/6, and `test_payos_fixture.py` 4/4
+(40 total across separate runs, not one full-suite run). A repeated full-suite attempt hit the
+authentication 429 setup limit; no full-suite pass is claimed. On a cloned PostgreSQL database,
+the billing module ran 13 tests: 11 passed and 2 SQLite-only fixtures were skipped. The API
+build completed with 0 warnings/errors; frontend build and i18n validation passed with 789 source
+keys × 4 catalogs.
+
+Reports/archive coverage is in `test_reports_archive.py`. It checks owner-scoped receipts, debt and
+deposit totals across all filtered rows and pages, exclusion of internal deposit credits from cash,
+unpaid deposit debt, period/date filters, snapshot history after rename/archive, archive batch
+restore, atomic building archive when a room has an active tenant, and all three `.xlsx` exports.
+The Excel checks verify typed numeric/date cells and that formula-like receipt notes remain text
+with no formula node and an Excel quote-prefix style. Run it against the same disposable API:
+
+```sh
+API_BASE_URL=http://localhost:5080 /usr/bin/python3 -m unittest discover -s tests -p 'test_reports_archive.py' -v
+```
+
+The report/archive module passed 6/6. With the latest billing guards, the full suite passed 38/38
+on SQLite. PostgreSQL clone QA ran 34 tests: 32 passed and two SQLite-only fixture tests were
+skipped.
+On the current QA Mac, use `/usr/bin/python3` (Python 3.9.6) for this module's XLSX XML assertions:
+Python 3.14's Expat reported an XML parse error for the same valid workbook.
+
+QA transparency: an earlier agent run on API port 5082 used a separate disposable database at
+`/workspace/.local-data/billing-upgrade-qa/qa.db` but inherited an HTTPS callback origin. Its
+synthetic invalid credentials caused four webhook confirmation/registration POST attempts; all
+failed, no webhook was verified, and no payment or receipt was created. Do not characterize that
+run as having made zero provider requests. Later root QA used the separate
+`backend/RoomRental.Api/.local-data/billing-upgrade-qa/qa.db` clone with an HTTP localhost callback
+throughout and made no webhook-registration/provider requests. The real application database and
+real payment flow were not part of those suites.
 
 ## Inline payOS QR checkout (13/10/2026)
 
@@ -75,14 +131,16 @@ response mapping, pending-order reuse, legacy pending attempts with a nullable Q
 hosted URL, invalid signature/amount/order rejection, and webhook amount checks/idempotency.
 It also verifies that provider `PAID` without a verified matching payment amount does not
 create a receipt or credit an invoice. The handler only responds to fake payOS calls in
-process; unexpected external calls fail the test. Latest result: 45 assertions passed
-(11 webhook-registration and 34 checkout/payment assertions).
+process; unexpected external calls fail the test. Latest result: 58 assertions passed,
+including 10-minute QR expiry persistence/reuse and provider-confirmed terminal-state handling.
 
-The opt-in HTTP API suite passed 20/20 against a disposable SQLite copy with
-`WebhookBaseUrl=http://localhost:5082`; it did not call the live payOS origin. A separate
-initializer check on another disposable copy confirmed SQLite integrity and unchanged row
-counts while adding nullable checkout metadata columns. Do not use the live or shared DB for
-these tests.
+An earlier opt-in HTTP API run passed 20/20 against a disposable SQLite copy with
+`WebhookBaseUrl=http://localhost:5082`; it did not call the live payOS origin. The latest expanded
+focused suite results, including billing, reports, archive and moveout coverage, are recorded
+above. A
+separate initializer check on another disposable copy confirmed SQLite integrity and unchanged row
+counts while adding nullable checkout metadata columns. Do not use the live or shared DB for these
+tests.
 
 Browser QA uses a local synthetic-only mock server and CUA, not the live payOS service. The
 original inline-modal pass covered QR rendering, QR-less legacy hosted fallback, suppression of

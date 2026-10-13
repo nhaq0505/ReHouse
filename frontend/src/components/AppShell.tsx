@@ -5,7 +5,7 @@ import { Avatar, Button, Drawer, Dropdown, Layout, Menu, Space, Typography } fro
 import type { MenuProps } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  AppstoreOutlined, BankOutlined, CalculatorOutlined, CreditCardOutlined,
+  AppstoreOutlined, BankOutlined, CalculatorOutlined, CreditCardOutlined, BarChartOutlined,
   FileTextOutlined, HomeOutlined, LogoutOutlined, MenuOutlined, UserOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../auth';
@@ -27,6 +27,7 @@ const ownerItems = [
   { key: '/rooms', icon: <HomeOutlined />, label: t("Phòng & người thuê") },
   { key: '/readings', icon: <CalculatorOutlined />, label: t("Chỉ số điện") },
   { key: '/invoices', icon: <FileTextOutlined />, label: t("Hóa đơn") },
+  { key: '/reports', icon: <BarChartOutlined />, label: t("Báo cáo") },
   { type: 'divider' as const },
   { key: '/settings/payment', icon: <CreditCardOutlined />, label: t("Thanh toán trực tuyến") },
 ];

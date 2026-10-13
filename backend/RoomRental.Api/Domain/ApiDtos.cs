@@ -14,10 +14,20 @@ public sealed record OccupancyDto(Guid Id, string TenantName, string? Phone, int
 public sealed record RoomDto(Guid Id, Guid BuildingId, string BuildingName, string Name, decimal Rent, decimal ElectricityRate, decimal WaterFee, bool WaterPerPerson, decimal ServiceFee, decimal InitialReading, decimal PreviousReading, OccupancyDto? Occupancy);
 public sealed record RotateLinkDto(string Token, string Url);
 public sealed record ReadingRequest(Guid RoomId, string Period, decimal CurrentReading);
-public sealed record ReadingDto(Guid Id, Guid RoomId, string RoomName, string BuildingName, string Period, decimal PreviousReading, decimal CurrentReading, decimal Consumption, DateTimeOffset RecordedAt);
+public sealed record ReadingDto(Guid Id, Guid RoomId, Guid OccupancyId, string RoomName, string BuildingName, string Period, decimal PreviousReading, decimal CurrentReading, decimal Consumption, DateTimeOffset RecordedAt, InvoiceDto? Invoice = null, string LifecycleState = "Issued");
+public sealed record ReadingPreviewDto(Guid RoomId, Guid OccupancyId, string Period, DateOnly BillingStartDate, DateOnly BillingEndDate,
+    int BillableDays, int MonthDays, decimal SuggestedRent, decimal PreviousReading, decimal CurrentReading, decimal Consumption,
+    decimal ElectricityRate, decimal SuggestedElectricity, decimal WaterFee, bool WaterPerPerson, decimal SuggestedWater,
+    decimal ServiceFee, decimal SuggestedService, decimal SuggestedTotal);
 public sealed record GenerateInvoiceRequest(string Period);
-public sealed record InvoiceDto(Guid Id, Guid RoomId, string RoomName, string BuildingName, string Period, string TenantName, decimal PreviousReading, decimal CurrentReading, decimal Consumption, decimal Rent, decimal ElectricityAmount, decimal WaterAmount, decimal ServiceAmount, decimal Total, decimal Paid, decimal Outstanding, string Status, DateOnly DueDate, DateTimeOffset IssuedAt, string Kind, Guid OccupancyId, decimal DepositHeld, IReadOnlyList<DepositSettlement> DepositSettlements, string? Description, bool IsFinalMeterReading);
-public sealed record ReceiptRequest(decimal Amount, string? Note, string? IdempotencyKey);
+public sealed record InvoiceDto(Guid Id, Guid RoomId, string RoomName, string BuildingName, string Period, string TenantName, decimal PreviousReading, decimal CurrentReading, decimal Consumption, decimal Rent, decimal ElectricityAmount, decimal WaterAmount, decimal ServiceAmount, decimal Total, decimal Paid, decimal Outstanding, string Status, DateOnly DueDate, DateTimeOffset IssuedAt, string Kind, Guid OccupancyId, decimal DepositHeld, IReadOnlyList<DepositSettlement> DepositSettlements, string? Description, bool IsFinalMeterReading,
+    string LifecycleState, long Version, Guid BuildingId, decimal? MonthlyRentRate, decimal? ElectricityRate, decimal? WaterRate, bool? WaterPerPerson, decimal? ServiceRate,
+    DateOnly? BillingStartDate, DateOnly? BillingEndDate, int? BillableDays, int? MonthDays,
+    bool HasPendingPayment = false, bool CanCorrectMeter = false, string? MeterCorrectionBlockedReason = null);
+public sealed record ReceiptRequest(decimal Amount, string? Note, string? IdempotencyKey, long? ExpectedVersion = null);
+public sealed record PublishInvoiceRequest(Guid RequestId, long ExpectedVersion, decimal Rent, decimal ElectricityAmount, decimal WaterAmount, decimal ServiceAmount, string? Reason = null);
+public sealed record InvoiceCorrectionRequest(Guid RequestId, long ExpectedVersion, string Reason, decimal? Rent = null, decimal? ElectricityAmount = null, decimal? WaterAmount = null, decimal? ServiceAmount = null, decimal? CurrentReading = null, DateOnly? DueDate = null, string? Description = null, decimal? Amount = null);
+public sealed record InvoiceCorrectionDto(Guid Id, int Revision, Guid RequestId, string Reason, Guid ActorId, string ActorName, DateTimeOffset CreatedAt, long Version, string BeforeJson, string AfterJson);
 public sealed record PaymentSettingsRequest(string ClientId, string ApiKey, string ChecksumKey);
 public sealed record PaymentSettingsDto(bool Configured, string? ClientId, string? WebhookUrl,
     string WebhookStatus, string? WebhookVerifiedAt, string? WebhookError);
@@ -25,9 +35,9 @@ public sealed record PaymentCheckoutDto(string CheckoutUrl, string? QrCode, int 
     string? AccountName, string? AccountNumber, string? BankBin, string? Description, string Status, long? ExpiresAt);
 public sealed record TenantSummaryDto(RoomDto Room, OccupancyDto Occupancy, IReadOnlyList<InvoiceDto> Invoices);
 
-public sealed record DepositSettlementRequest(decimal Amount, string Kind, string Reason, string IdempotencyKey, Guid? TargetInvoiceId);
+public sealed record DepositSettlementRequest(decimal Amount, string Kind, string Reason, string IdempotencyKey, Guid? TargetInvoiceId, long? ExpectedVersion = null, long? TargetExpectedVersion = null);
 
 public sealed record SupplementalInvoiceRequest(Guid RequestId, Guid OccupancyId, string Description, decimal Amount, DateOnly DueDate);
 
-public sealed record FinalInvoiceRequest(Guid RequestId, Guid OccupancyId, decimal CurrentReading, decimal AdditionalAmount, string? Description);
-public sealed record CompleteMoveoutRequest(Guid OccupancyId, Guid FinalInvoiceId);
+public sealed record CompleteMoveoutRequest(Guid OccupancyId, Guid RequestId, decimal RefundAmount,
+    decimal ExpectedHeld, long? ExpectedDepositVersion);

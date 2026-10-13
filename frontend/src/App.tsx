@@ -13,6 +13,7 @@ const BuildingsPage = lazy(() => import('./pages/BuildingsPage'));
 const RoomsPage = lazy(() => import('./pages/RoomsPage'));
 const ReadingsPage = lazy(() => import('./pages/ReadingsPage'));
 const InvoicesPage = lazy(() => import('./pages/InvoicesPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const PaymentSettingsPage = lazy(() => import('./pages/PaymentSettingsPage'));
 const AdminOwnersPage = lazy(() => import('./pages/AdminOwnersPage'));
 const TenantPage = lazy(() => import('./pages/TenantPage'));
@@ -57,6 +58,7 @@ export default function App() {
     <Route path="/rooms" element={<Gate><AppShell><RoomsPage /></AppShell></Gate>} />
     <Route path="/readings" element={<Gate><AppShell><ReadingsPage /></AppShell></Gate>} />
     <Route path="/invoices" element={<Gate><AppShell><InvoicesPage /></AppShell></Gate>} />
+    <Route path="/reports" element={<Gate><AppShell><ReportsPage /></AppShell></Gate>} />
     <Route path="/settings/payment" element={<Gate><AppShell><PaymentSettingsPage /></AppShell></Gate>} />
     <Route path="/admin/owners" element={<Gate admin><AppShell><AdminOwnersPage /></AppShell></Gate>} />
     <Route path="*" element={<NotFoundPage />} />

@@ -80,10 +80,12 @@ Kiểm thử API cần backend đang chạy với dữ liệu thử ở localhos
 Xem `docs/api-contract.md` cho API và `docs/implementation-notes.md` cho phạm vi MVP, các giới hạn và bước triển khai AI sau này.
 
 
-Tiền cọc: vào **Phòng & người thuê → Thêm người thuê**, nhập mức cọc thỏa thuận với từng khách (0 nếu không thu). Hệ thống tạo khoản cọc riêng trên link khách; thu qua payOS hoặc ghi nhận thu thủ công. Xem tại **Hóa đơn → Tiền cọc** hoặc menu phòng **Thu / quyết toán cọc**. Khi khách chuyển đi, ghi nhận số đã hoàn hoặc khấu trừ vào công nợ/chi phí trước khi kết thúc lượt thuê. Hoàn cọc là ghi nhận đã hoàn bên ngoài, không tự chuyển tiền ngân hàng.
+Tiền thuê: mỗi khi ghi chỉ số kỳ tháng, hệ thống lập hóa đơn ngay theo đủ giá thuê tháng, kể cả khách bắt đầu thuê giữa tháng. Tiền thuê không chia theo ngày vào/ra hoặc số ngày của tháng.
+
+Tiền cọc: vào **Phòng & người thuê → Thêm người thuê**, nhập mức cọc thỏa thuận với từng khách (0 nếu không thu). Hệ thống tạo khoản cọc riêng trên link khách; thu qua payOS hoặc ghi nhận thu thủ công. Xem tại **Hóa đơn → Tiền cọc** hoặc menu phòng **Thu / quyết toán cọc**. Khi trả phòng, nhập số tiền cọc muốn ghi nhận đã hoàn; phần còn giữ lại được ghi nhận trong lịch sử quyết toán. Đây chỉ là ghi nhận hoàn tiền bên ngoài, không tự chuyển tiền ngân hàng.
 
 Nhân bản phòng: **Phòng & người thuê → ⋯ → Nhân bản phòng**. Form điền sẵn dãy và mức phí để chỉnh trước khi tạo. Nhập chỉ số công tơ của phòng mới; phòng bản sao bắt đầu trống, chưa có người thuê hoặc công nợ.
 
 Hóa đơn bổ sung: **Phòng & người thuê → ⋯ → Tạo hóa đơn bổ sung**, nhập nội dung, số tiền và hạn thanh toán. Dùng cho phòng đang có khách; khoản thu xuất hiện trên link khách hiện có. Xem lại tại **Hóa đơn → Hóa đơn bổ sung**.
 
-Trả phòng: **Phòng & người thuê → ⋯ → Trả phòng & quyết toán**. Chốt chỉ số cuối kỳ và nhập phí/tiền thuê còn lại chưa có hóa đơn; khấu trừ cọc hoặc ghi nhận tiền đã nhận; ghi nhận đã hoàn phần cọc dư; Hoàn tất trả phòng để thu hồi link và trả phòng về trống. Luồng mới chặn kết thúc khi còn nợ, cọc đang giữ hoặc giao dịch payOS chờ. Hoàn cọc không tự chuyển tiền ngân hàng; tiền thuê theo ngày do chủ trọ tự xác định.
+Trả phòng: **Phòng & người thuê → ⋯ → Trả phòng & quyết toán**. Xem hóa đơn còn nợ và tiền cọc đang giữ, nhập số tiền hoàn thủ công rồi xác nhận để kết thúc lượt thuê, thu hồi link khách và trả phòng về trống. Hệ thống ghi nhận khoản hoàn và phần cọc còn giữ trong lịch sử quyết toán; không chuyển tiền ngân hàng. Không chốt công tơ cuối kỳ hoặc lập hóa đơn cuối tại bước này. Cần thanh toán hết hóa đơn đã phát hành (kể cả hóa đơn cọc), xử lý Draft và giao dịch payOS đang chờ trước khi trả phòng. Ngày kết thúc là ngày Việt Nam hiện tại.

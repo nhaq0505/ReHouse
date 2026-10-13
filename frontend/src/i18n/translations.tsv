@@ -566,3 +566,224 @@
 565|No invoices match these filters|没有符合筛选条件的账单|필터와 일치하는 청구서가 없습니다|इन फ़िल्टर से मेल खाने वाला कोई बिल नहीं है
 566|Change the filters or search term to see invoices.|更改筛选条件或搜索关键词以查看账单。|청구서를 보려면 필터나 검색어를 바꾸세요.|बिल देखने के लिए फ़िल्टर या खोज शब्द को बदलें।
 567|Invoices will appear after you record a deposit, add a supplemental charge or finalize electricity readings.|登记押金、添加补充费用或确认电表读数后，账单会显示在这里。|보증금을 기록하거나 추가 청구서를 만들거나 전기 검침을 확정하면 청구서가 여기에 표시됩니다.|जमा राशि दर्ज करने, अतिरिक्त शुल्क जोड़ने या बिजली रीडिंग तय करने के बाद बिल यहाँ दिखाई देंगे।
+568|Building archived. Rental and invoice history are retained.|楼栋已归档，租赁和账单记录会保留。|건물이 보관되었습니다. 임대 및 청구서 기록은 유지됩니다.|भवन संग्रहीत कर दिया गया है। किराये और बिल का इतिहास सुरक्षित रहेगा।
+569|Building restored with {0} rooms from its archive batch.|楼栋已恢复，并一并恢复同批次的 {0} 个房间。|건물과 같은 보관 묶음의 방 {0}개를 복원했습니다.|भवन और उसी संग्रह समूह के {0} कमरे बहाल कर दिए गए हैं।
+570|Archive building {0}?|要归档楼栋“{0}”吗？|건물 {0}을(를) 보관할까요?|क्या भवन {0} को संग्रहीत करें?
+571|The building and its active rooms will leave the current list. Rental, invoice, and receipt history will be retained, and the group can be restored later.|楼栋及其活跃房间将从当前列表中隐藏。租赁、账单和收款记录会保留，之后可按原组恢复。|건물과 활성 방은 현재 목록에서 숨겨집니다. 임대, 청구서, 수납 기록은 보존되며 나중에 함께 복원할 수 있습니다.|भवन और उसके सक्रिय कमरे मौजूदा सूची से छिप जाएंगे। किराये, बिल और भुगतान का इतिहास सुरक्षित रहेगा और बाद में समूह को बहाल किया जा सकेगा।
+572|Archive building|归档楼栋|건물 보관|भवन संग्रहीत करें
+573|Filter archive status|筛选归档状态|보관 상태 필터|संग्रह स्थिति फ़िल्टर करें
+574|Active ({0})|使用中（{0}）|활성 ({0})|सक्रिय ({0})
+575|Archived ({0})|已归档（{0}）|보관됨 ({0})|संग्रहीत ({0})
+576|No archived buildings|没有已归档的楼栋|보관된 건물이 없습니다|कोई भवन संग्रहीत नहीं है
+577|Archived buildings will appear here so you can restore them.|归档楼栋会显示在这里，供你恢复。|보관한 건물은 여기에서 복원할 수 있습니다.|संग्रहीत भवन यहाँ बहाल करने के लिए दिखाई देंगे।
+578|active buildings|栋正在使用|활성 건물|सक्रिय भवन
+579|{0} active rooms|{0} 个房间正在使用|활성 방 {0}개|{0} सक्रिय कमरे
+580|archived buildings|栋已归档|보관된 건물|संग्रहीत भवन
+581|Rental and invoice history are retained.|租赁和账单记录会保留。|임대 및 청구서 기록은 유지됩니다.|किराये और बिल का इतिहास सुरक्षित रहेगा。
+582|Archived|已归档|보관됨|संग्रहीत
+583|Archived {0}|归档于 {0}|{0}에 보관됨|{0} को संग्रहीत किया गया
+584|Restore|恢复|복원|बहाल करें
+585|Archive|归档|보관|संग्रहित करें
+586|Invoice adjustment saved.|账单调整已保存。|청구서 조정 사항을 저장했습니다.|बिल में बदलाव सहेज लिया गया है।
+587|Save invoice adjustment?|保存账单调整吗？|청구서 조정을 저장할까요?|क्या बिल में बदलाव सहेजें?
+588|The new charges and reason will be recorded in the invoice history.|新的费用和原因将记录到账单历史中。|새 요금과 사유가 청구서 기록에 저장됩니다.|नई राशि और कारण बिल के इतिहास में दर्ज होंगे।
+589|Save adjustment|保存调整|조정 저장|बदलाव सहेजें
+590|This invoice has a pending payOS transaction. Reconcile it before making changes.|此账单有一笔待处理的 payOS 交易。请先对账再调整。|이 청구서에 payOS 거래가 대기 중입니다. 조정하기 전에 거래를 대사하세요.|इस बिल का payOS लेनदेन लंबित है। बदलाव से पहले उसका मिलान करें।
+591|Only unpaid invoices can be adjusted. This invoice already has a recorded payment.|只能调整未付款账单。此账单已记录收款。|미결제 청구서만 조정할 수 있습니다. 이 청구서에는 이미 결제가 기록되어 있습니다.|केवल अवैतनिक बिल में बदलाव किया जा सकता है। इस बिल में भुगतान दर्ज है।
+592|Unissued draft|未发布草稿|미발행 초안|अप्रकाशित ड्राफ़्ट
+593|Draft|草稿|초안|ड्राफ़्ट
+594|Create only missing invoices; drafts will not be published.|仅创建缺少的账单，不会发布草稿。|누락된 청구서만 만들며 초안은 발행하지 않습니다.|केवल छूटे हुए बिल बनाएँ; ड्राफ़्ट जारी नहीं होंगे。
+595|These figures cover {0} issued invoices matching the filters. Deposits are not revenue.|这三项数据统计符合筛选条件的 {0} 张已发布账单。押金不属于收入。|이 수치는 필터에 맞는 발행 청구서 {0}건을 기준으로 합니다. 보증금은 매출이 아닙니다.|ये आँकड़े फ़िल्टर से मेल खाने वाले {0} जारी बिलों पर आधारित हैं। जमा राशि आय नहीं है।
+596|{0} unpublished drafts|{0} 张未发布草稿|미발행 초안 {0}건|{0} अप्रकाशित ड्राफ़्ट
+597|Issuance status|发布状态|발행 상태|जारी करने की स्थिति
+598|All issuance statuses|所有发布状态|모든 발행 상태|सभी जारी स्थितियाँ
+599|Draft not sent to tenant|草稿尚未发送给租客|초안이 임차인에게 전송되지 않았습니다|ड्राफ़्ट किरायेदार को नहीं भेजा गया है
+600|A draft has no payment status. Open Readings to edit and publish it.|草稿没有付款状态。请打开电表读数页面进行编辑并发布。|초안에는 결제 상태가 없습니다. 검침 페이지에서 수정하고 발행하세요.|ड्राफ़्ट की भुगतान स्थिति नहीं होती। इसे संपादित और जारी करने के लिए रीडिंग पृष्ठ खोलें।
+601|Adjust invoice|调整账单|청구서 조정|बिल में बदलाव
+602|Adjust deposit|调整押金|보증금 조정|जमा राशि में बदलाव
+603|Adjust supplemental invoice|调整附加账单|추가 청구서 조정|अतिरिक्त बिल में बदलाव
+604|The reason and every change are saved in the history.|调整原因和所有变更都会保存到账单历史。|사유와 모든 변경 사항이 기록에 저장됩니다.|कारण और सभी बदलाव इतिहास में सहेजे जाएँगे।
+605|Reconciliation required before adjustment|调整前需要对账|조정 전에 대사가 필요합니다|बदलाव से पहले मिलान आवश्यक है
+606|This invoice cannot be adjusted|无法调整此账单|이 청구서는 조정할 수 없습니다|इस बिल में बदलाव नहीं किया जा सकता
+607|New meter reading|新电表读数|새 검침값|नई मीटर रीडिंग
+608|The meter reading can only be changed on the latest invoice anchor.|只能修改最新账单锚点上的电表读数。|검침값은 가장 최근 기준 청구서에서만 변경할 수 있습니다.|मीटर रीडिंग केवल नवीनतम आधार बिल में बदली जा सकती है।
+609|The server allows meter changes only on the room's latest invoice. Charges can still be adjusted separately.|服务器只允许修改该房间最新账单的读数。费用仍可单独调整。|서버는 해당 방의 가장 최근 청구서에서만 검침값 변경을 허용합니다. 요금은 별도로 조정할 수 있습니다.|सर्वर कमरे के नवीनतम बिल में ही मीटर बदलने देता है। राशि अलग से बदली जा सकती है।
+610|Invoice description|账单说明|청구서 내용|बिल का विवरण
+611|Invoice amount|账单金额|청구서 금액|बिल राशि
+612|A monthly invoice already exists for this period|本期已有月度账单|이번 기간의 월 청구서가 이미 있습니다|इस अवधि का मासिक बिल पहले से मौजूद है
+613|Rent and water remain on the monthly invoice. Only final electricity and additional charges can be changed below.|租金和水费保留在月度账单中。下方只能调整期末电费和额外费用。|월 청구서의 임대료와 수도 요금은 유지됩니다. 아래에서는 최종 전기 요금과 추가 비용만 수정할 수 있습니다.|किराया और पानी मासिक बिल में ही रहेंगे। नीचे केवल अंतिम बिजली और अतिरिक्त शुल्क बदले जा सकते हैं।
+614|Final-period rent|期末租金|최종 기간 임대료|अंतिम अवधि का किराया
+615|Final-period water|期末水费|최종 기간 수도 요금|अंतिम अवधि का पानी शुल्क
+616|Final-period electricity|期末电费|최종 기간 전기 요금|अंतिम अवधि की बिजली राशि
+617|Additional final-period charge|期末额外费用|최종 기간 추가 비용|अंतिम अवधि का अतिरिक्त शुल्क
+618|Reason for adjustment|调整原因|조정 사유|बदलाव का कारण
+619|Enter a reason for the adjustment.|请输入调整原因。|조정 사유를 입력하세요.|बदलाव का कारण दर्ज करें।
+620|Explain why this invoice needs an adjustment|请说明调整此账单的原因|청구서를 조정하는 이유를 입력하세요|बिल में बदलाव का कारण बताएँ
+621|Adjustment history|调整历史|조정 기록|बदलाव का इतिहास
+622|There are no adjustments yet.|尚无调整记录。|아직 조정 기록이 없습니다.|अभी तक कोई बदलाव नहीं हुआ है।
+623|Total amount|总金额|총액|कुल राशि
+624|Reading saved and draft invoice created.|读数已保存并创建账单草稿。|검침값을 저장하고 청구서 초안을 만들었습니다.|रीडिंग सहेजी गई और बिल का ड्राफ़्ट बनाया गया।
+625|The reading was saved, but the draft invoice could not be loaded. Refresh the list.|读数已保存，但无法加载账单草稿。请刷新列表。|검침값은 저장했지만 청구서 초안을 불러오지 못했습니다. 목록을 새로고침하세요.|रीडिंग सहेजी गई, लेकिन बिल का ड्राफ़्ट लोड नहीं हुआ। सूची रीफ़्रेश करें।
+626|Draft invoice published.|账单草稿已发布。|청구서 초안을 발행했습니다.|बिल का ड्राफ़्ट जारी किया गया।
+627|The reading and current charges will be saved to the invoice. You can adjust it while no payment has been recorded.|读数和当前费用将保存到账单。账单尚无收款记录时仍可调整。|검침값과 현재 요금이 청구서에 저장됩니다. 결제가 기록되기 전에는 청구서를 조정할 수 있습니다.|रीडिंग और मौजूदा शुल्क बिल में सहेजे जाएँगे। भुगतान दर्ज होने तक बिल बदला जा सकता है।
+628|Publish draft invoice?|发布账单草稿吗？|청구서 초안을 발행할까요?|क्या बिल का ड्राफ़्ट जारी करें?
+629|The tenant will see the invoice after publication. Check rent, electricity, water, and service charges before continuing.|发布后租客即可看到账单。请先核对租金、电费、水费和服务费。|발행하면 임차인이 청구서를 볼 수 있습니다. 계속하기 전에 임대료, 전기, 수도, 서비스 요금을 확인하세요.|जारी होने के बाद किरायेदार बिल देख पाएगा। आगे बढ़ने से पहले किराया, बिजली, पानी और सेवा शुल्क जाँचें।
+630|Publish invoice|发布账单|청구서 발행|बिल जारी करें
+631|ISSUANCE STATUS|发布状态|발행 상태|जारी करने की स्थिति
+632|Edit draft|编辑草稿|초안 수정|ड्राफ़्ट संपादित करें
+633|Preview and save draft|预览并保存草稿|미리 보고 초안 저장|पूर्वावलोकन करें और ड्राफ़्ट सहेजें
+634|Preview mid-month charges?|预览月中费用吗？|월중 요금을 미리 볼까요?|क्या महीने के बीच के शुल्क देखें?
+635|The system will calculate the actual days and let you review and edit each charge before saving the draft invoice.|系统会按实际天数计算，并允许你逐项检查和调整费用后再保存账单草稿。|시스템이 실제 일수를 계산하며 초안을 저장하기 전에 항목별 요금을 확인하고 수정할 수 있습니다.|सिस्टम वास्तविक दिनों के आधार पर गणना करेगा और ड्राफ़्ट बिल सहेजने से पहले हर शुल्क की समीक्षा व बदलाव करने देगा।
+636|Preview|预览|미리 보기|पूर्वावलोकन
+637|Record the period-end reading. Full-month invoices are issued as usual; partial-month invoices are saved as drafts for review.|记录期末读数。整月账单仍会照常发布；非整月账单会先保存为草稿供你检查。|기간 말 검침값을 기록합니다. 한 달 전체 청구서는 기존처럼 발행되고, 일부 기간 청구서는 검토를 위해 초안으로 저장됩니다.|अवधि के अंत की रीडिंग दर्ज करें। पूरे महीने के बिल सामान्य रूप से जारी होंगे; आंशिक महीने के बिल समीक्षा के लिए ड्राफ़्ट में सहेजे जाएँगे।
+638|Full month: issue as usual|整月：照常发布|한 달 전체: 기존처럼 발행|पूरा महीना: सामान्य रूप से जारी करें
+639|If a tenant starts after the first day, rent is prorated by the actual days in that month. Preview and edit the charges, save a draft, then publish it when ready.|如果租客在月初之后入住，租金会按当月实际天数折算。你可以预览并调整费用、保存草稿，然后自行发布。|임차인이 매월 1일 이후 입주하면 해당 월의 실제 일수로 임대료를 계산합니다. 요금을 미리 보고 수정한 뒤 초안을 저장하고 준비되면 발행하세요.|यदि किरायेदार महीने की पहली तारीख के बाद आता है, तो किराया उस महीने के वास्तविक दिनों के अनुसार होगा। शुल्क देखें और बदलें, ड्राफ़्ट सहेजें, फिर तैयार होने पर जारी करें।
+640|Review and publish draft|查看并发布草稿|초안 검토 및 발행|ड्राफ़्ट देखें और जारी करें
+641|Preview partial-month rent|预览非整月租金|부분 월 임대료 미리 보기|आंशिक महीने का किराया देखें
+642|Only the owner can see this draft|只有房东能看到此草稿|이 초안은 집주인만 볼 수 있습니다|यह ड्राफ़्ट केवल मकान मालिक को दिखता है
+643|Not published to tenant|尚未发布给租客|임차인에게 발행되지 않음|किरायेदार को जारी नहीं किया गया
+644|Edit the charges below, then publish. A draft is not counted as an unpaid invoice.|请在下方调整费用后发布。草稿不计为未付款账单。|아래 요금을 수정한 뒤 발행하세요. 초안은 미결제 청구서로 계산되지 않습니다.|नीचे शुल्क बदलें और जारी करें। ड्राफ़्ट को अवैतनिक बिल नहीं माना जाता।
+645|Charges use the actual days in the month. Saving creates a private draft that you can edit and publish later.|费用按当月实际天数计算。保存后会创建一份仅你可见的草稿，之后可继续调整并发布。|해당 월의 실제 일수로 계산했습니다. 저장하면 나중에 수정하고 발행할 수 있는 비공개 초안이 만들어집니다.|शुल्क महीने के वास्तविक दिनों के अनुसार है। सहेजने पर निजी ड्राफ़्ट बनेगा जिसे बाद में बदला और जारी किया जा सकता है।
+646|Calculated for {0} of {1} days|按 {0}/{1} 天计算|{0}/{1}일 기준 계산|{1} में से {0} दिनों की गणना
+647|Total after edits|调整后总额|수정 후 총액|बदलाव के बाद कुल राशि
+648|Draft version|草稿版本|초안 버전|ड्राफ़्ट संस्करण
+649|Save draft|保存草稿|초안 저장|ड्राफ़्ट सहेजें
+650|Deposit|押金|보증금|जमा राशि
+651|Excel file downloaded.|Excel 文件已下载。|Excel 파일을 다운로드했습니다.|Excel फ़ाइल डाउनलोड हो गई।
+652|Collections|收款|수납|वसूली
+653|Debt|欠款|미수금|बकाया
+654|RECEIVED ON|收款日期|수납일|प्राप्ति की तारीख
+655|PERIOD / INVOICE TYPE|账期 / 账单类型|기간 / 청구서 유형|अवधि / बिल प्रकार
+656|SOURCE|收款来源|수납 출처|प्राप्ति स्रोत
+657|NOTE|备注|메모|टिप्पणी
+658|AMOUNT|金额|금액|राशि
+659|DUE DATE|到期日|결제 기한|देय तिथि
+660|INVOICE TOTAL|账单总额|청구서 합계|बिल कुल
+661|CURRENT BALANCE|当前欠款|현재 미수금|मौजूदा बकाया
+662|DEPOSIT REQUIRED|应收押金|요구 보증금|आवश्यक जमा राशि
+663|RECEIVED IN PERIOD|本期收取|기간 내 수납|अवधि में प्राप्त
+664|REFUNDED IN PERIOD|本期退还|기간 내 환불|अवधि में लौटाई गई
+665|DEDUCTED IN PERIOD|本期抵扣|기간 내 차감|अवधि में कटौती
+666|CURRENTLY HELD|当前持有|현재 보유|वर्तमान में रखी गई
+667|REPORTS AND RECONCILIATION|报表与对账|보고서 및 대사|रिपोर्ट और मिलान
+668|Reports|报表|보고서|रिपोर्ट
+669|Track received payments, current debt, and deposit movements.|跟踪收款、当前欠款和押金变动。|수납 내역, 현재 미수금, 보증금 변동을 확인하세요.|प्राप्त भुगतान, मौजूदा बकाया और जमा राशि में बदलाव देखें।
+670|Export Excel|导出 Excel|Excel 내보내기|Excel निर्यात करें
+671|Date range|日期范围|기간|तिथि सीमा
+672|Filter by room|按房间筛选|방별 필터|कमरे से फ़िल्टर करें
+673|All rooms|所有房间|모든 방|सभी कमरे
+674|Reset|重置|초기화|रीसेट
+675|Deposit receipts are shown separately and are excluded from invoice collections.|押金收款单独显示，不计入账单收款总额。|보증금 수납은 별도로 표시하며 청구서 수납 합계에는 포함하지 않습니다.|जमा राशि की प्राप्ति अलग दिखाई जाती है; इसे बिल वसूली में नहीं जोड़ा जाता।
+676|Debt shows the current balance of invoices in the selected periods, not the balance as of the period end.|欠款显示所选账期账单的当前余额，而非账期结束时的余额。|미수금은 선택한 기간에 속한 청구서의 현재 잔액이며 기간 말 기준 잔액은 아닙니다.|बकाया चुनी गई अवधि के बिलों का मौजूदा शेष है, अवधि के अंत का शेष नहीं।
+677|Refunds and deductions use the selected dates; held deposits show the current balance.|退还和抵扣按所选日期统计；持有押金显示当前余额。|환불과 차감은 선택한 날짜 범위로 집계하고, 보유 보증금은 현재 잔액을 표시합니다.|वापसी और कटौती चुनी गई तिथियों के अनुसार हैं; रखी जमा राशि मौजूदा शेष है।
+678|Loading report…|正在加载报表…|보고서를 불러오는 중…|रिपोर्ट लोड हो रही है…
+679|No data for this range|此日期范围内没有数据|이 기간에 데이터가 없습니다|इस अवधि के लिए कोई डेटा नहीं है
+680|Try another date range or location.|请尝试其他日期范围或地点。|다른 날짜 범위나 장소를 선택해 보세요.|दूसरी तिथि सीमा या स्थान चुनें।
+681|{0} results|{0} 条结果|결과 {0}건|{0} परिणाम
+682|Invoice collections|账单收款|청구서 수납|बिल वसूली
+683|Deposit received (separate)|押金收款（单独统计）|보증금 수납 (별도)|जमा राशि प्राप्त (अलग)
+684|Total received (including deposits)|收款总额（含押金）|총 수납 (보증금 포함)|कुल प्राप्त (जमा राशि सहित)
+685|Current debt|当前欠款|현재 미수금|मौजूदा बकाया
+686|Current overdue debt|当前逾期欠款|현재 연체 미수금|मौजूदा अतिदेय बकाया
+687|Invoices with a balance|有欠款的账单|잔액이 있는 청구서|बकाया वाले बिल
+688|Deposits received in period|本期收取押金|기간 내 보증금 수납|अवधि में जमा राशि प्राप्त
+689|Deposits refunded in period|本期退还押金|기간 내 보증금 환불|अवधि में जमा राशि लौटाई
+690|Deposits deducted in period|本期抵扣押金|기간 내 보증금 차감|अवधि में जमा राशि कटौती
+691|Deposit currently held|当前持有押金|현재 보유 보증금|वर्तमान में रखी जमा राशि
+692|Current balance|当前余额|현재 잔액|मौजूदा शेष
+693|Received on|收款日期|수납일|प्राप्ति की तारीख
+694|Source|来源|출처|स्रोत
+695|Refunded in period|本期退还|기간 내 환불|अवधि में लौटाई गई
+696|Deducted in period|本期抵扣|기간 내 차감|अवधि में कटौती
+697|Room archived. Rental and invoice history are retained.|房间已归档，租赁和账单记录会保留。|방이 보관되었습니다. 임대 및 청구서 기록은 유지됩니다.|कमरा संग्रहीत कर दिया गया है। किराये और बिल का इतिहास सुरक्षित रहेगा।
+698|Room restored.|房间已恢复。|방을 복원했습니다.|कमरा बहाल कर दिया गया है।
+699|Delete room|删除房间|방 삭제|कमरा हटाएँ
+700|Delete room {0}?|要删除房间“{0}”吗？|방 {0}을(를) 삭제할까요?|क्या कमरा {0} हटाएँ?
+701|The room will be archived from the active list. Rental, invoice, and receipt history will be retained.|房间将从活动列表中归档。租赁、账单和收款记录会保留。|방이 활성 목록에서 보관됩니다. 임대, 청구서, 수납 기록은 보존됩니다.|कमरा सक्रिय सूची से संग्रहीत होगा। किराये, बिल और भुगतान का इतिहास सुरक्षित रहेगा。
+702|Archive status|归档状态|보관 상태|संग्रह स्थिति
+703|No archived rooms|没有已归档的房间|보관된 방이 없습니다|कोई कमरा संग्रहीत नहीं है
+704|Archived rooms will appear here so you can restore them.|已归档的房间会显示在这里，供你恢复。|보관한 방은 여기에서 복원할 수 있습니다.|संग्रहीत कमरे यहाँ बहाल करने के लिए दिखाई देंगे।
+705|Could not calculate the move-out charges.|无法计算退房结算金额。|퇴실 정산 금액을 계산할 수 없습니다.|कमरा छोड़ने के शुल्क की गणना नहीं हो सकी।
+706|The charges changed. Recalculate the preview before finalizing the invoice.|费用已更改。请重新计算预览后再确认账单。|요금이 변경되었습니다. 청구서를 확정하기 전에 미리 계산하세요.|शुल्क बदल गया है। बिल अंतिम करने से पहले पूर्वावलोकन फिर से गणना करें।
+707|The invoice will use the selected end date and calculated charges. Paid monthly invoices remain unchanged; collected rent is not refunded or reduced.|账单将采用所选结束日期和计算后的费用。已付款月度账单保持不变；已收租金不会退款或减少。|청구서는 선택한 종료일과 계산된 요금을 사용합니다. 결제된 월 청구서는 그대로 유지되며 이미 받은 임대료는 환불하거나 줄이지 않습니다.|बिल में चुनी गई समाप्ति तिथि और गणना किए गए शुल्क होंगे। भुगतान किए गए मासिक बिल अपरिवर्तित रहेंगे; प्राप्त किराया वापस या कम नहीं होगा।
+708|Tenancy end date|租期结束日期|임대 종료일|किरायेदारी समाप्ति तिथि
+709|Choose an end date.|请选择结束日期。|종료일을 선택하세요.|समाप्ति तिथि चुनें।
+710|The end date must be on or after the tenancy start date.|结束日期必须不早于租期开始日期。|종료일은 임대 시작일 이후여야 합니다.|समाप्ति तिथि किरायेदारी शुरू होने की तारीख या उसके बाद होनी चाहिए।
+711|Last confirmed reading: {0} kWh · Current electricity rate: {1}/kWh.|上次确认读数：{0} kWh · 当前电价：{1}/kWh。|마지막 확정 검침값: {0} kWh · 현재 전기 요금: {1}/kWh.|अंतिम पुष्ट रीडिंग: {0} kWh · मौजूदा बिजली दर: {1}/kWh。
+712|Tenancy started: {0}.|租期开始日期：{0}。|임대 시작일: {0}.|किरायेदारी शुरू हुई: {0}।
+713|Rent is prorated by actual days, including the end date.|租金按实际天数折算，结束日期当天也计入。|임대료는 종료일을 포함한 실제 일수로 계산합니다.|किराया समाप्ति के दिन सहित वास्तविक दिनों के अनुसार होगा।
+714|Monthly invoice has a partial or full payment|月度账单已部分或全部收款|월 청구서가 일부 또는 전액 결제되었습니다|मासिक बिल का आंशिक या पूरा भुगतान मिल चुका है
+715|The {0} monthly invoice stays unchanged. The move-out invoice includes only final electricity and additional charges; collected rent is not refunded or reduced.|{0} 的月度账单保持不变。退房账单仅计算期末电费和额外费用；已收租金不会退款或减少。|{0} 월 청구서는 그대로 유지됩니다. 퇴실 청구서에는 최종 전기 요금과 추가 비용만 포함되며 받은 임대료는 환불하거나 줄이지 않습니다.|{0} का मासिक बिल अपरिवर्तित रहेगा। निकासी बिल में केवल अंतिम बिजली और अतिरिक्त शुल्क होंगे; प्राप्त किराया वापस या कम नहीं होगा。
+716|Publish the monthly draft before move-out|退房前请先发布月度草稿|퇴실 전에 월 초안을 발행하세요|कमरा छोड़ने से पहले मासिक ड्राफ़्ट जारी करें
+717|The {0} monthly draft is not debt and has not been sent to the tenant. Open and review it, publish it, then reload the move-out settlement.|{0} 的月度草稿尚不构成欠款，也未发送给租客。请打开账单核对费用并发布，然后重新加载退房结算。|{0} 월 초안은 미수금이 아니며 임차인에게 전송되지 않았습니다. 청구서를 열어 요금을 확인하고 발행한 다음 퇴실 정산을 새로고침하세요.|{0} का मासिक ड्राफ़्ट बकाया नहीं है और किरायेदार को नहीं भेजा गया है। बिल खोलकर जाँचें, जारी करें और फिर निकासी निपटान रीफ़्रेश करें।
+718|Open draft|打开草稿|초안 열기|ड्राफ़्ट खोलें
+719|The unpaid monthly invoice will be adjusted|未付款月度账单将被调整|미결제 월 청구서가 조정됩니다|अवैतनिक मासिक बिल में बदलाव होगा
+720|Review and edit the monthly charges below. When finalized, the server updates the unpaid invoice in the same transaction as the final invoice.|请检查并调整下方月度费用。确认时，服务器会在创建期末账单的同一事务中更新未付款账单。|아래 월 요금을 확인하고 수정하세요. 확정하면 서버가 최종 청구서와 같은 트랜잭션에서 미결제 청구서를 업데이트합니다.|नीचे मासिक शुल्क जाँचें और बदलें। अंतिम बिल बनाते समय सर्वर उसी लेनदेन में अवैतनिक बिल अपडेट करेगा।
+721|Reconcile the transaction before adjusting the monthly invoice|调整月度账单前请先对账|월 청구서를 조정하기 전에 거래를 대사하세요|मासिक बिल में बदलाव से पहले लेनदेन का मिलान करें
+722|This invoice has a pending payOS transaction. Reconcile it, then reload the settlement to recalculate the final charges.|此账单有待处理的 payOS 交易。请先对账，再重新加载结算并计算期末费用。|이 청구서에 payOS 거래가 대기 중입니다. 거래를 대사한 뒤 정산을 새로고침해 최종 요금을 계산하세요.|इस बिल का payOS लेनदेन लंबित है। उसका मिलान करें, फिर अंतिम शुल्क की पुनर्गणना के लिए निपटान रीफ़्रेश करें।
+723|There is no monthly invoice for the end period. The final invoice will show rent, electricity, water, and service charges separately.|结束账期尚无月度账单。期末账单会分别列出租金、电费、水费和服务费。|종료 기간의 월 청구서가 없습니다. 최종 청구서에 임대료, 전기, 수도, 서비스 요금이 각각 표시됩니다.|समाप्ति अवधि का मासिक बिल नहीं है। अंतिम बिल में किराया, बिजली, पानी और सेवा शुल्क अलग-अलग दिखेंगे。
+724|Monthly invoice {0}|{0} 月度账单|월 청구서 {0}|मासिक बिल {0}
+725|Monthly rent|月租金|월 임대료|मासिक किराया
+726|Monthly electricity|月电费|월 전기 요금|मासिक बिजली
+727|Monthly water|月水费|월 수도 요금|मासिक पानी शुल्क
+728|Monthly service charge|月服务费|월 서비스 요금|मासिक सेवा शुल्क
+729|Final invoice|期末账单|최종 청구서|अंतिम बिल
+730|Final service / additional charge|期末服务费 / 额外费用|최종 서비스 / 추가 비용|अंतिम सेवा / अतिरिक्त शुल्क
+731|Final electricity after monthly invoice|月度账单后的期末电费|월 청구서 이후의 최종 전기 요금|मासिक बिल के बाद की अंतिम बिजली
+732|Additional electricity after monthly invoice|月度账单后的额外电费|월 청구서 이후 추가 전기 요금|मासिक बिल के बाद अतिरिक्त बिजली
+733|Description of final additional charge|期末额外费用说明|최종 추가 비용 내용|अंतिम अतिरिक्त शुल्क का विवरण
+734|Enter a description for the additional charge.|请输入额外费用说明。|추가 비용 내용을 입력하세요.|अतिरिक्त शुल्क का विवरण दर्ज करें।
+735|Billing period|计费账期|청구 기간|बिलिंग अवधि
+736|Days of tenancy|租住天数|임대 일수|किराये के दिन
+737|{0}/{1} days|{0}/{1} 天|{0}/{1}일|{0}/{1} दिन
+738|Final electricity|期末电费|최종 전기 요금|अंतिम बिजली
+739|Estimated final invoice total|预计期末账单总额|예상 최종 청구서 합계|अनुमानित अंतिम बिल कुल
+740|Recalculate preview|重新计算预览|미리 계산 다시 하기|पूर्वावलोकन फिर से गणना करें
+741|Finalize move-out invoice|确认退房账单|퇴실 청구서 확정|निकासी बिल अंतिम करें
+742|You changed a charge or the end date. Recalculate the preview before finalizing.|你更改了费用或结束日期。请重新计算预览后再确认。|요금이나 종료일이 변경되었습니다. 확정하기 전에 미리 계산을 다시 하세요.|आपने शुल्क या समाप्ति तिथि बदली है। अंतिम करने से पहले पूर्वावलोकन फिर से गणना करें।
+743|Received in period|本期收取|기간 내 수납|अवधि में प्राप्त
+744|Final service fee|期末服务费|최종 서비스 요금|अंतिम सेवा शुल्क
+745|The settlement preview took too long. Try again.|结算预览耗时过长，请重试。|정산 미리보기에 시간이 너무 오래 걸립니다. 다시 시도하세요.|सेटलमेंट पूर्वावलोकन में बहुत समय लगा। फिर से प्रयास करें।
+746|Full monthly rent applies regardless of the move-in date.|无论入住日期如何，均按整月租金计费。|입주 날짜와 관계없이 월세 전액이 적용됩니다.|प्रवेश तिथि की परवाह किए बिना पूरे महीने का किराया लागू होगा।
+747|Full monthly rent|整月租金|월세 전액|पूरे महीने का किराया
+748|Review and publish legacy draft|查看并发布旧草稿|기존 초안 검토 및 발행|पुराने ड्राफ़्ट की समीक्षा करें और जारी करें
+749|This draft was saved before the rent policy changed. Review its existing charges; they will not change automatically. The tenant will see the invoice only after you publish it.|此草稿在租金计算规则变更前已保存。请检查现有费用；旧内容不会自动更改。发布后租客才会看到此账单。|이 초안은 월세 정책 변경 전에 저장되었습니다. 기존 항목을 확인하세요. 내용은 자동으로 바뀌지 않으며, 발행해야 임차인에게 청구서가 표시됩니다.|यह ड्राफ़्ट किराया नीति बदलने से पहले सहेजा गया था। मौजूदा शुल्क जाँचें; वे अपने आप नहीं बदलेंगे। जारी करने के बाद ही किरायेदार बिल देख पाएगा।
+750|A payment is pending. Open the invoice to reconcile it, then reload the move-out settlement.|有一笔付款正在处理中。请打开账单完成对账，然后重新加载退租结算。|대기 중인 결제가 있습니다. 청구서를 열어 대조한 다음 퇴실 정산을 새로고침하세요.|एक भुगतान लंबित है। बिल खोलकर उसका मिलान करें, फिर निकासी निपटान को पुनः लोड करें।
+751|Unpaid invoices remain. Open each invoice to resolve the balance, then reload the move-out settlement.|仍有未付款账单。请逐个打开账单处理欠款，然后重新加载退租结算。|미결제 청구서가 남아 있습니다. 각 청구서를 열어 잔액을 처리한 뒤 퇴실 정산을 새로고침하세요.|बकाया बिल बाकी हैं। बकाया निपटाने के लिए हर बिल खोलें, फिर निकासी निपटान पुनः लोड करें।
+752|An unpublished draft remains. Handle it on the invoices page, then reload the move-out settlement.|仍有未发布的草稿。请在账单页面处理草稿，然后重新加载退租结算。|발행되지 않은 초안이 남아 있습니다. 청구서 페이지에서 처리한 뒤 퇴실 정산을 새로고침하세요.|एक अप्रकाशित ड्राफ़्ट बाकी है। बिल पृष्ठ पर उसे 처리 करें और निकासी निपटान फिर से लोड करें।
+753|The server has not allowed this tenancy to end. Reload the settlement to check the latest status.|服务器暂不允许结束租期。请重新加载结算以查看最新状态。|서버에서 아직 임대 종료를 허용하지 않았습니다. 정산을 새로고침해 최신 상태를 확인하세요.|सर्वर ने अभी किरायेदारी समाप्त करने की अनुमति नहीं दी है। नवीनतम स्थिति देखने के लिए निपटान पुनः लोड करें।
+754|Recorded a refund of {0} and retention of {1}; the tenancy has ended.|已记录退款 {0} 和留存 {1}；租期已结束。|환불 {0} 및 보유 {1}이 기록되었으며 임대가 종료되었습니다.|{0} की वापसी और {1} की रोक दर्ज की गई; किरायेदारी समाप्त हो गई है।
+755|Confirm move-out and deposit settlement?|确认退租并结算押金？|퇴실 및 보증금 정산을 확인하시겠습니까?|क्या निकासी और जमा निपटान की पुष्टि करें?
+756|This records that you refunded {0} to the tenant; no money is transferred through the bank automatically.|此操作将记录您已向租客退还 {0}；系统不会自动通过银行转账。|이 작업은 임차인에게 {0}을(를) 환불한 것으로 기록합니다. 은행 송금은 자동으로 이루어지지 않습니다.|यह दर्ज करेगा कि आपने किरायेदार को {0} लौटाया है; बैंक के माध्यम से कोई धन अपने आप हस्तांतरित नहीं होगा।
+757|Deposit retained: {0}. This amount will be recorded in the settlement history.|留存押金：{0}。此金额将作为留存记录在结算历史中。|보유 보증금: {0}. 이 금액은 정산 내역에 기록됩니다.|रोकी गई जमा राशि: {0}। यह राशि निपटान इतिहास में दर्ज होगी।
+758|The server records today as the tenancy end date. Already issued invoices remain unchanged.|服务器将今天记录为租期结束日。已发布的账单保持不变。|서버는 오늘을 임대 종료일로 기록합니다. 이미 발행된 청구서는 변경되지 않습니다.|सर्वर आज को किरायेदारी समाप्ति तिथि के रूप में दर्ज करेगा। पहले से जारी बिल अपरिवर्तित रहेंगे।
+759|Record refund & complete move-out|记录退款并完成退租|환불 기록 및 퇴실 완료|वापसी दर्ज करें और निकासी पूरी करें
+760|Move out · {0}|退租 · {0}|퇴실 · {0}|निकासी · {0}
+761|Full monthly rent applies from the move-in date. The server records the end date when you confirm move-out; issued invoices remain unchanged.|从入住日起按整月租金计费。确认退租时由服务器记录结束日期；已发布的账单保持不变。|입주일부터 월세 전액이 적용됩니다. 퇴실을 확인하면 서버가 종료일을 기록하며, 발행된 청구서는 변경되지 않습니다.|प्रवेश की तारीख से पूरे महीने का किराया लागू होता है। निकासी की पुष्टि पर सर्वर समाप्ति तिथि दर्ज करेगा; जारी बिल अपरिवर्तित रहेंगे।
+762|Outstanding balance to resolve|待处理欠款|처리할 미수금|निपटाने के लिए बकाया
+763|{0} unpaid invoices|{0} 张未付款账单|미결제 청구서 {0}건|{0} अवैतनिक बिल
+764|Deposit currently held|当前持有押金|현재 보유 중인 보증금|वर्तमान में रखी जमा राशि
+765|Received {0} · settled {1}|已收 {0} · 已结算 {1}|수령 {0} · 정산 {1}|प्राप्त {0} · निपटाया {1}
+766|Still to collect: {0}|仍需收取：{0}|추가 수금 필요: {0}|अभी वसूलना है: {0}
+767|A payment is pending|有付款正在处理中|대기 중인 결제가 있습니다|एक भुगतान लंबित है
+768|Reconcile the payment on its invoice before ending the tenancy. Open the invoice below to review it.|结束租期前，请先在对应账单中完成付款对账。打开下方账单进行检查。|임대를 종료하기 전에 해당 청구서에서 결제를 대조하세요. 아래 청구서를 열어 확인할 수 있습니다.|किरायेदारी समाप्त करने से पहले संबंधित बिल में भुगतान का मिलान करें। जाँच के लिए नीचे बिल खोलें।
+769|Unpaid invoices remain|仍有未付款账单|미결제 청구서가 남아 있습니다|अवैतनिक बिल बाकी हैं
+770|Resolve the balance on each invoice before ending the tenancy. This screen does not automatically apply the deposit to unpaid invoices.|结束租期前，请先处理对应账单的欠款。此页面不会自动用押金抵扣欠款。|임대를 종료하기 전에 각 청구서의 잔액을 처리하세요. 이 화면에서는 보증금을 미수금에 자동 차감하지 않습니다.|किरायेदारी समाप्त करने से पहले संबंधित बिल का बकाया निपटाएँ। यह स्क्रीन जमा राशि को बकाया बिलों में अपने आप समायोजित नहीं करती।
+771|An unpublished draft remains|仍有未发布的草稿|발행되지 않은 초안이 남아 있습니다|एक अप्रकाशित ड्राफ़्ट बाकी है
+772|Handle the draft on the invoices page and reload the settlement before ending the tenancy.|结束租期前，请在账单页面处理草稿并重新加载结算。|임대를 종료하기 전에 청구서 페이지에서 초안을 처리하고 정산을 새로고침하세요.|किरायेदारी समाप्त करने से पहले बिल पृष्ठ पर ड्राफ़्ट निपटाएँ और निपटान पुनः लोड करें।
+773|Cannot end the tenancy yet|暂时无法结束租期|아직 임대를 종료할 수 없습니다|अभी किरायेदारी समाप्त नहीं की जा सकती
+774|Invoices and payments to resolve|待处理的账单和付款|처리할 청구서 및 결제|निपटाने के लिए बिल और भुगतान
+775|No invoices or payments need attention|没有待处理的账单或付款|처리할 청구서나 결제가 없습니다|किसी बिल या भुगतान पर कार्रवाई बाकी नहीं है
+776|You can settle the deposit and end the tenancy.|您可以结算押金并结束租期。|보증금을 정산하고 임대를 종료할 수 있습니다.|आप जमा राशि का निपटान करके किरायेदारी समाप्त कर सकते हैं।
+777|Awaiting reconciliation|等待对账|대조 대기 중|मिलान की प्रतीक्षा में
+778|Open to reconcile|打开并对账|열어서 대조|मिलान के लिए खोलें
+779|Open invoice|打开账单|청구서 열기|बिल खोलें
+780|Amount recorded as refunded to tenant|记录为已退还给租客的金额|임차인에게 환불한 것으로 기록할 금액|किरायेदार को लौटाई गई दर्ज राशि
+781|Enter the deposit refund amount.|请输入押金退款金额。|보증금 환불액을 입력하세요.|जमा राशि की वापसी की रकम दर्ज करें।
+782|The refund must be a whole number from 0 to {0}.|退款金额必须是 0 到 {0} 之间的整数。|환불액은 0에서 {0} 사이의 정수여야 합니다.|वापसी राशि 0 से {0} तक पूर्ण संख्या होनी चाहिए।
+783|This only records a refund made outside the app; it does not transfer money through a bank.|此操作仅记录在应用外完成的退款；不会通过银行转账。|앱 외부에서 처리한 환불만 기록하며 은행 송금은 진행하지 않습니다.|यह केवल ऐप के बाहर की गई वापसी दर्ज करता है; बैंक के माध्यम से धन हस्तांतरित नहीं करता।
+784|Record refund|记录退款|환불 기록|वापसी दर्ज करें
+785|Retained from deposit|押金留存|보증금에서 보유|जमा राशि में से रोकी गई
+786|Confirm move-out|确认退租|퇴실 확인|निकासी की पुष्टि करें
+787|No deposit is currently held|当前没有持有押金|현재 보유 중인 보증금이 없습니다|वर्तमान में कोई जमा राशि नहीं रखी गई है
+788|Confirming will end the tenancy without recording a refund or retained deposit.|确认后将结束租期，不会记录退款或押金留存。|확인하면 환불이나 보증금 보유 기록 없이 임대가 종료됩니다.|पुष्टि करने पर वापसी या रोकी गई जमा राशि दर्ज किए बिना किरायेदारी समाप्त होगी।

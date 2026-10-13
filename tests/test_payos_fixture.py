@@ -24,6 +24,7 @@ from test_api_integration import (
     OWNER_PASSWORD,
     ApiSession,
     as_list,
+    first_day,
     payos_data_signature,
     period_offset,
     today_vietnam,
@@ -139,7 +140,7 @@ class PayOsWebhookFixtureTests(unittest.TestCase):
                 "depositAmount": deposit_amount,
                 "phone": "0900000000",
                 "people": 1,
-                "startDate": today_vietnam().isoformat(),
+                "startDate": first_day(period_offset(0)),
             },
         )
         if deposit_amount:
@@ -339,14 +340,19 @@ class PayOsWebhookFixtureTests(unittest.TestCase):
         owner, user = self.create_owner("Pending moveout")
         monthly = self.create_invoice(owner, "Pending moveout")
         path = f"/api/rooms/{monthly['roomId']}"
-        invoice = owner.ok("POST", path+"/final-invoice", {"requestId": str(uuid.uuid4()), "occupancyId": monthly["occupancyId"], "currentReading": 115, "additionalAmount": 0})
-        order, _ = self.insert_attempt(user["id"], invoice["id"], int(invoice["total"]))
+        order, _ = self.insert_attempt(user["id"], monthly["id"], int(monthly["total"]))
         self.addCleanup(self.mark_pending_failed, [order])
-        status, body, _ = owner.request("POST", path+"/complete-moveout", {"occupancyId": monthly["occupancyId"], "finalInvoiceId": invoice["id"]})
+        summary = owner.ok("GET", path+"/moveout")
+        self.assertIn(monthly["id"], summary["pendingInvoiceIds"])
+        status, body, _ = owner.request("POST", path+"/complete-moveout", {
+            "occupancyId": monthly["occupancyId"], "requestId": str(uuid.uuid4()),
+            "refundAmount": 0, "expectedHeld": summary["heldDeposit"],
+            "expectedDepositVersion": summary["deposit"]["version"] if summary["deposit"] else None,
+        })
         self.assertEqual(status, 409)
         self.assertIn("payOS", body["message"])
         summary = owner.ok("GET", path+"/moveout")
-        self.assertIn(invoice["id"], summary["pendingInvoiceIds"])
+        self.assertIn(monthly["id"], summary["pendingInvoiceIds"])
 
     @staticmethod
     def owner_invoice(owner: ApiSession, invoice_id: str) -> dict[str, Any]:

@@ -1,82 +1,174 @@
 import { t } from '../i18n/runtime';
-import { useRef, useState } from 'react';
-import { Alert, App, Button, Divider, Drawer, Form, Input, InputNumber, Modal, Space, Typography } from 'antd';
+import { useEffect, useRef } from 'react';
+import { Alert, App, Button, Divider, Drawer, Form, Tag, Typography } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, formatVnd, periodLabel, type Invoice, type Room } from '../api';
+import { useNavigate } from 'react-router-dom';
+import { api, formatVnd, periodLabel, type Invoice, type MoveoutSummary, type Room } from '../api';
 import { LoadError } from './Ui';
+import MoneyInput from './MoneyInput';
+
+interface RefundValues { refundAmount: number; }
+
+function invoiceTitle(invoice: Invoice) {
+  if (invoice.kind === 'Monthly') return periodLabel(invoice.period);
+  if (invoice.kind === 'Deposit') return t("Tiền cọc nhận phòng");
+  return invoice.description?.trim() || t("Hóa đơn bổ sung");
+}
+
+function fallbackBlockMessage(data: MoveoutSummary, hasDebt: boolean, hasPending: boolean, hasDraft: boolean) {
+  if (hasPending) return t("Có giao dịch thanh toán đang chờ. Hãy mở hóa đơn để đối soát rồi tải lại quyết toán.");
+  if (hasDebt) return t("Còn hóa đơn chưa thanh toán. Hãy mở từng hóa đơn để xử lý công nợ rồi tải lại quyết toán.");
+  if (hasDraft) return t("Còn bản nháp chưa phát hành. Hãy xử lý bản nháp trên trang hóa đơn rồi tải lại quyết toán.");
+  return data.blockedReason || t("Máy chủ chưa cho phép kết thúc lượt thuê. Tải lại quyết toán để kiểm tra trạng thái mới nhất.");
+}
 
 export default function MoveoutDrawer({ room, onClose }: { room: Room; onClose: () => void }) {
   const { message, modal } = App.useApp();
+  const navigate = useNavigate();
   const client = useQueryClient();
-  const query = useQuery({ queryKey: ['moveout', room.id], queryFn: async () => { const summary = await api.rooms.moveout(room.id); if (summary.occupancyId !== room.occupancy?.id) throw new Error(t("Lượt thuê đã thay đổi. Đóng màn quyết toán và mở lại từ danh sách phòng.")); return summary; } });
-  const [finalForm] = Form.useForm();
-  const [receiptForm] = Form.useForm();
-  const [receiving, setReceiving] = useState<Invoice | null>(null);
-  const keys = useRef(new Map<string, string>());
-  const keyFor = (payload: unknown) => { const k = JSON.stringify(payload); if (!keys.current.has(k)) keys.current.set(k, crypto.randomUUID()); return keys.current.get(k)!; };
-  const refresh = async (completed = false) => { await Promise.all((completed ? ['rooms', 'invoices', 'invoice', 'dashboard'] : ['moveout', 'rooms', 'invoices', 'invoice', 'dashboard']).map(key => client.invalidateQueries({ queryKey: [key] }))); };
-  const action = useMutation({ mutationFn: async (run: () => Promise<unknown>) => run(), onSuccess: async () => { keys.current.clear(); await refresh(); message.success(t("Đã cập nhật quyết toán.")); }, onError: (e: Error) => message.error(e.message) });
-  const finish = useMutation({ mutationFn: () => api.rooms.completeMoveout(room.id, { occupancyId: query.data!.occupancyId, finalInvoiceId: query.data!.invoices.find(x => x.isFinalMeterReading)!.id }), onSuccess: async () => { await refresh(true); message.success(t("Đã trả phòng và thu hồi link khách.")); onClose(); }, onError: (e: Error) => { message.error(e.message); void refresh(); } });
+  const query = useQuery({
+    queryKey: ['moveout', room.id],
+    queryFn: async () => {
+      const summary = await api.rooms.moveout(room.id);
+      if (summary.occupancyId !== room.occupancy?.id) throw new Error(t("Lượt thuê đã thay đổi. Đóng màn quyết toán và mở lại từ danh sách phòng."));
+      return summary;
+    },
+  });
+  const [refundForm] = Form.useForm<RefundValues>();
+  const refundValue = Form.useWatch('refundAmount', refundForm);
+  const initializedOccupancy = useRef<string | null>(null);
+  const completionRequests = useRef(new Map<string, string>());
   const data = query.data;
-  const deposit = data?.invoices.find(x => x.kind === 'Deposit');
-  const held = deposit?.depositHeld ?? 0;
-  const debts = data?.invoices.filter(x => x.kind !== 'Deposit' && x.outstanding > 0) ?? [];
-  const totalDebt = debts.reduce((sum, x) => sum + x.outstanding, 0);
-  const final = data?.invoices.find(x => x.isFinalMeterReading);
-  const pending = data?.pendingInvoiceIds ?? [];
-  const currentReading = Form.useWatch('currentReading', finalForm);
-  const additional = Form.useWatch('additionalAmount', finalForm) ?? 0;
-  const busy = action.isPending || finish.isPending;
-  const confirm = (title: string, content: string, run: () => Promise<unknown>) => modal.confirm({ title, content, okText: t("Ghi nhận"), cancelText: t("Hủy"), onOk: () => action.mutateAsync(run) });
-  return <Drawer title={t("Trả phòng & quyết toán · {0}", [room.name])} width={780} open onClose={() => { if (!busy) onClose(); }} closable={!busy} maskClosable={!busy}>
+  const depositInvoice = data?.invoices.find((invoice) => invoice.kind === 'Deposit');
+  const held = data?.deposit?.held ?? data?.heldDeposit ?? depositInvoice?.depositHeld ?? 0;
+  const depositRequired = data?.deposit?.required ?? depositInvoice?.total ?? 0;
+  const depositPaid = data?.deposit?.paid ?? depositInvoice?.paid ?? 0;
+  const depositSettled = data?.deposit?.settled ?? Math.max(0, depositPaid - held);
+  const depositOutstanding = data?.deposit?.outstanding ?? depositInvoice?.outstanding ?? 0;
+  const depositVersion = data?.deposit?.version ?? depositInvoice?.version ?? null;
+  const pendingIds = data?.pendingInvoiceIds ?? [];
+  const pendingSet = new Set(pendingIds);
+  const drafts = data?.invoices.filter((invoice) => invoice.lifecycleState === 'Draft') ?? [];
+  const outstandingInvoices = data?.invoices.filter((invoice) => invoice.lifecycleState !== 'Draft' && invoice.outstanding > 0) ?? [];
+  const actionableInvoices = data?.invoices.filter((invoice) => invoice.lifecycleState === 'Draft' || invoice.outstanding > 0 || pendingSet.has(invoice.id)) ?? [];
+  const totalOutstanding = outstandingInvoices.reduce((total, invoice) => total + invoice.outstanding, 0);
+  const hasDebt = totalOutstanding > 0 || depositOutstanding > 0;
+  const hasPending = pendingIds.length > 0;
+  const hasDraft = drafts.length > 0;
+  const canComplete = !!data && data.canComplete && !hasDebt && !hasPending && !hasDraft;
+  const refundAmount = Number.isFinite(refundValue) ? Number(refundValue) : held;
+  const refundIsValid = Number.isInteger(refundAmount) && refundAmount >= 0 && refundAmount <= held;
+  const retainedAmount = refundIsValid ? held - refundAmount : null;
+
+  useEffect(() => {
+    if (!data || initializedOccupancy.current === data.occupancyId) return;
+    initializedOccupancy.current = data.occupancyId;
+    refundForm.setFieldsValue({ refundAmount: data.deposit?.held ?? data.heldDeposit ?? data.invoices.find((invoice) => invoice.kind === 'Deposit')?.depositHeld ?? 0 });
+  }, [data, refundForm]);
+
+  const refresh = async () => Promise.all([
+    client.invalidateQueries({ queryKey: ['moveout', room.id] }),
+    client.invalidateQueries({ queryKey: ['rooms'] }),
+    client.invalidateQueries({ queryKey: ['invoices'] }),
+    client.invalidateQueries({ queryKey: ['invoice'] }),
+    client.invalidateQueries({ queryKey: ['dashboard'] }),
+    client.invalidateQueries({ queryKey: ['reports'] }),
+  ]);
+  const completeMutation = useMutation({
+    mutationFn: (body: { occupancyId: string; requestId: string; refundAmount: number; expectedHeld: number; expectedDepositVersion: number | null }) => api.rooms.completeMoveout(room.id, body),
+    onSuccess: async (result) => {
+      completionRequests.current.clear();
+      await refresh();
+      message.success(t("Đã ghi nhận hoàn {0} và giữ lại {1}; lượt thuê đã kết thúc.", [formatVnd(result.refundAmount), formatVnd(result.retainedAmount)]));
+      onClose();
+    },
+    onError: (error: Error) => {
+      message.error(error.message);
+      void query.refetch();
+    },
+  });
+
+  const openInvoice = (invoiceId?: string) => {
+    navigate(invoiceId ? '/invoices?invoice=' + encodeURIComponent(invoiceId) : '/invoices');
+  };
+
+  const confirmCompletion = (values: RefundValues) => {
+    if (!data || !canComplete) return;
+    const amount = values.refundAmount;
+    if (!Number.isInteger(amount) || amount < 0 || amount > held) {
+      void refundForm.validateFields(['refundAmount']);
+      return;
+    }
+    const requestKey = JSON.stringify({ occupancyId: data.occupancyId, refundAmount: amount, expectedHeld: held, expectedDepositVersion: depositVersion });
+    let requestId = completionRequests.current.get(requestKey);
+    if (!requestId) {
+      requestId = crypto.randomUUID();
+      completionRequests.current.set(requestKey, requestId);
+    }
+    const body = { occupancyId: data.occupancyId, requestId, refundAmount: amount, expectedHeld: held, expectedDepositVersion: depositVersion };
+    const retained = held - amount;
+    modal.confirm({
+      title: t("Xác nhận trả phòng và quyết toán cọc?"),
+      content: <div className="moveout-confirm-copy">
+        <Typography.Paragraph>{t("Thao tác sẽ ghi nhận bạn đã hoàn {0} cho khách; khoản tiền không được tự chuyển qua ngân hàng.", [formatVnd(amount)])}</Typography.Paragraph>
+        <Typography.Paragraph>{t("Phần cọc giữ lại: {0}. Con số này sẽ được lưu thành khoản giữ lại có ghi nhận trong lịch sử.", [formatVnd(retained)])}</Typography.Paragraph>
+        <Typography.Paragraph type="secondary">{t("Ngày kết thúc lượt thuê được máy chủ ghi nhận hôm nay. Các hóa đơn đã phát hành được giữ nguyên.")}</Typography.Paragraph>
+      </div>,
+      okText: t("Ghi nhận đã hoàn & trả phòng"),
+      cancelText: t("Kiểm tra lại"),
+      onOk: () => completeMutation.mutateAsync(body),
+    });
+  };
+
+  const showFallbackBlock = !!data && !data.canComplete && !hasDebt && !hasPending && !hasDraft;
+
+  return <Drawer className="moveout-drawer" title={t("Trả phòng · {0}", [room.name])} width={680} open onClose={() => { if (!completeMutation.isPending) onClose(); }} closable={!completeMutation.isPending} maskClosable={!completeMutation.isPending}>
     {query.isError ? <LoadError error={query.error} onRetry={() => void query.refetch()} /> : !data ? <Typography.Paragraph>{t("Đang tải quyết toán…")}</Typography.Paragraph> : <>
-      <Typography.Paragraph><strong>{data.tenantName}</strong> · {data.roomName}</Typography.Paragraph>
-      <Space direction="vertical" style={{ width: '100%' }}>
-        <Alert type="info" showIcon message={t("Công nợ: {0} · Cọc đang giữ: {1}", [formatVnd(totalDebt), formatVnd(held)])} description={final ? t("Sau khi dùng cọc: cần thu thêm {0}, hoặc hoàn lại {1}.", [formatVnd(Math.max(0, totalDebt - held)), formatVnd(Math.max(0, held - totalDebt))]) : t("Công nợ chưa gồm điện cuối kỳ và khoản phát sinh chưa chốt.")} />
-        {pending.length > 0 && <Alert type="warning" showIcon message={t("Có giao dịch payOS đang chờ")} description={t("Đối soát các giao dịch trước khi khấu trừ, ghi nhận thu hoặc kết thúc lượt thuê.")} />}
-      </Space>
-      <Divider orientation="left">{t("1. Chốt điện & khoản cuối kỳ")}</Divider>
-      {final ? <Alert type="success" message={t("Đã chốt: {0} → {1} kWh · {2}", [final.previousReading, final.currentReading, formatVnd(final.total)])} description={final.description} /> : <Form form={finalForm} name="moveoutFinal" layout="vertical" initialValues={{ additionalAmount: 0 }} onFinish={(values) => {
-        const body = { occupancyId: data.occupancyId, currentReading: values.currentReading, additionalAmount: values.additionalAmount, description: values.description?.trim() };
-        modal.confirm({ title: t("Chốt hóa đơn trả phòng?"), content: t("Phát hành khoản cuối kỳ trên link khách. Sau khi chốt, không nhập thêm hóa đơn điện tháng cho lượt thuê này."), okText: t("Chốt hóa đơn"), cancelText: t("Hủy"), onOk: () => action.mutateAsync(() => api.rooms.finalInvoice(room.id, { ...body, requestId: keyFor(body) })) });
-      }}>
-        <Typography.Paragraph type="secondary">{t("Chỉ số đã chốt:")} {data.meterBaseline}  {t("kWh · Giá điện hiện tại:")} {formatVnd(data.electricityRate)}{t("/kWh. Chỉ tính phần tăng thêm, không tự cộng tiền thuê tháng.")}</Typography.Paragraph>
-        <Form.Item name="currentReading" label={t("Chỉ số công tơ khi trả phòng")} rules={[{ required: true, type: 'number', min: data.meterBaseline, max: 1000000000, message: t("Nhập chỉ số từ {0} trở lên.", [data.meterBaseline]) }]}><InputNumber precision={3} min={data.meterBaseline} max={1000000000} addonAfter="kWh" style={{ width: '100%' }} /></Form.Item>
-        <Form.Item name="additionalAmount" label={t("Tiền thuê / phí còn lại chưa lập hóa đơn")} extra={t("Chỉ nhập khoản chưa thu và chưa có trong hóa đơn khác; nhập 0 nếu không phát sinh.")} rules={[{ required: true, type: 'number', min: 0, max: 2147483647 }]}><InputNumber precision={0} min={0} max={2147483647} addonAfter={t("đ")} style={{ width: '100%' }} /></Form.Item>
-        <Form.Item name="description" label={t("Nội dung khoản còn lại")} rules={[{ validator: (_, value) => additional > 0 && !value?.trim() ? Promise.reject(new Error(t("Nhập nội dung khoản còn lại."))) : Promise.resolve() }]}><Input.TextArea rows={2} maxLength={450} /></Form.Item>
-        <Typography.Paragraph>{t("Dự tính cuối kỳ:")} <strong>{formatVnd(Math.round(Math.max(0, (currentReading ?? data.meterBaseline) - data.meterBaseline) * data.electricityRate) + additional)}</strong></Typography.Paragraph>
-        <Button type="primary" htmlType="submit" loading={action.isPending} disabled={busy}>{t("Chốt điện & lập khoản cuối kỳ")}</Button>
-      </Form>}
-      <Divider orientation="left">{t("2. Thu nợ & khấu trừ cọc")}</Divider>
-      {debts.length === 0 ? <Typography.Paragraph>{t("Không còn công nợ tiền phòng hoặc khoản bổ sung.")}</Typography.Paragraph> : debts.map(invoice => <div key={invoice.id} style={{ padding: '12px 0', borderBottom: '1px solid #e5e7eb' }}>
-        <Typography.Paragraph><strong>{invoice.kind === 'Monthly' ? periodLabel(invoice.period) : invoice.description || t("Hóa đơn bổ sung")}</strong><br />{t("Còn nợ")} {formatVnd(invoice.outstanding)}</Typography.Paragraph>
-        <Space wrap>
-          <Button disabled={busy || !final || !deposit || held <= 0 || pending.includes(invoice.id) || !!(deposit && pending.includes(deposit.id))} onClick={() => {
-            const payload = { amount: Math.min(held, invoice.outstanding), kind: 'Deduction' as const, reason: t("Khấu trừ công nợ khi trả phòng"), targetInvoiceId: invoice.id };
-            confirm(t("Khấu trừ cọc vào hóa đơn?"), t("Ghi nhận {0} từ cọc đang giữ vào công nợ này.", [formatVnd(payload.amount)]), () => api.invoices.settleDeposit(deposit!.id, { ...payload, idempotencyKey: keyFor(payload) }));
-          }}>{t("Trừ cọc")} {formatVnd(Math.min(held, invoice.outstanding))}</Button>
-          <Button disabled={busy || !final || pending.includes(invoice.id)} onClick={() => { receiptForm.resetFields(); receiptForm.setFieldsValue({ amount: invoice.outstanding, note: t("Thu công nợ khi trả phòng") }); setReceiving(invoice); }}>{t("Ghi nhận đã thu thêm")}</Button>
-          <Button loading={action.isPending} disabled={busy} onClick={() => action.mutate(() => api.invoices.reconcile(invoice.id))}>{t("Đối soát payOS")}</Button>
-        </Space>
-      </div>)}
-      <Divider orientation="left">{t("3. Hoàn cọc còn lại")}</Divider>
-      <Typography.Paragraph>{t("Đang giữ")} {formatVnd(held)}{t(". Chỉ ghi nhận hoàn sau khi đã trả tiền cho khách bên ngoài hệ thống.")}</Typography.Paragraph>
-      <Button disabled={busy || !final || totalDebt > 0 || held <= 0 || !deposit || pending.includes(deposit.id)} onClick={() => {
-        const payload = { amount: held, kind: 'Refund' as const, reason: t("Đã hoàn cọc còn lại khi trả phòng") };
-        confirm(t("Ghi nhận đã hoàn cọc?"), t("Xác nhận bạn đã trả {0} cho khách. Thao tác này không chuyển tiền ngân hàng.", [formatVnd(held)]), () => api.invoices.settleDeposit(deposit!.id, { ...payload, idempotencyKey: keyFor(payload) }));
-      }}>{t("Ghi nhận đã hoàn")} {formatVnd(held)}</Button>
-      {deposit && pending.includes(deposit.id) && <Button disabled={busy} onClick={() => action.mutate(() => api.invoices.reconcile(deposit.id))}>{t("Đối soát giao dịch cọc")}</Button>}
-      <Divider orientation="left">{t("4. Kết thúc lượt thuê")}</Divider>
-      <Typography.Paragraph type="secondary">{t("Sau khi công nợ và cọc đã quyết toán hết, link khách sẽ bị thu hồi và phòng trở về trạng thái trống. Lịch sử hóa đơn được giữ lại.")}</Typography.Paragraph>
-      <Button danger disabled={busy || !final || totalDebt > 0 || held > 0 || pending.length > 0} loading={finish.isPending} onClick={() => modal.confirm({ title: t("Xác nhận trả phòng?"), content: t("Kết thúc lượt thuê và thu hồi link khách ngay sau khi xác nhận."), okText: t("Trả phòng"), cancelText: t("Hủy"), okButtonProps: { danger: true }, onOk: () => finish.mutateAsync() })}>{t("Hoàn tất trả phòng")}</Button>
-      <Button style={{ marginLeft: 8 }} disabled={busy} onClick={() => void query.refetch()}>{t("Tải lại quyết toán")}</Button>
+      <Typography.Paragraph className="moveout-tenant-line"><strong>{data.tenantName}</strong> · {data.roomName}</Typography.Paragraph>
+      <Typography.Paragraph type="secondary">{t("Tiền thuê tháng được tính đủ từ ngày bắt đầu thuê. Ngày kết thúc được máy chủ ghi nhận khi bạn xác nhận trả phòng; hóa đơn đã phát hành được giữ nguyên.")}</Typography.Paragraph>
+
+      <div className="moveout-summary-grid">
+        <div><span>{t("Công nợ cần xử lý")}</span><strong>{formatVnd(totalOutstanding)}</strong><small>{t("{0} hóa đơn chưa thanh toán", [outstandingInvoices.length])}</small></div>
+        <div><span>{t("Tiền cọc đang giữ")}</span><strong>{formatVnd(held)}</strong><small>{t("Đã nhận {0} · đã quyết toán {1}", [formatVnd(depositPaid), formatVnd(depositSettled)])}</small></div>
+        <div><span>{t("Tiền cọc yêu cầu")}</span><strong>{formatVnd(depositRequired)}</strong><small>{t("Còn phải thu {0}", [formatVnd(depositOutstanding)])}</small></div>
+      </div>
+
+      {hasPending && <Alert className="moveout-block-alert" type="warning" showIcon message={t("Có giao dịch thanh toán đang chờ")} description={t("Đối soát giao dịch trong hóa đơn tương ứng trước khi kết thúc lượt thuê. Mở hóa đơn bên dưới để kiểm tra.")} />}
+      {hasDebt && <Alert className="moveout-block-alert" type="warning" showIcon message={t("Còn hóa đơn chưa thanh toán")} description={t("Hãy xử lý công nợ trong hóa đơn tương ứng trước khi kết thúc lượt thuê. Hệ thống không tự khấu trừ tiền cọc vào công nợ ở màn này.")} />}
+      {hasDraft && <Alert className="moveout-block-alert" type="warning" showIcon message={t("Còn bản nháp chưa phát hành")} description={t("Xử lý bản nháp trên trang hóa đơn rồi tải lại quyết toán trước khi kết thúc lượt thuê.")} />}
+      {showFallbackBlock && <Alert className="moveout-block-alert" type="warning" showIcon message={t("Chưa thể kết thúc lượt thuê")} description={data.blockedReason || fallbackBlockMessage(data, hasDebt, hasPending, hasDraft)} />}
+
+      <Divider orientation="left">{t("Hóa đơn và giao dịch cần xử lý")}</Divider>
+      {actionableInvoices.length === 0 ? <Alert type="success" showIcon message={t("Không còn hóa đơn hoặc giao dịch cần xử lý")} description={t("Có thể tiếp tục quyết toán tiền cọc và kết thúc lượt thuê.")} /> : <div className="moveout-invoice-list">{actionableInvoices.map((invoice) => {
+        const isPending = pendingSet.has(invoice.id);
+        const isDraft = invoice.lifecycleState === 'Draft';
+        return <article className="moveout-invoice-row" key={invoice.id}>
+          <div className="moveout-invoice-copy">
+            <div className="moveout-invoice-title"><strong>{invoiceTitle(invoice)}</strong><Tag className={'invoice-kind-tag invoice-kind-' + invoice.kind.toLowerCase()}>{invoice.kind === 'Monthly' ? t("Hóa đơn tháng") : invoice.kind === 'Deposit' ? t("Tiền cọc") : t("Bổ sung")}</Tag></div>
+            <span>{isDraft ? t("Bản nháp chưa phát hành") : isPending ? t("Đang chờ đối soát") : t("Còn phải thu {0}", [formatVnd(invoice.outstanding)])}</span>
+          </div>
+          <Button size="small" onClick={() => openInvoice(invoice.id)}>{isPending ? t("Mở để đối soát") : isDraft ? t("Mở bản nháp") : t("Mở hóa đơn")}</Button>
+        </article>;
+      })}</div>}
+
+      <Divider orientation="left">{t("Quyết toán tiền cọc")}</Divider>
+      {held > 0 ? <Form form={refundForm} layout="vertical" requiredMark={false} onFinish={confirmCompletion}>
+        <Form.Item label={t("Số tiền ghi nhận đã hoàn cho khách")} name="refundAmount" rules={[
+          { required: true, type: 'number', message: t("Nhập số tiền hoàn cọc.") },
+          { validator: (_, value: number | undefined) => Number.isInteger(value) && Number(value) >= 0 && Number(value) <= held ? Promise.resolve() : Promise.reject(new Error(t("Số tiền hoàn phải là số nguyên từ 0 đến {0}.", [formatVnd(held)]))) },
+        ]} extra={t("Chỉ ghi nhận khoản đã hoàn ngoài hệ thống; thao tác này không chuyển tiền qua ngân hàng.")}>
+          <MoneyInput min={0} max={held} precision={0} step={1} addonAfter={t("đ")} style={{ width: '100%' }} />
+        </Form.Item>
+        <div className="moveout-refund-preview">
+          <span>{t("Ghi nhận hoàn")}</span><strong>{refundIsValid ? formatVnd(refundAmount) : '—'}</strong>
+          <span>{t("Giữ lại từ tiền cọc")}</span><strong>{retainedAmount === null ? '—' : formatVnd(retainedAmount)}</strong>
+        </div>
+        <Button type="primary" block htmlType="submit" disabled={!canComplete || !refundIsValid} loading={completeMutation.isPending}>{t("Xác nhận trả phòng")}</Button>
+      </Form> : <>
+        <Alert type="info" showIcon message={t("Không có tiền cọc đang giữ")} description={t("Khi xác nhận, hệ thống sẽ kết thúc lượt thuê mà không ghi nhận khoản hoàn hoặc giữ lại.")} />
+        <Button className="moveout-complete-button" type="primary" block disabled={!canComplete} loading={completeMutation.isPending} onClick={() => confirmCompletion({ refundAmount: 0 })}>{t("Xác nhận trả phòng")}</Button>
+      </>}
+      <Button className="moveout-refresh-button" block disabled={completeMutation.isPending} loading={query.isFetching} onClick={() => void query.refetch()}>{t("Tải lại quyết toán")}</Button>
     </>}
-    <Modal title={t("Ghi nhận tiền đã nhận")} open={!!receiving} onCancel={() => { if (!busy) setReceiving(null); }} onOk={() => receiptForm.submit()} confirmLoading={action.isPending} okText={t("Lưu khoản thu")} cancelText={t("Hủy")} maskClosable={false}>
-      <Typography.Paragraph>{t("Tiền mặt hoặc chuyển khoản bạn đã nhận từ khách.")}</Typography.Paragraph>
-      <Form form={receiptForm} name="moveoutReceipt" layout="vertical" onFinish={(values) => { if (!receiving) return; const invoiceId = receiving.id; const payload = { amount: values.amount, note: values.note?.trim() || t("Thu công nợ khi trả phòng") }; action.mutateAsync(() => api.invoices.addReceipt(invoiceId, { ...payload, idempotencyKey: keyFor({ invoiceId, ...payload }) })).then(() => setReceiving(null)).catch(() => {}); }}>
-        <Form.Item name="amount" label={t("Số tiền đã nhận")} rules={[{ required: true, type: 'number', min: 1, max: receiving?.outstanding ?? 0 }]}><InputNumber min={1} max={receiving?.outstanding} precision={0} addonAfter={t("đ")} style={{ width: '100%' }} /></Form.Item>
-        <Form.Item name="note" label={t("Ghi chú")}><Input maxLength={500} /></Form.Item>
-      </Form>
-    </Modal>
   </Drawer>;
 }

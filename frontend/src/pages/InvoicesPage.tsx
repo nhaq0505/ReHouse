@@ -107,7 +107,7 @@ export default function InvoicesPage() {
     { title: t("ĐÃ THU"), dataIndex: 'paid', width: 90, align: 'right', render: (value: number) => <span>{formatVnd(value)}</span> },
     { title: t("CÒN LẠI"), dataIndex: 'outstanding', width: 90, align: 'right', render: (value: number) => <strong className={value > 0 ? 'balance-due' : 'balance-clear'}>{formatVnd(value)}</strong> },
     { title: t("TRẠNG THÁI"), dataIndex: 'status', width: 130, render: (value: string) => <Tag className={`status-pill ${statusClass(value)}`}>{statusLabel(value)}</Tag> },
-    { title: '', key: 'action', fixed: 'right', width: 100, align: 'right', render: (_, item) => <Button type="link" style={{ whiteSpace: 'nowrap' }} onClick={() => showInvoice(item.id)}>{t("Chi tiết")} <ArrowRightOutlined /></Button> },
+    { title: '', key: 'action', width: 100, align: 'right', render: (_, item) => <Button type="link" style={{ whiteSpace: 'nowrap' }} onClick={() => showInvoice(item.id)}>{t("Chi tiết")} <ArrowRightOutlined /></Button> },
   ];
   const clearFilters = () => { setKindFilter('All'); setPeriod(null); setStatusFilter('All'); setSearchText(''); };
   const setMonth = (value: Dayjs | null) => setPeriod(value?.format('YYYY-MM') ?? null);

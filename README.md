@@ -47,7 +47,7 @@ Hai volume lưu PostgreSQL và khóa mã hóa DataProtection. Sao lưu cả hai 
 
 Cookie của bản Production yêu cầu kết nối bảo mật. `localhost` dùng để thử tại máy; khi truy cập từ IP LAN hoặc tên miền, phải cấu hình HTTPS. Khởi tạo schema hiện dùng `EnsureCreated` cho cơ sở dữ liệu mới; trước khi thay đổi schema trên dữ liệu vận hành cần bổ sung và kiểm thử migration, không xóa database để nâng cấp.
 
-Khi đưa lên máy chủ, cấu hình HTTPS qua reverse proxy và đặt `PUBLIC_BASE_URL` đúng tên miền; không dùng tài khoản demo. Đặt `TRUSTED_PROXIES` thành IP của reverse proxy (ngăn cách bằng dấu phẩy) để backend nhận đúng HTTPS/host từ forwarded headers và kiểm tra nguồn yêu cầu. Proxy phải chuyển tiếp `Host`, `X-Forwarded-Proto`, `X-Forwarded-For`; không cấu hình tin mọi proxy. Phiên bản hiện tại cần được kiểm thử trên dữ liệu thực trước khi vận hành rộng.
+Khi mở truy cập công khai qua tên miền, cấu hình HTTPS qua reverse proxy và đặt `PUBLIC_BASE_URL` đúng tên miền; không dùng tài khoản demo. Đặt `TRUSTED_PROXIES` thành IP của reverse proxy (ngăn cách bằng dấu phẩy) để backend nhận đúng HTTPS/host từ forwarded headers và kiểm tra nguồn yêu cầu. Proxy phải chuyển tiếp `Host`, `X-Forwarded-Proto`, `X-Forwarded-For`; không cấu hình tin mọi proxy. Phiên bản hiện tại cần được kiểm thử trên dữ liệu thực trước khi vận hành rộng.
 
 Pilot trên VPS hiện chỉ bind API vào `127.0.0.1:8080`, chưa có domain/HTTPS và chưa nhận dữ liệu khách thuê. Truy cập QA qua SSH tunnel; xem [runbook triển khai và khôi phục](docs/deployment.md) trước mọi thay đổi trên host.
 

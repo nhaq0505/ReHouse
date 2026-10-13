@@ -1,10 +1,12 @@
 # Rehouse pilot deployment
 
-Updated 13 October 2026. The VPS pilot is a fresh, isolated deployment on `<YOUR_VPS_IP>`; it does not import the Mac database or its payment settings. [GitHub Actions run 38338681266](https://github.com/nhaq0505/rehouse/actions/runs/38338681266) built and deployed the first immutable image successfully. Production sign-in, `/auth/me`, `/admin/owners`, logout, and the Secure cookie passed through an SSH tunnel.
+Updated 13 October 2026. The fresh VPS pilot is publicly reachable at [https://demo.yourdomain.com](https://demo.yourdomain.com). DNS resolves to `<YOUR_VPS_IP>`. Caddy 2.11.7, installed from its official Ubuntu package repository, serves a valid Let's Encrypt certificate and redirects HTTP to HTTPS with status 308. Public `/api/health` returned 200. Production admin sign-in, `/api/auth/me`, `/api/admin/owners`, Secure/HttpOnly cookie behavior, valid same-origin logout, and rejection of a bad-Origin logout were verified. The VPS database is still fresh: no tenant data, Mac database, or Mac payOS settings were imported; no payOS credentials, provider webhook registration, or payment has been configured or tested on this host.
 
 ## Host and access
 
-The host runs Ubuntu 24.04 with Docker Engine and the Compose plugin already installed. The old `webphim` containers, images, volumes, Caddy state, backup files, deployment account and its scheduled backup were removed after review. Ubuntu, SSH on port 22, Docker, containerd and the QEMU guest agent remain installed and active. Rehouse and PostgreSQL are healthy; the API binds only to `127.0.0.1:8080`. Ports 80 and 443 are free. No tenant data or Mac data has been imported.
+The host runs Ubuntu 24.04 with Docker Engine, Compose, and Caddy's systemd service. The old `webphim` containers, images, volumes, Caddy state, backup files, deployment account, and its scheduled backup were removed after review. Ubuntu, SSH on port 22, Docker, containerd, and the QEMU guest agent remain installed. Caddy listens publicly on ports 80 and 443; its automatic HTTPS redirects plain HTTP. The app remains bound only to `127.0.0.1:8080`; PostgreSQL has no published port. Caddy's admin API is loopback-only on port 2019. Do not publish app port 8080 or PostgreSQL port 5432.
+
+The Caddy site is defined in [`deploy/Caddyfile`](../deploy/Caddyfile) and proxies to `127.0.0.1:8080`. Caddy passes the request host and trusted forwarded headers to the app. The API sees Caddy's Docker bridge peer as `172.18.0.1`; the runtime trusts only that proxy address. The origin guard was verified through the public HTTPS endpoint with both a valid and invalid `Origin`.
 
 The deployment account is `rehouse-deploy`. Its authorized key accepts only a command of this form:
 
@@ -12,42 +14,58 @@ The deployment account is `rehouse-deploy`. Its authorized key accepts only a co
 deploy ghcr.io/nhaq0505/rehouse@sha256:<64 lowercase hexadecimal characters>
 ```
 
-The key cannot open a shell, allocate a terminal, forward ports, or use an agent/X11 tunnel. The wrapper validates the exact GHCR repository and digest before invoking the root-owned deployment helper through a single sudo rule. The Actions runner sends its package token on stdin; the helper creates a temporary Docker configuration under `/run`, logs into GHCR, pulls the digest, and removes the credentials before starting the app.
-
-The GitHub workflow builds the image. The VPS only pulls an immutable digest and starts it. Production Compose and helper files live under `/opt/rehouse` and `/usr/local`; runtime secrets live in `/etc/rehouse/runtime.env` with root-only permissions.
+The key cannot open a shell, allocate a terminal, forward ports, or use an agent/X11 tunnel. The wrapper validates the exact GHCR repository and digest before invoking the root-owned deployment helper through a single sudo rule. The Actions runner sends its package token on stdin; the helper creates a temporary Docker configuration under `/run`, pulls the immutable digest, and removes the credentials before starting the app. CI app deployments do not change the public origin or Caddy configuration.
 
 The workflow requires the GitHub Actions secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_SSH_KEY`, and `DEPLOY_KNOWN_HOSTS`. Pin the server host key in `DEPLOY_KNOWN_HOSTS`; do not disable SSH host-key checking.
 
 ## Runtime configuration
 
-`/etc/rehouse/runtime.env` contains these keys:
+`/etc/rehouse/runtime.env` is root-owned with mode `0600`. Its current public-facing values are:
 
 | Key | Value or source |
 | --- | --- |
-| `DB_PASSWORD` | Generated on the VPS; 64 hexadecimal characters |
-| `BOOTSTRAP_ADMIN_EMAIL` | `admin@rehouse.local` for internal pilot QA |
+| `DB_PASSWORD` | Generated on the VPS; keep secret |
+| `BOOTSTRAP_ADMIN_EMAIL` | `admin@rehouse.local`; production login was tested |
 | `BOOTSTRAP_ADMIN_PASSWORD` | Generated on the VPS; initial value is also stored in `/root/rehouse-bootstrap-credentials`, mode `0600` |
-| `PUBLIC_BASE_URL` | `http://localhost:8080` until a domain and HTTPS endpoint are configured |
-| `WEBHOOK_BASE_URL` | `http://localhost:8080` until a public HTTPS webhook endpoint exists |
-| `TRUSTED_PROXIES` | Empty until an actual reverse proxy is installed |
+| `PUBLIC_BASE_URL` | `https://demo.yourdomain.com` |
+| `WEBHOOK_BASE_URL` | `https://demo.yourdomain.com` |
+| `TRUSTED_PROXIES` | `172.18.0.1`, the Rehouse Docker bridge gateway observed by the API |
 
-The values are generated or written on the VPS. The provisioner does not print them or save them in the workspace. Docker exposes configured environment values to host root through container inspection, so keep root access restricted. The CI token is never stored on the VPS.
+The provisioner and origin-update helper do not print secret values or save them in the workspace. Docker exposes configured environment values to host root through container inspection, so keep root access restricted. The CI token is never stored on the VPS.
 
-PostgreSQL has no published port. The app binds only to `127.0.0.1:8080`; no public HTTP login or payment flow is available. For internal QA, use an SSH tunnel and open `http://localhost:8080` in a local browser:
+PostgreSQL has no published port, and the app remains bound to `127.0.0.1:8080`. Caddy is the only public ingress. Its automatic HTTPS behavior issues and renews the certificate and redirects HTTP; do not configure an HTTP site for login or payments. The webhook origin is ready to generate public callback URLs at `/api/payments/webhook/{ownerId}`, but the fresh VPS database has no owner payment settings. No payOS `confirm-webhook`, real checkout, or payment has been performed.
+
+## Install and operate public ingress
+
+Caddy was installed from the [official Caddy Ubuntu/Debian package repository](https://caddyserver.com/docs/install). The Caddyfile uses Caddy's automatic HTTPS and `reverse_proxy` behavior; see the [official reverse-proxy documentation](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy). To reproduce the current setup, first install Caddy from that official package source, then stage the reviewed Caddyfile and helper on the host. The helper verifies DNS, derives the current Docker bridge gateway, takes a database plus DataProtection-key backup, updates the three public-origin settings, recreates the app on its current digest, and checks health, PostgreSQL, the bootstrap admin, and key-volume ownership:
 
 ```sh
-ssh -i /path/to/root-ssh-key -L 8080:127.0.0.1:8080 root@<YOUR_VPS_IP>
+scp -i /path/to/root-ssh-key -P 22 -o StrictHostKeyChecking=yes \
+  deploy/Caddyfile deploy/configure-public-origin.sh root@<YOUR_VPS_IP>:/root/
+ssh -i /path/to/root-ssh-key -p 22 -o StrictHostKeyChecking=yes root@<YOUR_VPS_IP> \
+  'install -o root -g root -m 0644 /root/Caddyfile /etc/caddy/Caddyfile && bash /root/configure-public-origin.sh demo.yourdomain.com <YOUR_VPS_IP>'
 ```
 
-The generated internal admin password is only readable by root on the VPS. The `localhost` webhook origin cannot receive public payOS callbacks; configure a domain, HTTPS reverse proxy and exact proxy IPs before testing payments or accepting tenant traffic. Do not expose port 8080 directly or use public plain HTTP for login or payments.
+The helper serializes its work with deployments and backups. It does not install Caddy or change firewall policy. Confirm external reachability of TCP ports 80/443 when provisioning another host. Check the service/config and public behavior with:
+
+```sh
+systemctl status caddy
+caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+journalctl -u caddy --since today
+curl --fail https://demo.yourdomain.com/api/health
+curl --silent --show-error --output /dev/null --write-out '%{http_code} %{redirect_url}\n' \
+  http://demo.yourdomain.com/api/health
+```
+
+Expected responses are health 200 and an HTTP 308 redirect to HTTPS. For a local-only application check, `curl --fail http://127.0.0.1:8080/api/health` is still available over SSH.
 
 ## Resource limits and persistent data
 
 The pilot fits the 2 vCPU / 2 GB RAM host with a 1 GB swap file and `vm.swappiness=10`. Compose caps the app at 640 MB and 1.25 CPU, PostgreSQL at 384 MB and 0.65 CPU, and PostgreSQL uses 20 connections with modest shared buffers and work memory. Both containers use bounded JSON logs (10 MB × 3 files). The app has a read-only root filesystem and a separate persistent DataProtection volume.
 
-The named volumes are `rehouse_postgres_data` and `rehouse_data_protection_keys`. Backups are written to `/var/backups/rehouse` and contain a PostgreSQL custom-format dump, a DataProtection key archive, the creation time and the image digest. A systemd timer makes a daily backup; deployment also creates a backup before each app replacement. The newest 10 backup sets are kept on the same VPS. These local backups do not protect against loss of the VPS or its disk; copy them off-host before treating the pilot as the only copy of business data.
+The named volumes are `rehouse_postgres_data` and `rehouse_data_protection_keys`. Backups are written to `/var/backups/rehouse` and contain a PostgreSQL custom-format dump, a DataProtection key archive, creation time, and image digest. A systemd timer makes a daily backup; deployment and public-origin changes also create a backup before replacing the app. The newest 10 backup sets are kept on the same VPS. These local backups do not protect against loss of the VPS or its disk; copy them off-host before treating the pilot as the only copy of business data.
 
-The current API initializes PostgreSQL with `EnsureCreated` plus additive SQL changes; there is no complete versioned migration system yet. Keep future schema changes backward-compatible and additive. The deploy helper checks `/api/health`, a live PostgreSQL query, the bootstrap admin row, and key-volume ownership. If the candidate fails, it restores the previous app digest and leaves PostgreSQL untouched. If a new schema is incompatible with the old image, explicitly restore the matching database and key backup. Restore builds and validates a separate database first, then swaps it into place while the app is stopped; the prior database and key volume remain available until the restored app passes its smoke checks. Restore replaces current database contents:
+The current API initializes PostgreSQL with `EnsureCreated` plus additive SQL changes; there is no complete versioned migration system yet. Keep future schema changes backward-compatible and additive. The deploy helper checks `/api/health`, a live PostgreSQL query, the bootstrap admin row, and key-volume ownership. If a candidate image fails, it restores the previous app digest and leaves PostgreSQL untouched. If a new schema is incompatible with the old image, explicitly restore the matching database and key backup. Restore builds and validates a separate database first, then swaps it into place while the app is stopped; the prior database and key volume remain available until the restored app passes its smoke checks. Restore replaces current database contents:
 
 ```sh
 sudo /usr/local/sbin/rehouse-restore /var/backups/rehouse/rehouse-<timestamp>-<suffix> --replace-current-data
@@ -57,9 +75,9 @@ The restore helper uses the image digest recorded in the backup manifest. Preser
 
 If a first deployment fails after creating PostgreSQL tables but before writing a DataProtection key, the backup helper refuses to create a keyless backup. Recover only while the pilot is still empty: restore the pre-deploy backup from that first attempt with the command above. It contains the zero-table database and empty key directory; the restored app then initializes the schema and bootstrap admin again. Do not bypass this guard or use that empty backup after tenant data has been entered.
 
-## Provision and operate
+## Provision and operate the host
 
-From the workspace, provision the host after reviewing the scripts. Pass all target paths explicitly; the script has no default VPS or SSH-key path. It uses the existing root SSH key and copies only the public CI deployment key:
+From the workspace, provision a new host after reviewing the scripts. Pass all target paths explicitly; the provisioner has no default VPS or SSH-key path. It uses the existing root SSH key and copies only the public CI deployment key:
 
 ```sh
 REHOUSE_VPS_HOST=<YOUR_VPS_IP> \
@@ -68,7 +86,7 @@ REHOUSE_CICD_PUBLIC_KEY=/path/to/rehouse-cicd.pub \
   deploy/provision-vps.sh
 ```
 
-The initial install creates the restricted deployment user, root-owned Compose/helpers, generated runtime secrets, a daily backup timer and the 1 GB swap file. The current pilot is running the first CI image with a fresh PostgreSQL database and the internal bootstrap admin. For QA, open an SSH tunnel; do not expose port 8080 directly. The host currently has no domain, HTTPS ingress, public login or public payment flow.
+The initial install creates the restricted deployment user, root-owned Compose/helpers, generated runtime secrets, a daily backup timer, and the 1 GB swap file. The current public pilot runs the CI image against a fresh PostgreSQL database and the generated bootstrap admin. It has no tenant or Mac-imported data. Use the public HTTPS domain for QA; do not expose port 8080 directly.
 
 Useful host commands:
 

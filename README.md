@@ -49,7 +49,7 @@ Cookie của bản Production yêu cầu kết nối bảo mật. `localhost` d�
 
 Khi mở truy cập công khai qua tên miền, cấu hình HTTPS qua reverse proxy và đặt `PUBLIC_BASE_URL` đúng tên miền; không dùng tài khoản demo. Đặt `TRUSTED_PROXIES` thành IP của reverse proxy (ngăn cách bằng dấu phẩy) để backend nhận đúng HTTPS/host từ forwarded headers và kiểm tra nguồn yêu cầu. Proxy phải chuyển tiếp `Host`, `X-Forwarded-Proto`, `X-Forwarded-For`; không cấu hình tin mọi proxy. Phiên bản hiện tại cần được kiểm thử trên dữ liệu thực trước khi vận hành rộng.
 
-Pilot trên VPS hiện chỉ bind API vào `127.0.0.1:8080`, chưa có domain/HTTPS và chưa nhận dữ liệu khách thuê. Truy cập QA qua SSH tunnel; xem [runbook triển khai và khôi phục](docs/deployment.md) trước mọi thay đổi trên host.
+Pilot VPS hiện truy cập qua [HTTPS tại demo.yourdomain.com](https://demo.yourdomain.com); Caddy chuyển tiếp tới API chỉ bind `127.0.0.1:8080`, còn PostgreSQL không mở cổng. Database VPS vẫn mới, chưa có dữ liệu khách thuê/Mac hay cấu hình payOS; HTTPS và luồng đăng nhập admin đã được kiểm tra, nhưng chưa cấu hình hoặc thực hiện thanh toán trên VPS. Xem [runbook triển khai và khôi phục](docs/deployment.md) trước mọi thay đổi trên host.
 
 ## payOS
 

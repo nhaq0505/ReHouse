@@ -900,5 +900,11 @@
   "🔔 Thông báo tiền phòng {0} - Kỳ {1}": "🔔 객실 요금 알림 {0} - {1} 회차",
   "💰 Tổng cộng: {0}": "💰 합계: {0}",
   "👉 Xem chi tiết chỉ số điện nước và quét mã QR thanh toán tự động tại: {0}": "👉 수도·전기 계량 상세 확인 및 QR 코드로 자동 결제하기: {0}",
-  "Không thể sao chép tự động.": "자동 복사에 실패했습니다."
+  "Không thể sao chép tự động.": "자동 복사에 실패했습니다.",
+  "Đã đổi mật khẩu. Các phiên đăng nhập khác đã được thu hồi.": "비밀번호가 변경되었습니다. 다른 로그인 세션이 해제되었습니다.",
+  "Phiên đăng nhập hiện tại được giữ lại. Các thiết bị khác sẽ phải đăng nhập lại.": "현재 세션은 유지됩니다. 다른 기기는 다시 로그인해야 합니다.",
+  "Từ 8 đến 256 ký tự.": "8~256자.",
+  "Mật khẩu mới cần từ 8 đến 256 ký tự.": "새 비밀번호는 8~256자여야 합니다.",
+  "Trạng thái phát hành hóa đơn không hợp lệ.": "청구서 발행 상태가 올바르지 않습니다.",
+  "Trạng thái thanh toán hóa đơn không hợp lệ.": "청구서 결제 상태가 올바르지 않습니다."
 }

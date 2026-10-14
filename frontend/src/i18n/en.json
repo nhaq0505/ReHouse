@@ -900,5 +900,11 @@
   "🔔 Thông báo tiền phòng {0} - Kỳ {1}": "🔔 Room fee notice for {0} - Period {1}",
   "💰 Tổng cộng: {0}": "💰 Total: {0}",
   "👉 Xem chi tiết chỉ số điện nước và quét mã QR thanh toán tự động tại: {0}": "👉 View utility readings and scan QR code for automatic payment at: {0}",
-  "Không thể sao chép tự động.": "Cannot copy automatically."
+  "Không thể sao chép tự động.": "Cannot copy automatically.",
+  "Đã đổi mật khẩu. Các phiên đăng nhập khác đã được thu hồi.": "Password changed. Other sessions have been revoked.",
+  "Phiên đăng nhập hiện tại được giữ lại. Các thiết bị khác sẽ phải đăng nhập lại.": "Your current session stays active. Other devices must sign in again.",
+  "Từ 8 đến 256 ký tự.": "8 to 256 characters.",
+  "Mật khẩu mới cần từ 8 đến 256 ký tự.": "The new password must contain 8 to 256 characters.",
+  "Trạng thái phát hành hóa đơn không hợp lệ.": "Invalid invoice lifecycle state.",
+  "Trạng thái thanh toán hóa đơn không hợp lệ.": "Invalid invoice payment status."
 }

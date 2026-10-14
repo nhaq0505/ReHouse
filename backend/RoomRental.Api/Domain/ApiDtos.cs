@@ -8,7 +8,7 @@ public sealed record SubscriptionStatusDto(string Tier, bool IsPro, DateTimeOffs
 public sealed record CreateSubscriptionCheckoutRequest(string? PackageId = null);
 public sealed record RegisterRequest(string Name, string Email, string Password, string? Phone);
 public sealed record LoginRequest(string Email, string Password);
-public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword, string ConfirmPassword);
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword, string? ConfirmPassword = null);
 public sealed record ResetPasswordRequest(string Email, string Token, string NewPassword, string ConfirmPassword);
 public sealed record AdminResetPasswordRequest(string CurrentPassword);
 public sealed record OccupancyUpdateRequest(Guid OccupancyId, string TenantName, string? Phone, int People);

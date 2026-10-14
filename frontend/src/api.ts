@@ -345,7 +345,7 @@ export const api = {
   auth: {
     login: (email: string, password: string) => request<User>('/api/auth/login', post({ email, password })),
     me: () => request<User>('/api/auth/me'),
-    changePassword: (body: { currentPassword: string; newPassword: string; confirmPassword: string }) => request<{ success: boolean }>('/api/auth/change-password', post(body)),
+    changePassword: (body: { currentPassword: string; newPassword: string; confirmPassword?: string }) => request<{ success: boolean }>('/api/auth/change-password', post(body)),
     resetPassword: (body: { email: string; token: string; newPassword: string; confirmPassword: string }) => request<{ success: boolean }>('/api/auth/reset-password', post(body)),
     logout: () => request<void>('/api/auth/logout', post()),
     register: (body: { name: string; email: string; password: string; phone: string }) => request<User>('/api/auth/register', post(body)),

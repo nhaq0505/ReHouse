@@ -1,12 +1,12 @@
 """Black-box integration tests for the local room-management API.
 
-Run against a Development server with the opt-in demo seed enabled:
+Run only against a disposable Development server with outbound HTTP(S) blocked:
 
     python3 -m unittest discover -s tests -v
 
 The suite uses only Python's standard library and never contacts a payment
-provider. Each test creates random owners and resources so it can share the
-local SQLite database with a developer's existing data.
+provider from this module. Other modules include subscription checkout attempts,
+so the disposable API must use an outbound-blocking proxy. Never use a shared DB.
 """
 
 from __future__ import annotations
@@ -195,6 +195,54 @@ class RoomApiIntegrationTests(unittest.TestCase):
             {"status": "Approved", "reason": "Automated local integration test"},
         )
         self.assertEqual(result.get("status"), "Approved")
+
+    def test_change_password_keeps_current_session_and_revokes_other_devices(self):
+        second = ApiSession()
+        second.ok("POST", "/api/auth/login", {"email": self.owner_user["email"], "password": OWNER_PASSWORD})
+        sid_cookie = [(c.name, c.value) for c in self.owner.cookies]
+        body = {"currentPassword": OWNER_PASSWORD, "newPassword": "abcdefgh"}
+        self.assertEqual(ApiSession().request("POST", "/api/auth/change-password", body)[0], 401)
+        self.assertEqual(self.owner.request("POST", "/api/auth/change-password", body, origin="https://evil.invalid")[0], 403)
+        status, error, _ = self.owner.request("POST", "/api/auth/change-password", {**body, "currentPassword": "wrong"})
+        self.assertEqual(status, 400)
+        self.assertIn("Mật khẩu hiện tại", error["message"])
+        self.assertEqual(second.request("GET", "/api/auth/me")[0], 200)
+        for password in ("short", "x" * 257):
+            self.assertEqual(self.owner.request("POST", "/api/auth/change-password", {**body, "newPassword": password})[0], 400)
+        self.owner.ok("POST", "/api/auth/change-password", body)
+        self.assertEqual(self.owner.ok("GET", "/api/auth/me")["id"], self.owner_user["id"])
+        self.assertEqual([(c.name, c.value) for c in self.owner.cookies], sid_cookie)
+        self.assertEqual(second.request("GET", "/api/auth/me")[0], 401)
+        self.assertEqual(ApiSession().request("POST", "/api/auth/login", {"email": self.owner_user["email"], "password": OWNER_PASSWORD})[0], 401)
+        ApiSession().ok("POST", "/api/auth/login", {"email": self.owner_user["email"], "password": body["newPassword"]})
+
+    def test_room_reading_period_selection_preserves_physical_maximum(self):
+        room = self.create_room(self.owner, label="MeterHistory")
+        self.start_occupancy(self.owner, room["id"], start_date=first_day(period_offset(-2)))
+        for offset, value in [(-2, 110.125), (-1, 120.25), (0, 130.375)]:
+            self.save_reading(self.owner, room["id"], period_offset(offset), value)
+        for offset, expected in [(-3, 130.375), (-2, 100), (-1, 110.125), (0, 120.25), (1, 130.375)]:
+            rooms = as_list(self.owner.ok("GET", "/api/rooms?period=" + period_offset(offset)))
+            selected = next(row for row in rooms if row["id"] == room["id"])
+            self.assertEqual(selected["previousReading"], expected)
+        self.assertEqual(self.get_room(self.owner, room["id"])["previousReading"], 120.25)
+        self.assertEqual(self.owner.ok("GET", "/api/dashboard")["pendingReadings"], 0)
+
+    def test_invoice_server_filters_keep_array_contract(self):
+        from urllib.parse import urlencode
+        room = self.create_room(self.owner, label="Filter")
+        tenant = self.start_occupancy(self.owner, room["id"])
+        self.save_reading(self.owner, room["id"], period_offset(0), 110)
+        invoice = self.invoices_for(self.owner, period_offset(0))[0]
+        for search in (room["name"].upper(), room["buildingName"], tenant["tenantName"]):
+            query = urlencode({"kind": "Monthly", "lifecycleState": "Issued", "status": "Unpaid", "search": search, "period": period_offset(0)})
+            result = self.owner.ok("GET", "/api/invoices?" + query)
+            self.assertIsInstance(result, list)
+            self.assertEqual([row["id"] for row in result], [invoice["id"]])
+        for query in ("kind=Deposit", "status=Paid", "lifecycleState=Draft", "search=nonexistent-filter-value"):
+            self.assertEqual(self.owner.ok("GET", "/api/invoices?" + query), [])
+        self.assertEqual(self.owner.request("GET", "/api/invoices?status=invalid")[0], 400)
+        self.assertEqual(self.owner.request("GET", "/api/invoices?lifecycleState=invalid")[0], 400)
 
     def create_building(self, session: ApiSession, label: str) -> dict[str, Any]:
         suffix = uuid.uuid4().hex[:8]

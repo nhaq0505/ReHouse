@@ -87,6 +87,42 @@ fi
 } > "$backup_dir/manifest.txt"
 chmod 0600 "$backup_dir"/*
 
+# The local backup is complete. A sync failure must not delete the only usable copy.
+trap - EXIT
+
+# Read only these optional dotenv settings; never source/evaluate the whole runtime file.
+# Outer quotes are accepted literally (no interpolation). The command itself is an
+# explicitly trusted root-admin hook, executed only when configured.
+offhost_sync_cmd=${OFFHOST_SYNC_CMD:-}
+rclone_dest=${RCLONE_DEST:-}
+while IFS= read -r config_line || [[ -n "$config_line" ]]; do
+  config_line=${config_line%$'\r'}
+  case "$config_line" in
+    OFFHOST_SYNC_CMD=*|RCLONE_DEST=*)
+      config_key=${config_line%%=*}
+      config_value=${config_line#*=}
+      if [[ "$config_value" == \"*\" || "$config_value" == \'*\' ]]; then
+        config_value=${config_value:1:${#config_value}-2}
+      fi
+      if [[ "$config_key" == OFFHOST_SYNC_CMD ]]; then
+        offhost_sync_cmd=$config_value
+      else
+        rclone_dest=$config_value
+      fi
+      ;;
+  esac
+done < "$runtime_env"
+
+if [[ -n "$offhost_sync_cmd" ]]; then
+  # The hook receives the completed backup path as $1 and REHOUSE_BACKUP_DIR.
+  REHOUSE_BACKUP_DIR="$backup_dir" bash -c "$offhost_sync_cmd" rehouse-offhost "$backup_dir" || \
+    fail "off-host sync failed; complete local backup retained at $backup_dir"
+elif [[ -n "$rclone_dest" ]]; then
+  command -v rclone >/dev/null 2>&1 || fail "rclone is required; complete local backup retained at $backup_dir"
+  rclone copy -- "$backup_dir" "${rclone_dest%/}/${backup_dir##*/}" || \
+    fail "off-host sync failed; complete local backup retained at $backup_dir"
+fi
+
 mapfile -t existing_backups < <(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -name 'rehouse-*' -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-)
 for ((index = 10; index < ${#existing_backups[@]}; index++)); do
   rm -rf -- "${existing_backups[index]}"

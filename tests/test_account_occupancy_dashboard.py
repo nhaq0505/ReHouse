@@ -102,7 +102,7 @@ class AccountOccupancyDashboardTests(unittest.TestCase):
         db.execute("UPDATE Invoices SET LifecycleState='Draft' WHERE Id=?", (invoice['id'].upper(),))
         recorded = db.execute('SELECT CreatedAt FROM AuthSessions WHERE UserId=? LIMIT 1', (self.user['id'].upper(),)).fetchone()[0]
         order = uuid.uuid4().int % 10**12
-        db.execute("INSERT INTO PayOsAttempts (Id,OwnerId,InvoiceId,OrderCode,Amount,Status,CreatedAt) VALUES (?,?,?,?,?,'Pending',?)",
+        db.execute("INSERT INTO PayOsAttempts (Id,OwnerId,InvoiceId,OrderCode,Amount,Status,CreatedAt,Kind) VALUES (?,?,?,?,?,'Pending',?,'Invoice')",
             (str(uuid.uuid4()).upper(), self.user['id'].upper(), invoice['id'].upper(), order, invoice['total'], recorded)); db.commit()
         try:
             self.assertEqual(self.edit(room, occupancy)[0], 409)
@@ -137,7 +137,7 @@ class AccountOccupancyDashboardTests(unittest.TestCase):
         second.ok('POST', '/api/auth/login', {'email': self.user['email'], 'password': OWNER_PASSWORD})
         self.owner.ok('POST', '/api/auth/change-password', body)
         self.assertEqual(second.request('GET', '/api/auth/me')[0], 401)
-        self.assertEqual(self.owner.request('GET', '/api/auth/me')[0], 401)
+        self.assertEqual(self.owner.request('GET', '/api/auth/me')[0], 200)
         self.assertEqual(ApiSession().request('POST', '/api/auth/login', {'email': self.user['email'], 'password': OWNER_PASSWORD})[0], 401)
         self.owner.ok('POST', '/api/auth/login', {'email': self.user['email'], 'password': self.new_password})
 
@@ -182,7 +182,7 @@ class AccountOccupancyDashboardTests(unittest.TestCase):
         admin.ok('POST', '/api/auth/login', {'email': self.user['email'], 'password': OWNER_PASSWORD})
         admin.ok('POST', '/api/auth/change-password', {'currentPassword': OWNER_PASSWORD,
             'newPassword': self.new_password, 'confirmPassword': self.new_password})
-        self.assertEqual(admin.request('GET', '/api/auth/me')[0], 401)
+        self.assertEqual(admin.request('GET', '/api/auth/me')[0], 200)
         admin.ok('POST', '/api/auth/login', {'email': self.user['email'], 'password': self.new_password})
         self.assertEqual(admin.ok('GET', '/api/auth/me')['role'], 'Admin')
 

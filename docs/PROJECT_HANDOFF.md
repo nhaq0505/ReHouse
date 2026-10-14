@@ -6,6 +6,9 @@ Cập nhật: **14/10/2026 — Asia/Ho_Chi_Minh**.
 
 ## 1. Trạng thái hiện tại
 
+**Mới nhất 14/10 — tối ưu backend/security/ops đã triển khai local:** SQL aggregation Dashboard, giới hạn lịch sử đọc số, lọc hóa đơn, health DB, đổi mật khẩu giữ sid hiện tại, Modal/i18n và vendor chunks; backup off-host opt-in. SQLite 59/59; PostgreSQL 55 test methods (48 pass, 7 SQLite-only skip) và một fixture class skip, unittest báo `skipped=8`; service 81 assertions. DB thật 319 hóa đơn / 250.783.641 VND / Paid 46.440.913 VND giữ nguyên qua đối chiếu read-only. **Có sự cố QA ban đầu: 2 yêu cầu checkout bằng khóa giả đã ra payOS và bị từ chối mã 214; không có checkout/giao dịch.** Các lượt sau chặn outbound bằng proxy local. Chi tiết mục 35 và [báo cáo nâng cấp](backend-performance-security-ops-report.md). Không deploy, không nâng schema DB thật.
+
+
 **Bổ sung 14/10: đã triển khai local sửa lượt thuê active, đổi/reset mật khẩu bằng mã dùng một lần và Dashboard KPI theo tháng. SQLite 52/52, PostgreSQL 40 pass + 8 skip, service 71 assertions; build và i18n 828 × 4 pass. Schema thêm 3 cột nullable, chưa áp vào DB vận hành/VPS; xem mục 33 và [báo cáo triển khai](account-occupancy-dashboard-report.md).**
 
 **Đã hoàn thành MVP, đợt sửa FE, trang thử nghiệm evondevKit tại /rooms và pilot Rehouse trên VPS. Pilot hiện truy cập công khai tại [https://demo.yourdomain.com](https://demo.yourdomain.com), Caddy cấp chứng chỉ Let's Encrypt hợp lệ và chuyển HTTP sang HTTPS. Đăng nhập admin, cookie Secure/HttpOnly, `/api/auth/me`, `/api/admin/owners`, logout cùng kiểm tra Origin đã pass. Lịch sử local ghi nhận một giao dịch payOS 30.000 VND ở trạng thái Paid (mục 14); sự kiện đó tách biệt với VPS mới. Database VPS chưa có dữ liệu khách thuê/Mac hay cấu hình payOS; trên VPS chưa đăng ký webhook với payOS hoặc thực hiện thanh toán. Camera/AI chưa làm.**
@@ -62,6 +65,7 @@ Người dùng đã yêu cầu triển khai bằng agent Luna reasoning max. Đ�
 | 12 | Migration, triển khai, sao lưu và khôi phục vận hành | VPS public HTTPS đang chạy, backup/rollback đã cài; populated/empty restore đã thử trên database tạm, không chạm database live. Chưa có migrations đầy đủ, off-host backup hoặc HA; schema vẫn dùng EnsureCreated |
 | 13 | Camera và AI nhận diện qua API | Hoãn theo yêu cầu người dùng; chưa triển khai |
 | 14 | Báo cáo thu tiền/công nợ/cọc, Excel và lưu trữ mềm dãy/phòng | Đã triển khai local; SQLite 38/38, PostgreSQL 32 pass + 2 SQLite-only skip; chưa deploy |
+| 15 | Tối ưu truy vấn backend, tài khoản, bundle và backup off-host | Local hoàn thành; SQLite 59/59, PostgreSQL 48 pass, service 81 assertions; chưa deploy; xem mục 35 về sự cố outbound QA |
 
 ## 4. Những gì đang dùng được
 
@@ -185,6 +189,8 @@ Docker: sao chép `.env.example` thành `.env`, thay mật khẩu/URL phù hợp
 
 ### Kết quả kiểm tra đã có
 
+- Đợt mới nhất backend/security/ops: build API 0 warning/error; frontend không còn warning chunk/circular, lớn nhất 484,95 kB; i18n 908 × 4 pass. SQLite 59/59; PostgreSQL 55 methods (48 pass, 7 skip) + fixture class skip. Service 81 assertions; health 200→503→200 trên DB riêng và 7 ca backup giả lập pass. Xem mục 35.
+
 - MVP: backend build 0 lỗi/0 cảnh báo; frontend build thành công.
 - Build mới nhất: `dotnet build backend/RoomRental.Api` pass với 0 warning/0 error. Full-suite trên DB dùng thử: SQLite 38/38 pass; PostgreSQL clone chạy 34 test, 32 pass và hai fixture chỉ dành cho SQLite được skip. Reports/archive riêng 6/6 pass, bao gồm ba loại Excel và kiểm tra chống formula injection.
 - Docker Production: build, khởi động, admin bootstrap đăng nhập; giữ dữ liệu/phiên khi dựng lại với cùng volume.
@@ -201,7 +207,7 @@ Docker: sao chép `.env.example` thành `.env`, thay mật khẩu/URL phù hợp
 
 1. **Hoàn tất review local hiện tại:** root đang làm source audit cuối; xem lại thay đổi và trạng thái trước khi kết thúc. Chưa push/deploy. Sau đó UAT cùng người dùng: chủ trọ mới đăng ký/chờ duyệt, tạo dãy/phòng, thêm khách, chốt điện, xem báo cáo/xuất Excel, lưu trữ/khôi phục, mở link khách và kết thúc lượt thuê.
 2. **Kiểm chứng payOS thật:** HTTPS callback origin đã có, nhưng VPS chưa có khóa payOS/owner settings và chưa thực hiện giao dịch thật. Chỉ thêm khóa do chủ trọ cung cấp và thử checkout/webhook/đối soát khi có sự đồng ý rõ ràng; kiểm tra webhook lặp, sai số tiền, mất callback và giao dịch hủy/hết hạn. Không tạo giao dịch thật chỉ để smoke test hạ tầng.
-3. **Hoàn thiện vận hành công khai:** bổ sung EF/versioned migrations, sao lưu off-host và restore drill định kỳ, giám sát lỗi/job, rà soát/luân chuyển tài khoản quản trị. Caddy HTTPS, redirect và proxy trust đã được cấu hình. PostgreSQL vẫn là container một máy, không phải HA.
+3. **Hoàn thiện vận hành công khai:** code backup off-host opt-in đã có, còn cài đặt remote/khóa và restore drill trên host theo yêu cầu riêng; bổ sung EF/versioned migrations, sao lưu off-host và restore drill định kỳ, giám sát lỗi/job, rà soát/luân chuyển tài khoản quản trị. Caddy HTTPS, redirect và proxy trust đã được cấu hình. PostgreSQL vẫn là container một máy, không phải HA.
 4. **Tối ưu FE tiếp theo nếu cần:** giảm bundle thư viện dùng chung, bổ sung kiểm thử UI cho luồng có rủi ro thực tế. Không thay stack hoặc viết lại giao diện chỉ để tối ưu cảnh báo build.
 5. **Camera/AI khi người dùng yêu cầu:** tạo luồng chụp công tơ, backend gọi API AI (Gemini là hướng đã ghi trong ghi chú), trả chỉ số đề xuất; kiểm tra độ rõ/ngưỡng/chỉ số trước; người dùng xác nhận hoặc chủ trọ xử lý trường hợp bất thường. Chọn/xác minh model và hợp đồng API tại thời điểm triển khai. AI không được tự xác nhận thanh toán; thuật toán tính tiền vẫn nằm ở backend.
 6. **Nghiệp vụ mở rộng theo yêu cầu riêng:** quyết toán giữa tháng, chia kỳ theo lượt thuê, điều chỉnh hóa đơn đã phát hành, tiền cọc/hợp đồng, chỉ số nước, công tơ chung, hoàn tiền, hạn thanh toán tùy chỉnh.
@@ -559,3 +565,14 @@ Nguồn chi tiết: `README.md`, `skills/ui-ux/SKILL.md`, `references/review.md`
 - Chỉ source local; chưa commit/push/deploy hoặc nâng cấp database vận hành. QA dùng /tmp và PostgreSQL container riêng, không dùng container rehouse-pg-migration-db. Không sửa thư mục video-shotcraft untracked của người dùng.
 
 Chi tiết file, API, kiểm tra và lưu ý: [account-occupancy-dashboard-report.md](account-occupancy-dashboard-report.md).
+
+## 35. Tối ưu kiến trúc, tài khoản và vận hành — 14/10/2026
+
+- Dashboard PostgreSQL dùng SQL SUM, SQLite fallback decimal để tránh sai số tiền; pending readings dùng NOT EXISTS theo occupancy. Rooms chỉ nạp bản đọc kỳ được chọn và bản gần nhất trước kỳ, SQL MAX riêng cho baseline toàn lịch sử/final legacy, giữ logic nhiều lượt thuê cùng tháng. Invoices thêm kind/lifecycleState/status/search và giữ JSON array. Health CanConnectAsync trả 200/503 với trạng thái database.
+- Tự đổi mật khẩu (Owner/Admin) nhận currentPassword/newPassword 8–256, optional confirmPassword tương thích form cũ; hash + revoke mọi phiên khác bằng transaction Serializable, giữ sid/cookie hiện tại. Rate limit auth và Same-Origin giữ nguyên. Reset bằng mã admin vẫn 12–256 mạnh và revoke toàn bộ. AppShell mở Modal dùng Ant Design; route cũ đồng bộ hành vi. Thêm 6 khóa nguồn, đủ vi/en/zh/ko/hi; 908 × 4 check pass.
+- Chia vendor theo React, query, icons, Ant Design/core/controls/data/form; phân loại package lồng và giữ utility/context/locale ở tầng dùng chung để tránh circular initialization. Build cuối không có cảnh báo chunk/circular; lớn nhất 484,95 kB (gzip 133,47 kB). Bản build thật đã mở Dashboard và Modal mobile375; dialog359px nằm trong viewport375, đủ ba ô và nút Hủy/Lưu. Không nhập/submission mật khẩu mới bằng CUA; ảnh `/tmp/rehouse-upgrade-qa.VfeGS0/password-modal-mobile.jpg`.
+- Cập nhật contract/implementation notes cho trả phòng hoàn cọc thủ công, reports/export và archive/restore. Backup hỗ trợ OFFHOST_SYNC_CMD hoặc RCLONE_DEST từ runtime.env, opt-in; không source toàn bộ file, giữ local và báo lỗi khi sync hỏng, retention chỉ chạy sau sync thành công. Bash syntax + 7 ca hook/rclone/default/priority/failure giả lập pass; chưa chạy off-host thật/VPS.
+- Test ban đầu phát hiện fixture SQLite thiếu Kind của PayOsAttempts; đã sửa fixture tường minh Kind=Invoice. Đồng thời phát hiện lỗi callback Invoice có thể ghi tiền khác chủ trọ; sửa PayOsService giới hạn owner URL và bỏ fallback khóa chủ khác, giữ kênh Subscription admin riêng. Service thêm 3 assertion cross-owner (kể cả cùng signing key), không thay invariant signature/amount/idempotency.
+- Bản cuối: API build 0 warning/error; service 81 assertions. Full disposable SQLite 59/59: API20, billing17, reports6, payos4, account12. PostgreSQL container riêng `rehouse-upgrade-qa-20261014`, DB rehouse_qa port15494: API20 pass, billing15 pass+2 skip, reports6 pass, account7 pass+5 skip; fixture payos class skip. `Ran 55 tests`, `OK (skipped=8)`; 48 methods pass, 7 methods skip + 1 class skip. Health kiểm tra khi dừng/khởi động đúng container QA: 200→503→200. Logs tại `/tmp/rehouse-upgrade-qa.VfeGS0`.
+- **Minh bạch sự cố an toàn:** 2 lượt suite ban đầu chạy callback HTTP localhost nhưng test Subscription upgrade có sẵn vẫn gọi payOS bằng khóa giả; cả hai nhận HTTP200/code214, không có PaymentLinkId/CheckoutUrl, 2 subscription attempts Failed. Vì vậy không được báo toàn phiên là “không gọi API payOS thật”. Đã dừng API, đặt HTTPS_PROXY/HTTP_PROXY/ALL_PROXY về proxy local chỉ trả502 CONNECT, NO_PROXY cho loopback, rồi chạy lại toàn bộ suite trên cả SQLite/PostgreSQL. Outbound sau đó bị chặn tại máy. Tests README nay yêu cầu proxy chặn outbound vì callback HTTP chỉ ngăn đăng ký webhook.
+- DB Development thật chỉ đọc trong transaction READ ONLY: trước/sau đều 319 invoice, Total250783641.00, Paid46440913.00, digest theo Id/Total/Paid `aebb0c3698576d08c7f515c15ebb40c9`. Không reset/seed/test/upgrade DB thật, không sửa snapshot `.local-data`; không commit/push/deploy. Không đối soát pending thật. Tài nguyên QA riêng được dừng sau kiểm tra; log/ảnh giữ trong /tmp.

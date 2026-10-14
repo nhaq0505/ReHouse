@@ -9,12 +9,11 @@ public static class MoveoutEndpoints
 {
     internal static async Task<decimal> MeterBaselineAsync(AppDbContext db, Room room, CancellationToken ct)
     {
-        var readings = await db.Readings.AsNoTracking().Where(x => x.RoomId == room.Id)
-            .Select(x => x.CurrentReading).ToListAsync(ct);
-        var legacyFinals = await db.Invoices.AsNoTracking()
-            .Where(x => x.RoomId == room.Id && x.IsFinalMeterReading)
-            .Select(x => x.CurrentReading).ToListAsync(ct);
-        return readings.Concat(legacyFinals).Append(room.InitialReading).Max();
+        var reading = await QueryAggregates.MaxReadingAsync(db,
+            db.Readings.AsNoTracking().Where(x => x.RoomId == room.Id).Select(x => x.CurrentReading), ct);
+        var legacyFinal = await QueryAggregates.MaxReadingAsync(db,
+            db.Invoices.AsNoTracking().Where(x => x.RoomId == room.Id && x.IsFinalMeterReading).Select(x => x.CurrentReading), ct);
+        return Math.Max(room.InitialReading, Math.Max(reading, legacyFinal));
     }
 
     public static void MapMoveoutEndpoints(this WebApplication app)

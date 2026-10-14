@@ -14,27 +14,25 @@ public static class OwnerManagementEndpoints
         routes.MapGet("/dashboard", async (HttpContext context, AppDbContext db, TimeProvider clock, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
-            var roomIds = await (from room in db.Rooms.AsNoTracking()
-                                 join building in db.Buildings.AsNoTracking() on room.BuildingId equals building.Id
-                                 where building.OwnerId == ownerId && building.ArchivedAt == null && room.ArchivedAt == null
-                                 select room.Id).ToListAsync(cancellationToken);
-            var occupiedRooms = await db.Occupancies.AsNoTracking().CountAsync(row => roomIds.Contains(row.RoomId) && row.IsActive, cancellationToken);
-            var invoiceTotals = await db.Invoices.AsNoTracking().Where(row => row.OwnerId == ownerId &&
-                    row.LifecycleState == InvoiceLifecycleState.Issued && row.Kind != "Deposit")
-                .Select(row => new { row.Total, row.Paid, row.Period }).ToListAsync(cancellationToken);
-            var billed = invoiceTotals.Sum(row => row.Total);
-            var paid = invoiceTotals.Sum(row => row.Paid);
+            var rooms = from room in db.Rooms.AsNoTracking()
+                        join building in db.Buildings.AsNoTracking() on room.BuildingId equals building.Id
+                        where building.OwnerId == ownerId && building.ArchivedAt == null && room.ArchivedAt == null
+                        select room.Id;
+            var activeOccupancies = db.Occupancies.AsNoTracking().Where(row => row.IsActive && rooms.Contains(row.RoomId));
+            var occupiedRooms = await activeOccupancies.CountAsync(cancellationToken);
+            var invoices = db.Invoices.AsNoTracking().Where(row => row.OwnerId == ownerId &&
+                row.LifecycleState == InvoiceLifecycleState.Issued && row.Kind != "Deposit");
+            var billed = await QueryAggregates.SumMoneyAsync(db, invoices.Select(row => row.Total), cancellationToken);
+            var paid = await QueryAggregates.SumMoneyAsync(db, invoices.Select(row => row.Paid), cancellationToken);
             var period = ApiSupport.VietnamDate(clock.GetUtcNow()).ToString("yyyy-MM");
-            var monthly = invoiceTotals.Where(row => row.Period == period).ToList();
-            var monthlyBilled = monthly.Sum(row => row.Total);
-            var monthlyPaid = monthly.Sum(row => row.Paid);
-            var roomCount = roomIds.Count;
-            var activeOccupancyIds = await db.Occupancies.AsNoTracking()
-                .Where(row => row.IsActive && roomIds.Contains(row.RoomId)).Select(row => row.Id).ToListAsync(cancellationToken);
-            var readingOccupancyIds = await db.Readings.AsNoTracking()
-                .Where(row => activeOccupancyIds.Contains(row.OccupancyId) && row.Period == period)
-                .Select(row => row.OccupancyId).Distinct().ToListAsync(cancellationToken);
-            var pendingReadings = activeOccupancyIds.Count - readingOccupancyIds.Count;
+            var monthly = invoices.Where(row => row.Period == period);
+            var monthlyBilled = await QueryAggregates.SumMoneyAsync(db, monthly.Select(row => row.Total), cancellationToken);
+            var monthlyPaid = await QueryAggregates.SumMoneyAsync(db, monthly.Select(row => row.Paid), cancellationToken);
+            var monthlyOutstanding = await QueryAggregates.SumMoneyAsync(db,
+                monthly.Select(row => row.Total > row.Paid ? row.Total - row.Paid : 0m), cancellationToken);
+            var roomCount = await rooms.CountAsync(cancellationToken);
+            var pendingReadings = await activeOccupancies.CountAsync(occupancy =>
+                !db.Readings.Any(reading => reading.OccupancyId == occupancy.Id && reading.Period == period), cancellationToken);
             return Results.Ok(new
             {
                 totalRooms = roomCount,
@@ -46,7 +44,7 @@ public static class OwnerManagementEndpoints
                 period,
                 monthlyBilled,
                 monthlyPaid,
-                monthlyOutstanding = monthly.Sum(row => Math.Max(0, row.Total - row.Paid)),
+                monthlyOutstanding,
                 collectionRate = monthlyBilled == 0 ? 0 : decimal.Round(monthlyPaid / monthlyBilled * 100, 2)
             });
         });
@@ -159,17 +157,21 @@ public static class OwnerManagementEndpoints
             var allReadings = roomIds.Count == 0
                 ? []
                 : await db.Readings.AsNoTracking()
-                    .Where(row => roomIds.Contains(row.RoomId))
+                    .Where(row => roomIds.Contains(row.RoomId) && (row.Period == readingPeriod ||
+                        row.Id == db.Readings.Where(prior => prior.RoomId == row.RoomId && string.Compare(prior.Period, readingPeriod) < 0)
+                            .OrderByDescending(prior => prior.Period).ThenByDescending(prior => prior.RecordedAt)
+                            .Select(prior => prior.Id).FirstOrDefault()))
                     .OrderByDescending(row => row.Period).ThenByDescending(row => row.RecordedAt)
                     .ToListAsync(cancellationToken);
             var readingsByRoom = allReadings.GroupBy(row => row.RoomId).ToDictionary(g => g.Key, g => (IReadOnlyList<MonthlyReading>)g.ToList());
-            var finalReadings = roomIds.Count == 0
-                ? []
-                : await db.Invoices.AsNoTracking()
-                    .Where(x => roomIds.Contains(x.RoomId) && x.IsFinalMeterReading)
-                    .Select(x => new { x.RoomId, x.CurrentReading })
-                    .ToListAsync(cancellationToken);
-            var maxFinalByRoom = finalReadings.GroupBy(x => x.RoomId).ToDictionary(g => g.Key, g => g.Max(x => x.CurrentReading));
+            // Aggregate physical meter maxima independently of the selected period/occupancy.
+            var meterMaxima = await db.Readings.AsNoTracking().Where(x => roomIds.Contains(x.RoomId))
+                .GroupBy(x => x.RoomId).Select(g => new { RoomId = g.Key, Maximum = g.Max(x => (double)x.CurrentReading) })
+                .ToDictionaryAsync(x => x.RoomId, x => (decimal)x.Maximum, cancellationToken);
+            var maxFinalByRoom = await db.Invoices.AsNoTracking()
+                .Where(x => roomIds.Contains(x.RoomId) && x.IsFinalMeterReading)
+                .GroupBy(x => x.RoomId).Select(g => new { RoomId = g.Key, Maximum = g.Max(x => (double)x.CurrentReading) })
+                .ToDictionaryAsync(x => x.RoomId, x => (decimal)x.Maximum, cancellationToken);
             var activeOccupancyIds = activeOccupancies.Select(x => x.Id).ToList();
             var deposits = activeOccupancyIds.Count == 0
                 ? []
@@ -185,7 +187,7 @@ public static class OwnerManagementEndpoints
                 var roomReadings = readingsByRoom.GetValueOrDefault(row.Room.Id) ?? [];
                 var maxFinal = maxFinalByRoom.GetValueOrDefault(row.Room.Id, 0m);
                 var deposit = occupancy is not null ? depositByOccupancy.GetValueOrDefault(occupancy.Id) : null;
-                var dto = BuildRoomDto(tokenService, row.Room, row.Building, occupancy, readingPeriod, roomReadings, maxFinal, deposit);
+                var dto = BuildRoomDto(tokenService, row.Room, row.Building, occupancy, readingPeriod, roomReadings, maxFinal, deposit, meterMaxima.GetValueOrDefault(row.Room.Id, row.Room.InitialReading));
                 result.Add(new { dto.Id, dto.BuildingId, dto.BuildingName, dto.Name, dto.Rent, dto.ElectricityRate, dto.WaterFee,
                     dto.WaterPerPerson, dto.ServiceFee, dto.InitialReading, dto.PreviousReading, dto.Occupancy,
                     isArchived = row.Room.ArchivedAt is not null, archivedAt = row.Room.ArchivedAt,
@@ -479,21 +481,24 @@ public static class OwnerManagementEndpoints
 
     internal static async Task<RoomDto> ToRoomDtoAsync(AppDbContext db, TenantTokenService tokenService, Room room, Building building, Occupancy? occupancy, string period, CancellationToken cancellationToken)
     {
-        var readings = await db.Readings.AsNoTracking().Where(row => row.RoomId == room.Id)
+        var readings = await db.Readings.AsNoTracking().Where(row => row.RoomId == room.Id && (row.Period == period ||
+                row.Id == db.Readings.Where(prior => prior.RoomId == room.Id && string.Compare(prior.Period, period) < 0)
+                    .OrderByDescending(prior => prior.Period).ThenByDescending(prior => prior.RecordedAt)
+                    .Select(prior => prior.Id).FirstOrDefault()))
             .OrderByDescending(row => row.Period).ThenByDescending(row => row.RecordedAt).ToListAsync(cancellationToken);
-        var legacyFinals = await db.Invoices.AsNoTracking()
-            .Where(x => x.RoomId == room.Id && x.IsFinalMeterReading)
-            .Select(x => x.CurrentReading).ToListAsync(cancellationToken);
-        var maxFinal = legacyFinals.Count > 0 ? legacyFinals.Max() : 0m;
+        var maxReading = await QueryAggregates.MaxReadingAsync(db,
+            db.Readings.AsNoTracking().Where(x => x.RoomId == room.Id).Select(x => x.CurrentReading), cancellationToken);
+        var maxFinal = await QueryAggregates.MaxReadingAsync(db,
+            db.Invoices.AsNoTracking().Where(x => x.RoomId == room.Id && x.IsFinalMeterReading).Select(x => x.CurrentReading), cancellationToken);
         var deposit = occupancy is null
             ? null
             : await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking()
                 .SingleOrDefaultAsync(x => x.OccupancyId == occupancy.Id && x.Kind == "Deposit", cancellationToken);
-        return BuildRoomDto(tokenService, room, building, occupancy, period, readings, maxFinal, deposit);
+        return BuildRoomDto(tokenService, room, building, occupancy, period, readings, maxFinal, deposit, maxReading);
     }
 
     internal static RoomDto BuildRoomDto(TenantTokenService tokenService, Room room, Building building, Occupancy? occupancy, string period,
-        IReadOnlyList<MonthlyReading> readings, decimal maxFinalReading, Invoice? deposit)
+        IReadOnlyList<MonthlyReading> readings, decimal maxFinalReading, Invoice? deposit, decimal? maxPhysicalReading = null)
     {
         // The physical room can have one reading per occupancy in the same month.
         // Prefer the active occupancy's reading for the room's current-reading field;
@@ -506,7 +511,7 @@ public static class OwnerManagementEndpoints
         var previousReading = currentReading is not null ? currentReading.PreviousReading : priorReading?.CurrentReading ?? room.InitialReading;
         if (currentReading is null)
         {
-            var maxReading = readings.Count > 0 ? readings.Max(r => r.CurrentReading) : room.InitialReading;
+            var maxReading = maxPhysicalReading ?? (readings.Count > 0 ? readings.Max(r => r.CurrentReading) : room.InitialReading);
             var baseline = Math.Max(Math.Max(room.InitialReading, maxReading), maxFinalReading);
             previousReading = Math.Max(previousReading, baseline);
         }

@@ -1,15 +1,33 @@
 # Local API integration tests
 
-The suite uses only Python's standard library. It exercises the running HTTP
-API and creates random test owners, buildings, rooms, and receipts in its
-database. Run it against a disposable local Development database when possible.
+The suite creates synthetic owners, rooms, invoices and receipts. **Use only a new disposable database.**
+Never use Development PostgreSQL `room_rental` at `127.0.0.1:15432`, production,
+or SQLite files/snapshots under `.local-data`.
 
-Start the API with the demo seed explicitly enabled, then run:
+Create a temporary directory, then start a dedicated API (keep it running in this terminal):
 
 ```sh
-ASPNETCORE_ENVIRONMENT=Development SeedDemo=true WebhookBaseUrl=http://localhost:5080 dotnet run \
-  --project backend/RoomRental.Api --urls http://localhost:5080
-python3 -m unittest discover -s tests -v
+REHOUSE_QA_DIR=$(mktemp -d /tmp/rehouse-qa.XXXXXX)
+printf 'Disposable SQLite path: %s/qa.db\n' "$REHOUSE_QA_DIR"
+HTTPS_PROXY=http://127.0.0.1:9 HTTP_PROXY=http://127.0.0.1:9 \
+ALL_PROXY=http://127.0.0.1:9 NO_PROXY=localhost,127.0.0.1 \
+ASPNETCORE_ENVIRONMENT=Development DatabaseProvider=SQLite \
+ConnectionStrings__DefaultConnection="Data Source=$REHOUSE_QA_DIR/qa.db" \
+DataProtection__KeysPath="$REHOUSE_QA_DIR/keys" SeedDemo=true \
+EnableInvoiceSweep=false EnablePaymentReconciliation=false AuthRequestsPerMinute=1000 \
+WebhookBaseUrl=http://localhost:5094 PublicBaseUrl=http://localhost:5094 \
+dotnet run --no-launch-profile --project backend/RoomRental.Api --urls http://localhost:5094
+```
+
+Port 9 must be unused: this intentionally rejects outbound HTTP(S). HTTP localhost callback
+only blocks webhook registration; it does **not** block the subscription checkout test.
+Keep the outbound proxy guard on every disposable API. For tracked evidence, use a local
+CONNECT-rejecting proxy that logs only destination hosts. No real payOS keys are required.
+In a second terminal, use the exact temporary database path printed above:
+
+```sh
+API_BASE_URL=http://localhost:5094 TEST_SQLITE_DB=/tmp/rehouse-qa.REPLACE/qa.db \
+/usr/bin/python3 -m unittest discover -s tests -v
 ```
 
 The demo admin defaults to `admin@phongtro.local` / `Admin123!`. Override the
@@ -22,11 +40,8 @@ Keep `WebhookBaseUrl` set to an HTTP localhost URL for this isolated test server
 automatic confirmation rejects it before contacting payOS. Never run the fake-key
 suite against an API configured with a real HTTPS callback origin.
 
-With the localhost `WebhookBaseUrl` configuration above, the payOS tests use
-synthetic credentials and reject automatic confirmation before contacting the
-provider; they do not create a payment link. This guarantee depends on testing
-the correctly isolated API instance. Do not reuse an API that inherited a real
-HTTPS callback origin for fake-key tests.
+The payment tests use synthetic keys. The subscription upgrade test attempts an HTTP request;
+the outbound proxy guard above must reject it locally. Callback HTTP localhost alone is insufficient.
 
 An additional SQLite-only webhook replay fixture is opt-in. It inserts
 synthetic payment attempts directly into the database used by the local
@@ -36,11 +51,11 @@ production or shared database. The API must be running against the same SQLite
 file, and the fixture refuses non-local API URLs and mismatched database files.
 It creates random owners and leaves no pending synthetic payment attempts.
 
-For example, with the API using its default Development SQLite file:
+For example, with the dedicated disposable API above:
 
 ```sh
-TEST_SQLITE_DB="$(pwd)/backend/RoomRental.Api/.local-data/room-rental.db" \
-API_BASE_URL=http://localhost:5080 \
+TEST_SQLITE_DB=/tmp/rehouse-qa.REPLACE/qa.db \
+API_BASE_URL=http://localhost:5094 \
 python3 -m unittest discover -s tests -p 'test_payos_fixture.py' -v
 ```
 
@@ -207,3 +222,16 @@ Latest full-suite result: SQLite **52/52 pass**. PostgreSQL disposable database:
 including Vietnam month/year boundaries and saved-headcount generation. Frontend build
 and i18n checks pass with **828 keys × 4 catalogs**. See
 [implementation report](../docs/account-occupancy-dashboard-report.md) for migration and UI evidence.
+
+## Backend/security/ops optimization — 14/10/2026
+
+The integration suite adds password changes that keep the current cookie/session, reject wrong
+current password/invalid length/foreign Origin, revoke a second device immediately and allow
+8-character new passwords without an API confirmation field. Invoice filter tests cover kind,
+lifecycle, status, literal case-insensitive room/building/tenant search and the array contract.
+Existing account tests now expect the current session to remain active. SQLite payment fixtures
+explicitly insert `Kind='Invoice'` required by the current schema.
+
+Latest isolated run: SQLite 59/59; PostgreSQL 55 test methods: 48 pass, 7 SQLite-only skips, plus one skipped webhook fixture class (`OK (skipped=8)`).
+The service suite uses an in-process HTTP fake. Full evidence and the initial outbound-request
+incident are recorded in `docs/PROJECT_HANDOFF.md` and the upgrade report.

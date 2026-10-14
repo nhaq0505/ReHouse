@@ -190,8 +190,8 @@ class PayOsWebhookFixtureTests(unittest.TestCase):
             db.execute(
                 """INSERT INTO PayOsAttempts
                    (Id, OwnerId, InvoiceId, OrderCode, Amount, PaymentLinkId, CheckoutUrl,
-                    Status, ProviderReference, CreatedAt, PaidAt)
-                   VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, NULL)""",
+                    Status, ProviderReference, CreatedAt, PaidAt, Kind)
+                   VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, NULL, 'Invoice')""",
                 (attempt_id, owner_id, invoice_id, order_code, amount, status, session_created[0]),
             )
         return order_code, attempt_id

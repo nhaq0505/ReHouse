@@ -900,5 +900,11 @@
   "🔔 Thông báo tiền phòng {0} - Kỳ {1}": "🔔 房费通知 {0} - 账期 {1}",
   "💰 Tổng cộng: {0}": "💰 合计：{0}",
   "👉 Xem chi tiết chỉ số điện nước và quét mã QR thanh toán tự động tại: {0}": "👉 查看水电度数详情并扫描二维码自动支付：{0}",
-  "Không thể sao chép tự động.": "无法自动复制。"
+  "Không thể sao chép tự động.": "无法自动复制。",
+  "Đã đổi mật khẩu. Các phiên đăng nhập khác đã được thu hồi.": "密码已更改，其他登录会话已撤销。",
+  "Phiên đăng nhập hiện tại được giữ lại. Các thiết bị khác sẽ phải đăng nhập lại.": "当前会话保持登录，其他设备需要重新登录。",
+  "Từ 8 đến 256 ký tự.": "8 至 256 个字符。",
+  "Mật khẩu mới cần từ 8 đến 256 ký tự.": "新密码须包含 8 至 256 个字符。",
+  "Trạng thái phát hành hóa đơn không hợp lệ.": "账单发布状态无效。",
+  "Trạng thái thanh toán hóa đơn không hợp lệ.": "账单付款状态无效。"
 }

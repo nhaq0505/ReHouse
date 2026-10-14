@@ -900,5 +900,11 @@
   "🔔 Thông báo tiền phòng {0} - Kỳ {1}",
   "💰 Tổng cộng: {0}",
   "👉 Xem chi tiết chỉ số điện nước và quét mã QR thanh toán tự động tại: {0}",
-  "Không thể sao chép tự động."
+  "Không thể sao chép tự động.",
+  "Đã đổi mật khẩu. Các phiên đăng nhập khác đã được thu hồi.",
+  "Phiên đăng nhập hiện tại được giữ lại. Các thiết bị khác sẽ phải đăng nhập lại.",
+  "Từ 8 đến 256 ký tự.",
+  "Mật khẩu mới cần từ 8 đến 256 ký tự.",
+  "Trạng thái phát hành hóa đơn không hợp lệ.",
+  "Trạng thái thanh toán hóa đơn không hợp lệ."
 ]

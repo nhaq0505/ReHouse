@@ -144,7 +144,19 @@ app.UseAuthentication();
 app.UseMiddleware<RequestSecurityMiddleware>();
 app.UseAuthorization();
 
-app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/api/health", async (AppDbContext db, CancellationToken cancellationToken) =>
+{
+    try
+    {
+        if (await db.Database.CanConnectAsync(cancellationToken))
+            return Results.Json(new { status = "ok", database = "ok" });
+    }
+    catch (Exception) when (!cancellationToken.IsCancellationRequested)
+    {
+        // Return a stable readiness response without leaking connection details.
+    }
+    return Results.Json(new { status = "unavailable", database = "unreachable" }, statusCode: 503);
+});
 app.MapAuthEndpoints();
 app.MapAdminEndpoints();
 app.MapOwnerManagementEndpoints();

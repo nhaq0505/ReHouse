@@ -1,6 +1,10 @@
 import { getLanguage, hasMessage, t, translateMessage } from './runtime';
 // Known server messages map to localized recovery guidance. Provider messages never become UI HTML.
 const messages: Record<string, readonly [string, string, string, string, string]> = {
+ passwordLength: ["Mật khẩu mới cần từ 8 đến 256 ký tự.", "The new password must contain 8 to 256 characters.", "新密码须包含 8 至 256 个字符。", "새 비밀번호는 8~256자여야 합니다.", "नया पासवर्ड 8 से 256 अक्षरों का होना चाहिए।"],
+ passwordDifferent: ["Mật khẩu mới phải khác mật khẩu hiện tại.", "The new password must differ from the current password.", "新密码必须与当前密码不同。", "새 비밀번호는 현재 비밀번호와 달라야 합니다.", "नया पासवर्ड वर्तमान पासवर्ड से अलग होना चाहिए।"],
+ passwordConfirmation: ["Xác nhận mật khẩu không khớp.", "Passwords do not match.", "两次密码不一致。", "비밀번호가 일치하지 않습니다.", "पासवर्ड मेल नहीं खाते।"],
+ currentPassword: ["Mật khẩu hiện tại không chính xác.", "The current password is incorrect.", "当前密码不正确。", "현재 비밀번호가 올바르지 않습니다.", "वर्तमान पासवर्ड गलत है।"],
  auth: ['Vui lòng đăng nhập.', 'Please sign in.', '请登录。', '로그인하세요.', 'कृपया लॉग इन करें।'],
  access: ['Tài khoản không có quyền thực hiện thao tác này.', 'Your account cannot perform this action.', '此账户没有操作权限。', '이 작업을 수행할 권한이 없습니다.', 'इस कार्य की अनुमति नहीं है।'],
  login: ['Email hoặc mật khẩu không chính xác.', 'Incorrect email or password.', '邮箱或密码不正确。', '이메일 또는 비밀번호가 올바르지 않습니다.', 'ईमेल या पासवर्ड गलत है।'],
@@ -38,6 +42,10 @@ const messages: Record<string, readonly [string, string, string, string, string]
  server: ['Máy chủ chưa thể xử lý. Vui lòng thử lại sau.', 'The server cannot process this right now. Try again later.', '服务器暂时无法处理，请稍后重试。', '서버에서 처리할 수 없습니다. 나중에 다시 시도하세요.', 'सर्वर अभी संसाधित नहीं कर सकता। बाद में फिर प्रयास करें।'],
 };
 const rules: readonly [RegExp, string][] = [
+ [/Mật khẩu hiện tại không chính xác/, 'currentPassword'],
+ [/Mật khẩu mới cần từ 8 đến 256 ký tự/, 'passwordLength'],
+ [/Xác nhận mật khẩu không khớp/, 'passwordConfirmation'],
+ [/Mật khẩu mới phải khác mật khẩu hiện tại/, 'passwordDifferent'],
  [/Email hoặc mật khẩu/, 'login'], [/Email này đã/, 'duplicateEmail'], [/địa chỉ email/, 'email'],
  [/Please sign in/, 'auth'], [/access is required|cannot.*sign in|không thể đăng nhập/, 'access'],
  [/not approved/, 'approved'], [/Tenant link.*active/, 'inactiveLink'], [/not found|was not found|Không tìm thấy/, 'missing'],

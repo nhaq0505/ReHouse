@@ -99,7 +99,10 @@ public static class AuthEndpoints
         routes.MapPost("/change-password", async (ChangePasswordRequest request, HttpContext context,
             AppDbContext db, IPasswordHasher<AppUser> hasher, CancellationToken ct) =>
         {
-            PasswordSecurity.ValidateNewPassword(request.NewPassword, request.ConfirmPassword);
+            if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length is < 8 or > 256)
+                throw new ApiException(400, "Mật khẩu mới cần từ 8 đến 256 ký tự.");
+            if (request.ConfirmPassword is not null && request.NewPassword != request.ConfirmPassword)
+                throw new ApiException(400, "Xác nhận mật khẩu không khớp.");
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
             var user = await db.Users.SingleAsync(x => x.Id == ApiSupport.UserId(context), ct);
             PasswordSecurity.VerifyCurrentPassword(user, request.CurrentPassword, hasher);
@@ -108,10 +111,12 @@ public static class AuthEndpoints
             user.PasswordHash = hasher.HashPassword(user, request.NewPassword);
             user.PasswordResetHash = null;
             user.PasswordResetExpiresAt = null;
-            await PasswordSecurity.RevokeSessionsAsync(db, user.Id, ct);
+            var sessionId = context.User.FindFirst("sid")?.Value;
+            var now = DateTimeOffset.UtcNow;
+            await db.AuthSessions.Where(x => x.UserId == user.Id && x.RevokedAt == null && x.Id != sessionId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.RevokedAt, (DateTimeOffset?)now), ct);
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
-            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             context.Response.Headers.CacheControl = "no-store";
             return Results.Ok(new { success = true });
         }).RequireAuthorization().RequireRateLimiting("auth");

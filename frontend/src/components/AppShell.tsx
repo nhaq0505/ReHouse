@@ -1,3 +1,4 @@
+import ChangePasswordModal from './ChangePasswordModal';
 import LanguageSelector from '../i18n/LanguageSelector';
 import { t } from '../i18n/runtime';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -19,6 +20,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   useEffect(() => { window.scrollTo({ top: 0, left: 0 }); }, [location.pathname]);
 const ownerItems = [
   { key: '/dashboard', icon: <AppstoreOutlined />, label: t("Tổng quan") },
@@ -46,12 +48,13 @@ const adminItems = [{ key: '/admin/owners', icon: <UserOutlined />, label: t("Ch
   ];
   const handleMenu = ({ key }: { key: string }) => {
     if (key === 'subscription') navigate('/account-status');
-    if (key === 'password') navigate('/change-password');
+    if (key === 'password') setPasswordOpen(true);
     if (key === 'logout') void signOut().then(() => navigate('/login'));
   };
   const menu = <Menu theme="dark" mode="inline" selectedKeys={[location.pathname]} items={items} onClick={({ key }) => { navigate(key); setMobileOpen(false); }} />;
 
   return <Layout className="app-layout">
+    <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
     <Sider width={250} className="app-sider" breakpoint="lg" collapsedWidth={0} trigger={null} onBreakpoint={(broken) => { if (!broken) setMobileOpen(false); }}>
       <div className="brand"><div className="brand-mark"><HomeOutlined /></div><div><strong>Rehouse</strong><span>{t("QUẢN LÝ PHÒNG TRỌ")}</span></div></div>
       <div className="sider-label">{t("MENU CHÍNH")}</div>

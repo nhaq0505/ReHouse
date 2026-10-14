@@ -411,8 +411,8 @@ class BillingUpgradeIntegrationTests(unittest.TestCase):
             self.assertIsNotNone(session)
             db.execute("""INSERT INTO PayOsAttempts
                 (Id, OwnerId, InvoiceId, OrderCode, Amount, PaymentLinkId, CheckoutUrl,
-                 Status, ProviderReference, CreatedAt, PaidAt)
-                VALUES (?, ?, ?, ?, ?, NULL, NULL, 'Pending', NULL, ?, NULL)""",
+                 Status, ProviderReference, CreatedAt, PaidAt, Kind)
+                VALUES (?, ?, ?, ?, ?, NULL, NULL, 'Pending', NULL, ?, NULL, 'Invoice')""",
                 (str(uuid.uuid4()).upper(), owner_id, invoice["id"].upper(), order_code, int(invoice["total"]), session[0]))
         self.addCleanup(self._fail_synthetic_attempt, database_path, order_code)
         status, body, _ = self.owner.request("POST", f"/api/rooms/{room['id']}/complete-moveout", completion)
@@ -444,8 +444,8 @@ class BillingUpgradeIntegrationTests(unittest.TestCase):
             self.assertIsNotNone(session, "Could not find the registered owner's API session")
             db.execute("""INSERT INTO PayOsAttempts
                 (Id, OwnerId, InvoiceId, OrderCode, Amount, PaymentLinkId, CheckoutUrl,
-                 Status, ProviderReference, CreatedAt, PaidAt)
-                VALUES (?, ?, ?, ?, ?, NULL, NULL, 'Pending', NULL, ?, NULL)""",
+                 Status, ProviderReference, CreatedAt, PaidAt, Kind)
+                VALUES (?, ?, ?, ?, ?, NULL, NULL, 'Pending', NULL, ?, NULL, 'Invoice')""",
                 (attempt_id, owner_id, invoice["id"].upper(), order_code, int(invoice["total"]), session[0]))
         self.addCleanup(self._fail_synthetic_attempt, database_path, order_code)
         response = self.owner.request("POST", f"/api/invoices/{invoice['id']}/corrections", {

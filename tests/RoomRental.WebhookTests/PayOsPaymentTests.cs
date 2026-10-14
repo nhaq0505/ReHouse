@@ -261,6 +261,26 @@ internal static class PayOsPaymentTests
         var service = fixture.CreateService(handler);
         using var webhook = CreateSignedWebhook(orderCode, 100_000, "synthetic-reference-1", ChecksumKey);
 
+        var originalSettings = await fixture.Db.PaymentSettings.SingleAsync();
+        var otherOwner = new AppUser { Name = "Other synthetic owner", Email = "other@example.invalid", PasswordHash = "unused", Role = UserRole.Owner, Status = OwnerStatus.Approved };
+        fixture.Db.Users.Add(otherOwner);
+        fixture.Db.PaymentSettings.Add(new OwnerPaymentSettings
+        {
+            OwnerId = otherOwner.Id, ClientId = originalSettings.ClientId,
+            ProtectedApiKey = originalSettings.ProtectedApiKey, ProtectedChecksumKey = originalSettings.ProtectedChecksumKey
+        });
+        await fixture.Db.SaveChangesAsync();
+        Assert(await service.ProcessWebhookAsync(otherOwner.Id, webhook.RootElement, default),
+            "another owner's callback safely acknowledges an unknown invoice order");
+        Assert(await fixture.Db.Receipts.CountAsync() == 0 && fixture.Invoice.Paid == 25_000 &&
+               await fixture.Db.PayOsAttempts.SingleAsync() is { Status: PaymentAttemptStatus.Pending },
+            "even a shared signing key cannot credit another owner's invoice");
+        var unconfiguredRejected = false;
+        try { await service.ProcessWebhookAsync(Guid.NewGuid(), webhook.RootElement, default); }
+        catch (ApiException exception) when (exception.StatusCode == StatusCodes.Status401Unauthorized) { unconfiguredRejected = true; }
+        Assert(unconfiguredRejected && await fixture.Db.Receipts.CountAsync() == 0,
+            "an unconfigured callback owner cannot fall back to another owner's credentials");
+
         Assert(await service.ProcessWebhookAsync(fixture.OwnerId, webhook.RootElement, default), "valid signed webhook is acknowledged");
         Assert(await fixture.Db.Receipts.CountAsync() == 1 &&
                await fixture.Db.PayOsAttempts.SingleAsync() is { Status: PaymentAttemptStatus.Paid, ProviderReference: "synthetic-reference-1" },

@@ -28,7 +28,7 @@ Backend: ASP.NET Core .NET 10 on port 5080. Frontend: React/TypeScript/Vite on p
 
 - `GET /api/readings?period=YYYY-MM` → readings including roomId, period, previousReading, currentReading, consumption.
 - `POST /api/readings` `{roomId,period,currentReading}`. Reject decreases, out-of-order periods, duplicates or periods already invoiced. The reading must belong to the active occupancy and not predate its starting month or be in the future. Electricity calculation is `(currentReading - previousReading) * electricityRate`. A valid final reading automatically publishes its invoice transactionally.
-- `GET /api/invoices?period=YYYY-MM`; `GET /api/invoices/{id}`.
+- `GET /api/invoices?period=YYYY-MM&kind=Monthly&lifecycleState=Issued&status=Unpaid&search=...`; all filters optional and combined with AND. Kind is an exact value (`Monthly`, `Deposit`, `Supplemental`); lifecycle (`Draft`, `Issued`) and status (`Unpaid`, `Partial`, `Paid`) are case-insensitive enums, invalid values return 400. Search is a literal, case-insensitive substring of snapshotted room/building/tenant names. Returns the existing JSON array, scoped to the owner. `GET /api/invoices/{id}`.
 - `POST /api/invoices/generate` `{period}` generates and publishes eligible invoices; repeat calls cannot duplicate them.
 - Invoice: `{id,roomId,roomName,buildingName,period,tenantName,previousReading,currentReading,consumption,rent,electricityAmount,waterAmount,serviceAmount,total,paid,outstanding,status,dueDate,issuedAt}`. Status `Unpaid`, `Partial`, `Paid`. Amounts rounded to VND.
 - `POST /api/invoices/{id}/receipts` `{amount,note,idempotencyKey}` records cash/external bank transfer; positive amount cannot exceed remaining balance. Returns a receipt summary `{id,invoiceId,amount,paid,outstanding,status}`. Reusing the key with the same payload returns the existing receipt; a different payload conflicts. Pending online payment attempts must be reconciled before recording external receipts.
@@ -43,7 +43,7 @@ Backend: ASP.NET Core .NET 10 on port 5080. Frontend: React/TypeScript/Vite on p
 - Pending orders are reused; the endpoint does not create a second payOS order while one is pending. Older pending rows may have `qrCode:null` and still return their saved `checkoutUrl`. The tenant portal navigates to a dedicated Rehouse checkout page at `/t/{token}/invoices/{id}/checkout` (with `/tenant/{token}/invoices/{id}/checkout` as an alias), preserving the current query string such as `lang`. The route revalidates the tenant overview and scopes the invoice before creating/reusing checkout once per route mount; missing or already-paid invoices do not start checkout. The back link returns to the tenant overview with its query string. A QR payload renders on Rehouse; a QR-less legacy attempt can expose an explicit hosted-checkout link only for an HTTPS `pay.payos.vn` URL. Rehouse never redirects automatically. Expiry hides QR/hosted actions while the order is being checked.
 - `POST /api/tenant/{token}/invoices/{id}/reconcile` → `{status,invoice}`. A provider `PAID` status or browser return alone does not mark an invoice paid: reconciliation must verify the expected paid amount and transaction before recording the receipt. The checkout page displays success only from the updated invoice. It polls while the page is active and the tab is visible, and also offers manual checking.
 - `POST /api/payments/webhook/{ownerId}` verifies payOS signature and reconciles exact order, owner and amount transactionally with replay protection. Repeated valid callbacks are idempotent; mismatched amounts are rejected without a second receipt.
-- `GET /api/health`.
+- `GET /api/health` checks database connectivity: 200 `{status:"ok",database:"ok"}`; connection failure returns 503 `{status:"unavailable",database:"unreachable"}`.
 
 ## Delivery defaults
 
@@ -55,7 +55,7 @@ Manual meter entry only. AI and camera are deferred. Valid manual reading submis
 Starting occupancy with depositAmount > 0 atomically creates one unpaid Deposit invoice.
 Invoices include kind (Monthly/Deposit), occupancyId, depositHeld and depositSettlements.
 Occupancy includes depositInvoiceId, depositRequired, depositPaid and depositHeld.
-Monthly invoices retain their normal room/period uniqueness; deposits are unique per occupancy.
+Monthly invoices are unique per occupancy/period; deposits are unique per occupancy.
 Guest payment/manual receipt endpoints support both kinds. Dashboard financial totals use Monthly invoices.
 
 `POST /api/invoices/{id}/deposit-settlements` body:
@@ -65,7 +65,7 @@ changed payload with same key conflicts (409). Positive whole VND cannot exceed 
 Refund records money already returned externally; it does not initiate a bank transfer.
 Deduction optionally credits an outstanding Monthly invoice belonging to the same owner/occupancy;
 amount cannot exceed that debt. Pending online attempts must first be reconciled.
-Moveout is blocked until held deposit is fully settled. Deposit Paid preserves collection history.
+Moveout records a manual refund and retains the remaining held deposit as an audited Deduction atomically. Deposit Paid preserves collection history.
 
 
 ## Supplemental invoices
@@ -78,23 +78,44 @@ Returns InvoiceDto with kind=Supplemental, description, paid=0, period=current i
 requestId is the invoice UUID: exact retry returns prior invoice; altered payload conflicts (409).
 Multiple supplemental invoices per room/month are supported. Old monthly/deposit rules unchanged.
 Same receipt/payOS/guest endpoints apply. Dashboard totals include Supplemental and Monthly.
-No edit/delete supplemental endpoint yet; deposit debt deductions currently target Monthly only.
+Controlled corrections are available for eligible invoices; deposit debt deductions can target Monthly/Supplemental invoices of the same occupancy.
 
 
 ## Moveout settlement
 
-GET /api/rooms/{id}/moveout → {occupancyId,tenantName,roomName,electricityRate,meterBaseline,invoices,pendingInvoiceIds}.
-POST /api/rooms/{id}/final-invoice {requestId,occupancyId,currentReading,additionalAmount,description?}
-creates a Supplemental invoice with isFinalMeterReading=true; meter delta only, no automatic rent.
-Meter max1e9/3dp, additional integer VND0..2147483647, description≤450 and required when additional>0.
-Exactly one final invoice per occupancy; exact request replay is unchanged, mismatch conflicts.
-Zero total yields Paid without an artificial receipt. Meter entry after finalization is rejected.
-InvoiceDto includes isFinalMeterReading. Supplemental final invoices show electricity and extra fee breakdown.
-Deposit settlement target now permits Monthly/Supplemental of the same occupancy.
-POST /api/rooms/{id}/complete-moveout {occupancyId,finalInvoiceId} checks final invoice,
-no pending attempts, no outstanding non-deposit debt and no held deposit; updates meter baseline,
-ends occupancy and revokes token transactionally. Replay after completion does not close a new occupant.
-Legacy end-occupancy remains compatible but blocks debt after a final invoice was created.
+`GET /api/rooms/{id}/moveout` returns the active occupancy, invoices, deposit balance/version,
+pending invoice IDs, blocking reasons and `canComplete`. It is read-only.
+
+`POST /api/rooms/{id}/complete-moveout` (alias `POST /api/rooms/{id}/end-occupancy`):
+`{occupancyId, requestId, refundAmount, expectedHeld, expectedDepositVersion}`.
+Refund is manually specified whole VND, from zero through the held balance; no bank transfer is initiated.
+The serializable transaction checks ownership, active occupancy and expected balance/version;
+blocks Draft invoices, unpaid Issued invoices (including Deposit) and pending payOS attempts.
+It records the refund and the retained remainder as audited deposit settlements, closes occupancy
+on today's Vietnam date, revokes the guest link, and updates the physical meter baseline from existing readings.
+No final invoice/reading is created; the former final-invoice and proration routes are removed.
+Exact request/payload replay returns the prior completion; changed payload or stale snapshot returns 409.
+`GET /api/rooms/{id}/moveout-completions` returns owner-scoped history, including archived rooms.
+Monthly readings always issue full monthly rent, regardless of move-in/out day or month length.
+
+## Reports and soft archive
+
+Approved Owner endpoints:
+- `GET /api/reports/receipts`, `/api/reports/debt`, `/api/reports/deposits` accept optional
+  `dateFrom`, `dateTo` (ISO dates, inclusive), `buildingId`, `roomId`, `page`, `pageSize`.
+  Return `{items,page,pageSize,totalCount,totals}`; totals cover all filtered rows, not just the page.
+  Receipts filter by receipt date, debt by invoice period, deposits by settlement/receipt date.
+  Debt is current Issued outstanding, including unpaid deposits. Drafts are excluded.
+  Internal deposit credits do not count as new cash receipts; deposit held is the current balance.
+- Each report supports `/export.xlsx` (for example `/api/reports/debt/export.xlsx`), using the same filters.
+  Export enforces a row limit with a clear error, writes typed numeric/date cells and protects user text from formulas.
+- `GET /api/buildings?includeArchived=true`, `GET /api/rooms?includeArchived=true` include archived items;
+  default lists contain active items only.
+- `DELETE /api/buildings/{id}`, `DELETE /api/rooms/{id}` soft archive; no physical deletion.
+  Active tenants, Draft/unpaid invoices, held deposits or pending payOS block archive (409).
+- `POST /api/buildings/{id}/restore`, `POST /api/rooms/{id}/restore` restore with owner/quota checks.
+  Building archive is atomic with its rooms; building restore only restores rooms in the same archive batch.
+  Restore the parent building before a room. Reports preserve historical names and IDs from invoice snapshots.
 
 ## Active occupancy, password recovery and monthly dashboard (14/10/2026)
 
@@ -111,11 +132,12 @@ headcount snapshot and without an invoice are skipped by regeneration rather tha
 reinterpreted using today's occupants.
 
 `POST /api/auth/change-password` (signed-in Owner/Admin, including Pending Owner):
-`{ currentPassword, newPassword, confirmPassword }` → `{ success: true }`.
-New password: 12–256 characters including uppercase, lowercase, digit and non-whitespace
-special character; confirmation must match and the password must differ from the current one.
+`{ currentPassword, newPassword }` → `{ success: true }`.
+New password: 8–256 characters; optional `confirmPassword` must match if supplied.
+The password must differ from the current one.
 Invalid input/current password returns 400. Hashes with ASP.NET PasswordHasher, clears
-outstanding reset codes and revokes every session, including the current one; sign in again.
+outstanding reset codes and revokes all other open sessions, retaining the current `sid` and cookie.
+Revoked devices receive 401 on their next request. The account menu opens a three-field Modal.
 Existing registration/login contracts and legacy passwords remain supported.
 
 `POST /api/admin/owners/{id}/reset-password` (Admin, current-password reauthentication):
@@ -128,7 +150,7 @@ must privately deliver it after verifying the owner's identity; there is no emai
 
 `POST /api/auth/reset-password` (public, rate limited):
 `{ email, token, newPassword, confirmPassword }` → `{ success: true }`.
-Same new-password policy; invalid/expired/replayed code or wrong email returns the same 400
+Reset retains the stronger 12–256 character policy (upper/lower/digit/special), with required matching confirmation; invalid/expired/replayed code or wrong email returns the same 400
 message. Successful reset atomically consumes the code and revokes sessions; does not
 sign in automatically or change account approval/suspension. Concurrent consumption has
 at most one success; the loser returns 400 or 409. An expired admin-issued code requires

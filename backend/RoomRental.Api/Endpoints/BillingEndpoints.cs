@@ -125,7 +125,7 @@ public static class BillingEndpoints
                 reading.Consumption, reading.RecordedAt, InvoiceService.ToDto(invoice), invoice.LifecycleState.ToString()));
         });
 
-        routes.MapGet("/invoices", async (string? period, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
+        routes.MapGet("/invoices", async (string? period, string? kind, string? lifecycleState, string? status, string? search, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
             var query = db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().Where(row => row.OwnerId == ownerId);
@@ -133,6 +133,25 @@ public static class BillingEndpoints
             {
                 var requestedPeriod = ApiSupport.NormalizePeriod(period);
                 query = query.Where(row => row.Period == requestedPeriod);
+            }
+            if (!string.IsNullOrWhiteSpace(kind)) query = query.Where(row => row.Kind == kind.Trim());
+            if (!string.IsNullOrWhiteSpace(lifecycleState))
+            {
+                if (!Enum.TryParse<InvoiceLifecycleState>(lifecycleState, true, out var lifecycle) || !Enum.IsDefined(lifecycle))
+                    throw new ApiException(400, "Trạng thái phát hành hóa đơn không hợp lệ.");
+                query = query.Where(row => row.LifecycleState == lifecycle);
+            }
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                if (!Enum.TryParse<InvoiceStatus>(status, true, out var invoiceStatus) || !Enum.IsDefined(invoiceStatus))
+                    throw new ApiException(400, "Trạng thái thanh toán hóa đơn không hợp lệ.");
+                query = query.Where(row => row.Status == invoiceStatus);
+            }
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(row => row.RoomName.ToLower().Contains(term) ||
+                    row.BuildingName.ToLower().Contains(term) || row.TenantName.ToLower().Contains(term));
             }
             var rows = await query.OrderByDescending(row => row.Period).ThenBy(row => row.BuildingName).ThenBy(row => row.RoomName)
                 .ToListAsync(cancellationToken);

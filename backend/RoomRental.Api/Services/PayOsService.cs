@@ -405,9 +405,10 @@ public sealed class PayOsService(
             return true;
         }
 
+        // Invoice callbacks must remain scoped to the owner in the callback URL.
+        // Subscription callbacks above use the central admin channel separately.
+        if (attempt is not null && attempt.OwnerId != ownerId) attempt = null;
         var settings = await db.PaymentSettings.AsNoTracking().SingleOrDefaultAsync(row => row.OwnerId == ownerId, cancellationToken);
-        if (settings is null && attempt is not null)
-            settings = await db.PaymentSettings.AsNoTracking().SingleOrDefaultAsync(row => row.OwnerId == attempt.OwnerId, cancellationToken);
         if (settings is null) throw new ApiException(StatusCodes.Status401Unauthorized, "Payment channel is not configured.");
 
         if (!PayOsSignature.VerifyData(Decrypt(settings).ChecksumKey, data, signatureElement.GetString()))

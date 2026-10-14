@@ -76,3 +76,13 @@ với DB disposable; Production từ chối khởi động nếu cố tắt.
 
 Dependency SMTP: [MailKit](https://github.com/jstedfast/MailKit). Pkcs được ghim 10.0.13 để tránh
 cảnh báo dependency đã được Microsoft công bố: [advisory](https://github.com/advisories/GHSA-846f-f764-76mx).
+
+## Brevo đã cấu hình trên VPS (14/10/2026)
+
+Production dùng noreply@roomie.io.vn, FromName Roomie, smtp-relay.brevo.com:587 với StartTls. Tên miền/sender đã được Brevo xác thực qua DNS P.A; SMTP secret nằm trong runtime.env quyền0600, không đưa vào Git. Compose trên VPS đã có7 biến Email__* tương ứng. SMTP TLS/authentication thành công, một thư kiểm tra đã đượcSMTP tiếp nhận; giao nhận Gmail và luồngOTP thật chưa được xác nhận. Xem mục43 PROJECT_HANDOFF.md trước khi kiểm tra tiếp; không tự gửi lại thư thử.
+
+## Hiện tại: Resend đã thay Brevo trên VPS (14/10/2026)
+
+Roomie production dùng Resend qua smtp.resend.com:587, StartTls, username resend và khóa chỉ có Sending access cho roomie.io.vn. From noreply@roomie.io.vn, FromName Roomie. Khóa nằm riêng trong runtime.env0600; không đưa vào source. Tên miền đãverified, hai thư kiểm tra tới hai Gmail có trạng tháiDelivered ởResend. Khác với phầnBrevo lịch sử ởtrên, đãcóbằngchứngmáychủnhậntiếpnhận.
+
+Xem mục46PROJECT_HANDOFF.md vềbackup/rollback vàphạmvitest. Chưa tạotàikhoảnthậtquaOTP trongđợtnày. LocalDevelopment vẫnchưacấuhìnhSMTP.

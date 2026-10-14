@@ -640,3 +640,51 @@ Chi tiết file, API, kiểm tra và lưu ý: [account-occupancy-dashboard-repor
 - Bộ i18n source/TSV/catalogs đồng bộ940 khóa ×4 pass; FE production build pass, API build0 warning/error, diffcheck pass. Edge local xác nhận login Roomie +title Roomie — Quản lý phòng trọ; ảnh /tmp/roomie-rebrand-login.png. Không submit form hoặc chạy kiểm thử tài chính trên DB thật.
 - Giữ nguyên cookie/sessionStorage/localStorage keys, DataProtection purposes, namespace, DB/volume/service/đường dẫn vận hành và GitHub/GHCR repo tên cũ để bảo toàn session/secrets/dữ liệu/deploy. Đây là tên kỹ thuật nội bộ, không còn xuất hiện như thương hiệu trên sản phẩm. File SMTP local ignored chỉ đổi FromName nếu đang là Rehouse; không đổi credentials, không gửi mail thật.
 - Người dùng đã yêu cầu commit và push đợt đổi thương hiệu cùng cấu hình domain/docs mục39–41 lên main. Build/i18n đã đạt như trên; push kích hoạt CI/publish/deploy, chỉ kết luận live cập nhật khi workflow deploy thành công. Secrets SMTP local bị ignore và không đưa vào commit.
+
+## 43. Brevo SMTP cho OTP — 14/10/2026
+
+- User tạo tài khoản Brevo Roomie, yêu cầu thao tác Edge. User xác nhận riêng việc thêm4 DNS records, cấp quyền gửi bằng tên miền, tạo SMTP key Roomie OTP và lưu secret trên VPS; xác nhận gửi đúng1 email kiểm tra tới Gmail của mình. Không mua/nâng gói; UI báo300 email/ngày.
+- P.A DNS đã lưu TXT xác minh Brevo,2 CNAME brevo1._domainkey /brevo2._domainkey và TXT DMARC p=none,rua về Brevo (đã được user chấp thuận). Authoritative DNS trả đúng; Brevo xác nhận cả4 record khớp và domain authenticated. Không đổi A/www/MX. Sender noreply@roomie.io.vn tênRoomie Verified, DKIM theo domain và DMARC configured. Ảnh /tmp/roomie-brevo-domain-authenticated.png.
+- SMTP key riêng Roomie OTP Standard, expiry UI14/10/2027 và hết hạn sau90 ngày không dùng. Secret chỉ lưu /etc/rehouse/runtime.env quyền0600 root, không log/chat/Git. File trung chuyển tạm được xóa cả local/VPS, key trong runtime cua đã bỏ biến. SMTP smtp-relay.brevo.com:587 StartTls. VPS compose cũ thiếu mappingSMTP; đã thêm riêng7 Email__* env mappings và recreate app cùng digest hiện tại. Kiểm tra SMTP injected=true/TLSStartTls/sender đúng, health local+public200. Không thay keypayOS hoặc ghi tài chính.
+- Backup trước đổi /var/backups/rehouse/rehouse-20261014T141126Z-e2VgjH và config cũ /root/roomie-smtp-before-20261014. SMTP TLS+login thành công. Đúng1 thư kiểm tra không chứaOTP gửi bằng SMTP từ VPS, máy chủSMTP chấp nhận. Brevo Logs vẫn0 và onboarding Verification “Waiting for log”; CHƯA xác nhận Gmail delivery, chưa tạo user thử hoặc test OTP thật qua API. Không tự suy diễn đã Delivered hoặc account activation hoàn tất. User được hướng dẫn kiểm tra Inbox/Spam. Nếu không nhận cần kiểm tra Brevo activation/log sau, không gửi lặp tự động.
+- Workflow rebrand6c0d6f4 đã success (38575829507). Runtime SMTP đã cấu hình live, tài liệu bàn giao cập nhật local chưa commit/push. Local Development SMTP vẫn rỗng; chỉ VPS được user cho lưu key.
+
+## 44. Kiểm tra thư Brevo chưa tới Gmail — 14/10/2026
+
+- User báo không nhận thư. Brevo Logs hiện1 event Sent cho đúng thư21:12; xem history chỉSent từIP77.32.148.25, chưaDelivered/Bounce/Deferred/Blocked. Message-ID179198714754.3427847.17281573457235103919@roomie.io.vn. Gmail tìm in:anywhere from:noreply@roomie.io.vn không có kết quả; không đọc các email ngoài phạm vi điều tra.
+- DNS public1.1.1.1: cảDKIM CNAME resolve tới public keys đúng, DMARC đúng. APIhealth200. UsageBrevo còn300email và0paused; không phải quota hết. Completed SMTP onboarding “It works!” sau khiBrevo nhận diện eventđầu, chưa coi làdelivery. Official statusBrevo operational; không có bằng chứnglỗi hạtầngtoàncục.
+- Chưa xác định nguyên nhân nội bộ giao nhậnBrevo/Gmail; không được khẳng địnhchắc làchưaactivate, spamhoặcDNSsai khi chưacóbằngchứng. Userđược hỏi xinphép gửi thêm đúng1test vì lượttrước chỉcho1email; chờphảnhồi, chưagửithêm. Ảnh /tmp/roomie-brevo-sent-not-delivered.png. Nếu cóphép testlại theo dõiSMTPresponse/Message-ID vàBrevoDelivered; khôngtạouserthử trênDBthật.
+
+- Tiếp mục44: userđồngý gửi thêm đúng1email, đã gửi subject “Roomie — Kiểm tra gửi email lần 2”, Message-ID179198760278.3429262.4736557813570049769@roomie.io.vn. SMTPDATA250 “OK: queued as” cùngID; chưacoilàDelivered. Khônggửithêm. Draft hỗtrợ /tmp/roomie-brevo-delivery-support.txt chưa gửi (cần userủyquyền liênhệBrevo).
+
+- Userđãủyquyền gửi ticketBrevo kèmdomain/sender/recipient/2messageIDs. ClickHelp→SupportandTickets quaUI mởtab1262497990 nhưng browserURLpolicy chặnvìinvalidURL, yêucầukhôngworkaround. CHƯA gửi ticket; khôngđổibrowser/hackURL/callAPIđểvượtchặn. Userđược hướngdẫn gửitrựctiếp bằngdraft /tmp/roomie-brevo-delivery-support.txt. Cả2logđãhiệnSent; chưaDelivered/Gmailkhôngcókếtquả.
+
+## 45. Thử địa chỉ nhận thứ hai — 14/10/2026
+
+- User cungcấpảnh Gmail quandev051@gmail.com đểthửnhận. Đãgửiđúng1thưtớiđịachỉnày, subject Roomie — Kiểm tra gửi email tới tài khoản thứ hai; khôngOTP, khôngtạouser. SMTPDATA250queued, Message-ID179198885620.3432314.14742206766741529510@roomie.io.vn.
+- Địachỉthứhai vẫn làGmail; khôngdùngphépthửnày đểkếtluậnlỗiGmailso vớiOutlook/Yahoo. Hai thưcũ lúc21:12/21:20 vẫnSent,chưaDelivered trênBrevo khi mởkiểmtralại. Khôngmua/nângplan, khôngtựgửithêmemail.
+
+## 46. Chuyển SMTP sang Resend — 14/10/2026
+
+- UsertạotàikhoảnResend vàxácnhận riêng:3DNSrecords, khóaSending access chỉroomie.io.vn, lưuVPS, tốiđa1testmỗiđịachỉanhquan050503@gmail.com/quandev051@gmail.com; chỉchuyểnruntimekhi cóDelivered.
+- P.ADNS thêmTXT resend._domainkey(publickeytừUI), CNAME rsend→rsend-apne1.forge.rmta.net vàsend→send.forge.rmta.net. GiữA/www/MXvàrecordBrevo; DMARCđangp=none/ruaBrevo. DNSauthoritative+1.1.1.1trảđúng. ResendTokyo(ap-northeast-1)DNSverified21:47,domainverified21:49. KhôngkíchhoạtReceiving.
+- KhóaRoomieOTP hạnchếSendingaccess/domainroomie.io.vn, tạoquaUIkhôngfullaccess. Secretchỉruntime.env0600root, khôngGit/chat/log; filetrungchuyểnJSONlocal/VPSđãxóa, biếncuađãbỏ. Hostsmtp.resend.com:587/StartTls,userresend.
+- TestSMTPthậtđúng2thưkhôngOTP, khôngtạotàikhoản:anhquan ID01a13ae4-f5e8-7d87-aea1-834673e9821b;quandev ID01a13ae5-b6bf-7778-8049-e61f0ef99db1. CảhaiResendEmailsđềudelivered, screenshot/tmp/roomie-resend-delivered-both.png. Deliveredlàmáychủnhậntiếpnhận, chưađọchộpthưGmailđểxácnhậnInbox/Spam. KhônggửithêmthửhoặcOTPthậtvượthạnmứcđãchấpthuận.
+- SauDeliveredđầu, backupDB/keys /var/backups/rehouse/rehouse-20261014T145132Z-ubwTDc; configBrevo cũroot-only /root/roomie-before-resend-20261014/runtime.env. Chuyểnruntime7SMTPvars sangResend,recreateappcùngimage. Inspectchỉinhost/TLS/sender/boolsecret:đúngResend/StartTls/noreply;publichealth200. Khôngđổicomposevolume, khôngghihoáđơnhoặcpayOS.
+- Kếtluậnvận hành:SMTPResendđãlivecóbằngchứngDeliveredcả2Gmail. LuồngOTPcodeđãtestfakeởmục36, chưađăngký/verifytạouserthậttrongđợtnày. NguyênnhânnộibộBrevochưađượcgiảiquyết, khôngkhẳngđịnhđãbiếtrootcause. Brevokeyvẫnởprovider/configbackup,chưathu hồi; sourceappkhôngcầnđổi. DocsđợtSMTPchưa commit/push; khôngpushsecrets.
+
+## 47. Thiết kế và triển khai Landing Page — 14/10/2026
+
+- **Triển khai `LandingPage` và route `/` & `/welcome`:**
+  - Tạo `frontend/src/pages/LandingPage.tsx` và `frontend/src/pages/LandingPage.css`.
+  - Giao diện đồng bộ bảng màu Navy (`#15343e`), Teal (`#109d83`), Canvas (`#f4f7f6`) và font `Manrope` / `DM Sans`.
+  - Cấu trúc:
+    a) Sticky Header: Logo Rehouse, `LanguageSelector` (5 ngôn ngữ: vi, en, zh, ko, hi), nút `Đăng nhập` (`/login`), CTA `Đăng ký làm chủ trọ` (`/register`) và phím tắt `Bảng điều khiển` khi đã đăng nhập.
+    b) Hero Section 2 cột: Cột trái thông điệp cốt lõi, 2 CTA và 3 lợi điểm nổi bật; Cột phải UI Mockup HTML/CSS gồm thẻ thống kê phòng (12 phòng, 11 đang thuê, 92% lấp đầy, doanh thu tháng), hóa đơn mẫu `P101` (tiền phòng, điện, nước, dịch vụ) và chip QR payOS.
+    c) Lưới 6 tính năng chính: Dãy trọ, Phòng & người thuê, Chỉ số điện, Hóa đơn, Thanh toán trực tuyến (payOS), Báo cáo & Đối soát.
+    d) Cách hoạt động 3 bước (trải nghiệm liên kết riêng tư của khách thuê không cần app) kết hợp thẻ Bảo mật giao dịch (mã hóa máy chủ, webhook đối soát, thu hồi tự động).
+    e) Banner CTA 3 bước tạo tài khoản chủ trọ và Footer đồng bộ.
+- **Routing trong `frontend/src/App.tsx`:** Lazy-load `LandingPage` cho `/` khi `!user`, thêm route `/welcome` trực tiếp để người dùng đã đăng nhập vẫn xem lại trang giới thiệu khi cần; giữ nguyên tự động điều hướng vào `/dashboard` hoặc `/admin/owners` khi đã có phiên đăng nhập tại `/`.
+- **i18n & Build:** Bổ sung các khóa mới vào `source.json` và `translations.tsv` (4 ngôn ngữ: en, zh, ko, hi). Chạy `i18n:check` PASS 989 keys × 4 catalogs. `npm run build` PASS (chunk `LandingPage-Bo2ucVIc.js` 14.99 kB / gzip 3.84 kB).
+- **Responsive DOM Verification:** Kiểm tra tự động bằng Chrome headless qua CDP tại 320px, 375px, 768px, 1440px: cả 4 kích thước đều đạt `hasHorizontalScroll = false` và `overflowingElements = 0` (không tràn ngang).
+

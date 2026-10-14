@@ -938,3 +938,52 @@
 937|The system will check and cancel the unpaid payOS link before recording this receipt. If payOS has received payment, the invoice will be reconciled without adding another receipt.|系统会先检查并取消未付款的 payOS 链接，再记录收款。如 payOS 已收款，将核对并更新账单，不重复收款。|수납 기록 전에 미결제 payOS 링크를 확인하고 취소합니다. payOS 입금이 확인되면 청구서를 대사하고 수납을 중복 기록하지 않습니다.|यह प्राप्ति दर्ज करने से पहले सिस्टम बकाया payOS लिंक जाँचकर रद्द करेगा। payOS पर भुगतान मिला हो तो चालान का मिलान होगा, प्राप्ति दोबारा दर्ज नहीं होगी।
 938|View the invoice online payment status.|查看账单的在线支付状态。|청구서의 온라인 결제 상태를 확인하세요.|चालान के ऑनलाइन भुगतान की स्थिति देखें।
 939|A pending payOS link will be checked and cancelled automatically when recording an external receipt.|记录线下收款时，将自动检查并取消待处理的 payOS 链接。|외부 수납을 기록할 때 대기 중인 payOS 링크를 자동으로 확인하고 취소합니다.|बाहरी प्राप्ति दर्ज करते समय लंबित payOS लिंक अपने आप जाँचकर रद्द किया जाएगा।
+940|Reports & Reconciliation|报表与对账|보고서 및 대사|रिपोर्ट और मिलान
+941|COMPREHENSIVE RENTAL MANAGEMENT SOLUTION|一站式房产出租管理方案|종합 임대 원룸 관리 솔루션|व्यापक कमरा किराया प्रबंधन समाधान
+942|Smart rental management,|智能房屋租赁管理，|스마트한 임대 관리,|स्मार्ट किराया प्रबंधन,
+943|less stress every month.|每月更省心省力。|매달 한결 여유롭게.|हर महीने निश्चिंत रहें।
+944|Automated meter closing & 1-tap invoice issuing|一键抄表结算与账单生成|원터치 전기 검침 및 청구서 자동 발행|एक स्पर्श में मीटर रीडिंग और चालान जारी
+945|Instant online payment via payOS QR, automatic reconciliation|payOS 二维码即时在线支付，系统自动核账|payOS QR 즉시 결제 및 자동 대사|payOS QR के माध्यम से तुरंत भुगतान, स्वचालित मिलान
+946|Tenants view invoices via private links without installing apps|租客通过专属链接直接查看账单，无需下载 App|세입자는 앱 설치 없이 전용 링크로 청구서 확인|किरायेदार बिना ऐप डाउनलोड किए निजी लिंक से चालान देखें
+947|KEY FEATURES|核心功能|주요 기능|प्रमुख विशेषताएँ
+948|All the tools you need for smooth operations|助您轻松高效管理的一切工具|원활한 운영을 위한 모든 필수 도구|सुचारू संचालन के लिए आवश्यक सभी साधन
+949|Flexible management of multiple buildings, room clustering, and custom utility rates per location.|灵活管理多处楼宇，按区域归类房源并设置专属服务单价。|여러 건물과 호실을 체계적으로 분류하고 구역별 맞춤 단가를 설정하세요.|कई इमारतों का लचीला प्रबंधन, कमरों का समूहीकरण और प्रत्येक क्षेत्र के लिए अलग शुल्क।
+950|Track vacancy status, tenant info, occupancy count, and security deposits transparently.|实时掌握空房动态、租客信息、同住人数及押金存续。|공실 여부, 세입자 정보, 인원수 및 보증금 내역을 투명하게 확인하세요.|रिक्त स्थिति, किरायेदार विवरण, सदस्यों की संख्या और अमानत राशि की निगरानी।
+951|Fast monthly electricity reading, automatic sanity checks, preventing typos and inverted values.|快捷录入每月电表读数，自动校验合理性，杜绝倒读与误输。|매달 전기 검침을 손쉽게 입력하고 수치 감소 및 오입력을 자동 방지합니다.|त्वरित मासिक बिजली रीडिंग, स्वचालित सत्यापन और गलत प्रविष्टि से बचाव।
+952|Automatically calculate rent, electricity, water, and issue transparent invoices to tenants in seconds.|全自动计算房租、水电与服务费，数秒内生成清晰透明的账单送达租客。|임대료와 수도·전기 요금을 자동 계산하여 몇 초 만에 투명한 청구서를 발행합니다.|किराया, बिजली, पानी का स्वचालित हिसाब और कुछ ही सेकंड में स्पष्ट चालान तैयार।
+953|Online Payment (payOS)|在线支付 (payOS)|온라인 결제 (payOS)|ऑनलाइन भुगतान (payOS)
+954|Integrated payOS gateway, VietQR payment, funds direct to owner account with instant status update.|集成 payOS 支付网关，支持 VietQR 扫码，资金直达房东账户并秒级销账。|payOS 연동으로 VietQR 결제 지원, 집주인 계좌로 직입금 및 상태 자동 갱신.|payOS गेटवे, VietQR भुगतान, राशि सीधे मकान मालिक के खाते में और तुरंत स्थिति अद्यतन।
+955|Real-time revenue, debt, and deposit tracking. In-depth reconciliation with handy Excel export.|实时跟踪收入、欠款与押金，提供详尽对账并支持一键导出 Excel。|실시간 수입, 미수금 및 보증금 추적. 정밀한 대사 및 편리한 Excel 내보내기 지원.|वास्तविक समय में राजस्व, बकाया और अमानत की निगरानी। विस्तृत मिलान और आसान Excel निर्यात।
+956|TENANT EXPERIENCE|租客专属体验|세입자 전용 경험|किरायेदार का अनुभव
+957|Convenient for tenants, effortless for landlords|租客更方便，房东更省心|세입자는 편리하게, 집주인은 간편하게|किरायेदार के लिए आसान, मालिक के लिए आरामदायक
+958|Receive a private link|获取专属私密链接|전용 보안 링크 수신|निजी लिंक प्राप्त करें
+959|Each occupancy has a unique secure link that tenants open directly on mobile without downloading an app.|每次租住均有专属安全链接，租客在手机浏览器直接打开，无需安装应用。|각 임대 건마다 고유한 보안 링크가 부여되어 앱 설치 없이 모바일에서 바로 열립니다.|प्रत्येक किरायेदारी के लिए एक सुरक्षित लिंक, जिसे मोबाइल पर बिना ऐप के खोला जा सकता है।
+960|View transparent invoices|清晰核对明细账单|투명한 청구서 확인|पारदर्शी चालान देखें
+961|Tenants proactively inspect rent breakdown, electricity/water readings with meter photos, and service fees.|租客可自主查看租金明细、附带抄表照片的水电读数及各项服务费用。|세입자가 임대료 상세, 계량기 사진이 포함된 검침 수치 및 서비스 요금을 직접 확인합니다.|किरायेदार कमरे का किराया, बिजली-पानी की रीडिंग और सेवा शुल्क का विवरण खुद देख सकते हैं।
+962|Instant QR code payment|一键扫码即时付款|QR 코드 즉시 결제|तुरंत QR कोड भुगतान
+963|Simply scan VietQR on any banking app, and the invoice is automatically marked as paid in real-time.|在任一银行手机端扫描 VietQR，账单款项即刻自动核销入账。|은행 앱에서 VietQR을 한 번만 스캔하면 청구서가 실시간으로 자동 완납 처리됩니다.|किसी भी बैंकिंग ऐप से VietQR स्कैन करते ही चालान तुरंत चुकता हो जाता है।
+964|End-to-end encryption: Payment credentials and integration keys are securely encrypted server-side.|端到端加密：支付凭证与集成密钥在服务器端高强度加密存储。|종단간 암호화: 결제 자격 증명과 연동 키는 서버에서 안전하게 암호화됩니다.|एंड-टू-एंड एन्क्रिप्शन: भुगतान विवरण और एपीआई कुंजियाँ सर्वर पर सुरक्षित रूप से एन्क्रिप्टेड हैं।
+965|Server webhook reconciliation: Payments confirmed only with payOS cryptographic signature, browser-independent.|服务端 Webhook 对账：仅在验证 payOS 签名后确认付款，杜绝前端伪造。|서버 Webhook 대사: 브라우저에 의존하지 않고 payOS 보안 서명 검증을 거쳐 결제를 확정합니다.|सर्वर वेबहुक मिलान: केवल payOS सुरक्षा हस्ताक्षर के साथ भुगतान की पुष्टि होती है।
+966|Automatic revocation on move-out: Links deactivate immediately when tenants leave, protecting future tenant privacy.|退房自动销毁：租客退租结算后链接立即失效，保障后续租客隐私。|퇴실 시 자동 회수: 퇴실 처리 즉시 이전 링크가 무효화되어 새 세입자의 정보를 보호합니다.|कमरा छोड़ने पर स्वतः रद्द: किरायेदार के जाने पर लिंक तुरंत निष्क्रिय हो जाता है।
+967|Start managing your properties professionally today|立即开启专业高效的房产管理之旅|오늘 바로 전문적인 임대 관리를 시작하세요|आज ही पेशेवर कमरा प्रबंधन शुरू करें
+968|1. Sign up details|1. 填写注册信息|1. 계정 정보 등록|1. जानकारी दर्ज करें
+969|Fill in name, email, and password in 30 seconds.|只需 30 秒填写姓名、邮箱与密码。|30초 만에 이름, 이메일, 비밀번호를 입력하세요.|30 सेकंड में नाम, ईमेल और पासवर्ड दर्ज करें।
+970|2. Verify email OTP|2. 验证邮箱 OTP|2. 이메일 OTP 인증|2. ईमेल OTP सत्यापन
+971|Enter the code sent to your inbox to securely activate your account.|输入发送至邮箱的验证码，安全激活您的账号。|수신된 인증번호를 입력하여 계정을 안전하게 활성화하세요.|खाता सक्रिय करने के लिए अपने ईमेल पर भेजा गया कोड दर्ज करें।
+972|3. Set up rooms & welcome tenants|3. 创建房源并迎接入住|3. 방 설정 및 세입자 입주|3. कमरे जोड़ें và किरायेदार लाएं
+973|Create your first building and experience peaceful property management.|创建首个楼宇房源，体验轻松无忧的数字化管理。|첫 번째 건물을 등록하고 편리한 임대 관리를 경험해 보세요.|अपनी पहली इमारत बनाएं và निश्चिंत प्रबंधन का अनुभव लें।
+974|Register as landlord now|立即注册成为房东|지금 바로 집주인으로 등록하기|अभी मकान मालिक के रूप में पंजीकरण करें
+975|Simplifying property management every single day.|让日常租房管理更加省心高效。|매일의 임대 관리를 더 단순하고 깔끔하게.|किराया प्रबंधन को हर दिन सरल बनाएं।
+976|Home|首页|홈|होम
+977|Features|功能特色|주요 기능|सुविधाएँ
+978|How it works|运作流程|이용 방법|कैसे काम करता है
+979|Scan QR code for instant payment|扫码极速完成支付|QR 코드로 즉시 결제|तुरंत भुगतान के लिए QR स्कैन करें
+980|Automatic debt clearance in 3 seconds|3 秒内系统自动销账|3초 내 자동 수납 처리|3 सेकंड में स्वचालित भुगतान दर्ज
+981|Room Occupancy Status|房源出租动态|객실 점유 현황|कमरों की स्थिति
+982|Occupancy rate|出租率|입주율|अधिभोग दर
+983|Monthly revenue|月度营业额|월 수입|मासिक राजस्व
+984|Total:|总计：|합계:|कुल:
+985|Dashboard|控制面板|대시보드|डैशबोर्ड
+986|Sample Invoice P101|示例账单 P101|샘플 청구서 P101|नमूना चालान P101
+987|Vacant rooms|空置房间|공실|खाली कमरे
+988|Sign up|注册|회원가입|साइन अप करें

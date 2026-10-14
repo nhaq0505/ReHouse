@@ -20,6 +20,7 @@ const AdminOwnersPage = lazy(() => import('./pages/AdminOwnersPage'));
 const TenantPage = lazy(() => import('./pages/TenantPage'));
 const TenantCheckoutPage = lazy(() => import('./pages/TenantCheckoutPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
 
 function Gate({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
   const { user, ready } = useAuth();
@@ -34,7 +35,7 @@ function Gate({ children, admin = false }: { children: React.ReactNode; admin?: 
 function HomeRedirect() {
   const { user, ready } = useAuth();
   if (!ready) return <div className="screen-center"><Spin size="large" /></div>;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <LandingPage />;
   if (user.status && user.status !== 'Approved') return <Navigate to="/account-status" replace />;
   return <Navigate to={user.role === 'Admin' ? '/admin/owners' : '/dashboard'} replace />;
 }
@@ -51,6 +52,7 @@ export default function App() {
     <Route path="/change-password" element={<PasswordPage />} />
     <Route path="/register" element={<RegisterPage />} />
     <Route path="/account-status" element={<AccountStatusPage />} />
+    <Route path="/welcome" element={<LandingPage />} />
     <Route path="/t/:token" element={<TenantPage />} />
     <Route path="/t/:token/invoices/:invoiceId/checkout" element={<TenantCheckoutPage />} />
     <Route path="/tenant/:token" element={<TenantPage />} />

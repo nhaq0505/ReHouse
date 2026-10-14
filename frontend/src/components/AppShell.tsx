@@ -1,3 +1,4 @@
+import RoomieMark from './RoomieMark';
 import ChangePasswordModal from './ChangePasswordModal';
 import LanguageSelector from '../i18n/LanguageSelector';
 import { t } from '../i18n/runtime';
@@ -56,13 +57,13 @@ const adminItems = [{ key: '/admin/owners', icon: <UserOutlined />, label: t("Ch
   return <Layout className="app-layout">
     <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
     <Sider width={250} className="app-sider" breakpoint="lg" collapsedWidth={0} trigger={null} onBreakpoint={(broken) => { if (!broken) setMobileOpen(false); }}>
-      <div className="brand"><div className="brand-mark"><HomeOutlined /></div><div><strong>Roomie</strong><span>{t("QUẢN LÝ PHÒNG TRỌ")}</span></div></div>
+      <div className="brand"><div className="brand-mark"><RoomieMark /></div><div><strong>Roomie</strong><span>{t("QUẢN LÝ PHÒNG TRỌ")}</span></div></div>
       <div className="sider-label">{t("MENU CHÍNH")}</div>
       {menu}
       <div className="sider-bottom"><div className="help-card"><div className="help-icon">✦</div><strong>{t("Cần hỗ trợ?")}</strong><span>{t("Quản lý nhà trọ dễ dàng, từng bước một.")}</span></div><div className="sider-foot">Roomie <span>•</span>  {t("Phiên bản 1.0")}</div></div>
     </Sider>
     <Drawer className="mobile-menu-drawer" placement="left" width={280} open={mobileOpen} onClose={() => setMobileOpen(false)} title={t("Menu chính")} closable>
-      <div className="brand"><div className="brand-mark"><HomeOutlined /></div><div><strong>Roomie</strong><span>{t("QUẢN LÝ PHÒNG TRỌ")}</span></div></div><div className="sider-label">{t("MENU CHÍNH")}</div>{menu}
+      <div className="brand"><div className="brand-mark"><RoomieMark /></div><div><strong>Roomie</strong><span>{t("QUẢN LÝ PHÒNG TRỌ")}</span></div></div><div className="sider-label">{t("MENU CHÍNH")}</div>{menu}
     </Drawer>
     <Layout className="main-layout">
       <Header className="topbar"><div className="topbar-left"><Button className="mobile-menu-button" type="text" icon={<MenuOutlined />} aria-label={t("Mở menu")} onClick={() => setMobileOpen(true)}>{t("Menu")}</Button><div className="breadcrumb-label">{t("Khu vực làm việc")} <span>/</span> <strong>{title}</strong></div></div><Space size={12}><LanguageSelector /><Dropdown menu={{ items: userMenu, onClick: handleMenu }} trigger={['click']} placement="bottomRight"><Button className="profile-button" type="text"><Avatar size={36} className="profile-avatar">{user?.name?.trim()?.charAt(0)?.toUpperCase() || 'N'}</Avatar><span className="profile-text"><strong>{user?.name}</strong><small>{isAdmin ? t("Quản trị viên") : t("Chủ trọ")}</small></span><Typography.Text type="secondary">⌄</Typography.Text></Button></Dropdown></Space></Header>

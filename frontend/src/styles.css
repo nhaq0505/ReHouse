@@ -8,6 +8,7 @@
   --ink: #19333b;
   --muted: #71838a;
   --teal: #109d83;
+  --roomie-brand-color: #18a589;
   --teal-dark: #0a796a;
   --navy: #15343e;
   --line: #e6edeb;
@@ -38,7 +39,7 @@ a { color: var(--teal-dark); }
 .app-sider .ant-layout-sider-children { min-height: 100%; display: flex; flex-direction: column; }
 .brand, .auth-brand, .auth-small-brand, .status-brand, .tenant-header { display: flex; align-items: center; gap: 11px; }
 .brand { color: white; padding: 0 8px 34px; }
-.brand-mark { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; color: #f1fffc; border-radius: 12px; background: #18a589; font-size: 23px; font-family: Manrope, sans-serif; line-height: 1; }
+.brand-mark { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; color: #f1fffc; border-radius: 12px; background: var(--roomie-brand-color); font-size: 23px; font-family: Manrope, sans-serif; line-height: 1; }
 .brand strong, .tenant-header strong, .auth-brand strong, .auth-small-brand strong, .status-brand strong { display: block; font-family: Manrope, sans-serif; font-size: 20px; line-height: 1.1; font-weight: 800; letter-spacing: -.75px; }
 .brand span, .tenant-brand-copy > span, .auth-brand span { display: block; margin-top: 5px; color: rgba(233, 246, 243, .56); font-size: 12px; font-weight: 700; letter-spacing: 1.1px; }
 .sider-label { margin: 0 11px 10px; color: rgba(217, 236, 232, .4); font-size: 12px; font-weight: 700; letter-spacing: 1.4px; }
@@ -876,3 +877,6 @@ html:lang(zh), html:lang(ko), html:lang(hi) { font-family: 'DM Sans', system-ui,
   .tenant-page .tenant-checkout-qr .ant-qrcode svg { display: block; width: 100%; height: auto; }
   .tenant-page .tenant-checkout-details > div { gap: 8px; }
 }
+
+/* Roomie door mark scales with its existing brand container. */
+.brand-mark > .roomie-mark { display: block; width: 68.421%; height: 68.421%; }

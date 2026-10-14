@@ -1,3 +1,4 @@
+import RoomieMark from '../components/RoomieMark';
 import LanguageSelector from '../i18n/LanguageSelector';
 import { t } from '../i18n/runtime';
 import { useEffect, useRef, useState } from 'react';
@@ -35,7 +36,7 @@ export default function AccountStatusPage() {
 
   return <div className="status-page">
     <div className="public-language"><LanguageSelector /></div>
-    <div className="status-brand"><div className="brand-mark"><span>⌂</span></div><strong>Roomie</strong></div>
+    <div className="status-brand"><div className="brand-mark"><RoomieMark /></div><strong>Roomie</strong></div>
     <div className="status-card">
       <Result
         status={config.icon}

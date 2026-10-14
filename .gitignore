@@ -43,4 +43,6 @@ playwright-report/
 **/artifacts/
 out/
 **/out/
+.agents/skills/video-shotcraft/
+
 

@@ -15,6 +15,7 @@ using RoomRental.Api.Services;
 var builder = WebApplication.CreateBuilder(args);
 if (builder.Environment.IsDevelopment())
     builder.Configuration.AddJsonFile("appsettings.Development.local.json", optional: true, reloadOnChange: true)
+        .AddJsonFile("appsettings.Email.local.json", optional: true, reloadOnChange: true)
         .AddEnvironmentVariables().AddCommandLine(args);
 
 var provider = builder.Configuration["DatabaseProvider"] ?? "SQLite";
@@ -50,8 +51,14 @@ if (!string.IsNullOrWhiteSpace(keyPath))
 builder.Services.AddSingleton<IPasswordHasher<AppUser>, PasswordHasher<AppUser>>();
 builder.Services.AddSingleton<TenantTokenService>();
 builder.Services.AddScoped<InvoiceService>();
+builder.Services.AddScoped<ManualReceiptService>();
 builder.Services.AddScoped<PayOsService>();
 builder.Services.AddScoped<PaymentWebhookService>();
+builder.Services.AddScoped<IRegistrationEmailSender, SmtpRegistrationEmailSender>();
+builder.Services.AddScoped<RegistrationVerificationService>();
+// Disabling verification is reserved for isolated Development integration fixtures.
+if (!builder.Configuration.GetValue("EmailVerification:Enabled", true) && !builder.Environment.IsDevelopment())
+    throw new InvalidOperationException("Email verification cannot be disabled outside Development.");
 builder.Services.AddSingleton(TimeProvider.System);
 if (!bool.TryParse(builder.Configuration["EnableInvoiceSweep"], out var enableInvoiceSweep) || enableInvoiceSweep)
     builder.Services.AddHostedService<InvoiceSweepService>();

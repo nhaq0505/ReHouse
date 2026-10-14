@@ -4,7 +4,10 @@ Backend: ASP.NET Core .NET 10 on port 5080. Frontend: React/TypeScript/Vite on p
 
 ## Authentication and approval
 
-- `POST /api/auth/register` `{name,email,password,phone}` → user.
+- `POST /api/auth/register` `{name,email,password,phone}` → HTTP202 `{verificationRequired:true,challengeToken,email,expiresAt,resendAvailableAt}`. Registration remains pending until email OTP is confirmed; no user/session is created yet. Missing/failing SMTP returns503, not success.
+- `POST /api/auth/verify-registration` `{challengeToken,code}` → HTTP201 user. Six-digit OTP expires after10 minutes; challenge after30 minutes, max5 wrong attempts per code. Correct verification atomically creates an Approved Free Owner; sign in separately. Replayed/invalid/expired codes return400; concurrent loser may return409.
+- `POST /api/auth/resend-registration` `{challengeToken}` → refreshed challenge timing. Enforces60-second cooldown and5 sends/email/hour, returning429 when limited. Sending again invalidates the old code. New registration with the same pending email rotates its token/credentials after cooldown and preserves the send budget. Existing accounts cannot be overwritten.
+- Verification uses a256-bit challenge secret bound to its code; DB stores only hashes, never raw OTP/challenge. Existing accounts retain their prior login behavior. SMTP/TLS configuration and Gmail steps: [email OTP setup](email-otp-setup.md).
 - `POST /api/auth/login` `{email,password}` → user.
 - `GET /api/auth/me` → user; unauthenticated returns 401.
 - `POST /api/auth/logout`.
@@ -31,7 +34,7 @@ Backend: ASP.NET Core .NET 10 on port 5080. Frontend: React/TypeScript/Vite on p
 - `GET /api/invoices?period=YYYY-MM&kind=Monthly&lifecycleState=Issued&status=Unpaid&search=...`; all filters optional and combined with AND. Kind is an exact value (`Monthly`, `Deposit`, `Supplemental`); lifecycle (`Draft`, `Issued`) and status (`Unpaid`, `Partial`, `Paid`) are case-insensitive enums, invalid values return 400. Search is a literal, case-insensitive substring of snapshotted room/building/tenant names. Returns the existing JSON array, scoped to the owner. `GET /api/invoices/{id}`.
 - `POST /api/invoices/generate` `{period}` generates and publishes eligible invoices; repeat calls cannot duplicate them.
 - Invoice: `{id,roomId,roomName,buildingName,period,tenantName,previousReading,currentReading,consumption,rent,electricityAmount,waterAmount,serviceAmount,total,paid,outstanding,status,dueDate,issuedAt}`. Status `Unpaid`, `Partial`, `Paid`. Amounts rounded to VND.
-- `POST /api/invoices/{id}/receipts` `{amount,note,idempotencyKey}` records cash/external bank transfer; positive amount cannot exceed remaining balance. Returns a receipt summary `{id,invoiceId,amount,paid,outstanding,status}`. Reusing the key with the same payload returns the existing receipt; a different payload conflicts. Pending online payment attempts must be reconciled before recording external receipts.
+- `POST /api/invoices/{id}/receipts` `{amount,note,idempotencyKey,expectedVersion?}` records cash/external bank transfer; positive amount cannot exceed remaining balance. Returns `{id,invoiceId,amount,paid,outstanding,status,version}`. Reusing the key with the same payload returns the existing receipt; a different payload conflicts. With a pending payOS order, the server verifies signed order/amount/amountPaid, cancels an unpaid order and requires signed CANCELLED/EXPIRED with zero received before committing cancellation plus manual receipt atomically. Full cash payment marks Paid; partial cash marks Partial and future checkout uses the remaining balance. A verified full online payment wins: reconcile that payment and return409 without a manual receipt; clients must refresh even after an error. Partial online payment, unknown status, failed cancellation or invalid response blocks cash recording. A timeout after remote cancellation is safe to retry with the same idempotency key. Optional expectedVersion rejects stale invoice state before provider calls.
 
 ## Payments and guest access
 

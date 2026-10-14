@@ -47,13 +47,16 @@ var expectedTables = new[]
 {
     "AuthSessions", "Buildings", "DepositSettlements", "InvoiceRevisions", "Invoices", "MoveoutCompletions",
     "Occupancies", "PayOsAttempts", "PaymentSettings", "PaymentWebhookRegistrations", "ProcessedWebhooks",
-    "Readings", "Receipts", "Rooms", "Users"
+    "Readings", "Receipts", "Rooms", "Users", "RegistrationVerifications"
 };
 
 await using var sqliteConnection = new Microsoft.Data.Sqlite.SqliteConnection(
     new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder { DataSource = sourcePath, Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly }.ToString());
 await sqliteConnection.OpenAsync();
 await ValidateSqliteBackupAsync(sqliteConnection, expectedTables);
+await using var registrationTableProbe = sqliteConnection.CreateCommand();
+registrationTableProbe.CommandText = "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='RegistrationVerifications'";
+var hasRegistrationVerifications = Convert.ToInt64(await registrationTableProbe.ExecuteScalarAsync()) != 0;
 
 var sourceOptions = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(sqliteConnection).Options;
 var targetOptions = new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connectionString).Options;
@@ -77,6 +80,8 @@ try
 {
     var counts = new SortedDictionary<string, int>(StringComparer.Ordinal);
     counts["Users"] = await CopySetAsync<AppUser>(source, target);
+    counts["RegistrationVerifications"] = hasRegistrationVerifications
+        ? await CopySetAsync<RegistrationVerification>(source, target) : 0;
     counts["AuthSessions"] = await CopySetAsync<AuthSession>(source, target);
     counts["Buildings"] = await CopySetAsync<Building>(source, target);
     counts["Rooms"] = await CopySetAsync<Room>(source, target);
@@ -176,6 +181,8 @@ static async Task ValidateSqliteBackupAsync(Microsoft.Data.Sqlite.SqliteConnecti
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync()) actual.Add(reader.GetString(0));
     }
+    // Old snapshots predate email verification; only this new table is optional.
+    actual.Add("RegistrationVerifications");
     if (!actual.SetEquals(expectedTables))
         throw new InvalidDataException("SQLite table set does not match the supported application model; refusing a partial import.");
 }
@@ -262,6 +269,7 @@ static void NormalizeDateTimes<TEntity>(IEnumerable<TEntity> rows) where TEntity
 static Task<int> CountTargetRowsAsync(AppDbContext target, string table) => table switch
 {
     "Users" => target.Users.CountAsync(),
+    "RegistrationVerifications" => target.RegistrationVerifications.CountAsync(),
     "AuthSessions" => target.AuthSessions.CountAsync(),
     "Buildings" => target.Buildings.CountAsync(),
     "Rooms" => target.Rooms.CountAsync(),

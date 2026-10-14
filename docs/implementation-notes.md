@@ -59,3 +59,20 @@ chỉ quản trị viên tin cậy được sửa cấu hình. Script không sou
 chỉ bỏ một cặp dấu nháy bao ngoài. Sync thất bại trả mã khác 0 để job báo lỗi, giữ nguyên bản local hoàn chỉnh
 và không chạy retention. Bản remote chứa dữ liệu và khóa giải mã: dùng remote có mã hóa và phân quyền phù hợp;
 retention remote và restore drill phải cấu hình riêng. Thay đổi này chưa cài đặt/chạy lên VPS.
+
+## OTP email cho đăng ký mới
+
+Đăng ký mới chờ OTP email trước khi tạo Users và đăng nhập; xác minh thành công tạo Owner Approved gói Free.
+Không còn bước admin duyệt trong luồng tự đăng ký. Tài khoản cũ vẫn giữ quyền truy cập hiện có.
+SMTP qua MailKit yêu cầu TLS; thiếu cấu hình hoặc gửi lỗi trả503 và không tạo tài khoản.
+Bảng RegistrationVerifications giữ hash OTP/token, hạn mức gửi/nhập sai và password hash đang chờ;
+không thay dữ liệu tài chính cũ. Migration đọc được snapshot có/chưa có bảng mới.
+Xem [hướng dẫn cấu hình SMTP/Gmail và giới hạn](email-otp-setup.md).
+Local đã sao lưu DB rồi thêm bảng mới; không seed/reset hoặc chạy integration test trên DB thật.
+Chưa cấu hình hộp thư/mật khẩu ứng dụng và chưa gửi email thật, chưa push/deploy thay đổi OTP.
+
+### Thu tiền thủ công khi đang có payOS pending (14/10/2026)
+
+- ManualReceiptService kiểm tra owner, version, số dư và idempotency trước khi gọi provider. Trong transaction Serializable, GET trạng thái theo order code, xác minh chữ ký/order/amount/amountPaid rồi hủy order chưa nhận tiền. Chỉ CANCELLED/EXPIRED có amountPaid=0 mới kết thúc pending và ghi receipt Manual cùng cập nhật Paid/Version nguyên tử. Attempt.Status là concurrency token; unique pending reservation được giữ tới commit để chặn checkout xen vào.
+- payOS đã nhận đủ tiền trước/trong lúc hủy: rollback nhánh cash, ghi payOS qua luồng xác minh/idempotency sẵn có, trả409 và FE tải lại hóa đơn/báo cáo. Đã nhận một phần hoặc dữ liệu thiếu/không hợp lệ: giữ pending, không thêm cash. Reconcile nền cũng không giải phóng order đóng nhưng đã nhận một phần tiền.
+- Hủy từ xa thành công nhưng DB rollback/timeout: retry kiểm tra lại trạng thái đã hủy, không giả định thất bại HTTP đồng nghĩa link đã hủy. Pending cũ thiếu metadata vẫn lookup bằng order code. UI xác nhận giải thích tự kiểm tra/hủy; không yêu cầu người dùng đối soát thủ công trước mỗi lần thu.

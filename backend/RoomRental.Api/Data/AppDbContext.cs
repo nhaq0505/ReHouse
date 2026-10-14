@@ -7,6 +7,7 @@ namespace RoomRental.Api.Data;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<RegistrationVerification> RegistrationVerifications => Set<RegistrationVerification>();
     public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
     public DbSet<Building> Buildings => Set<Building>();
     public DbSet<Room> Rooms => Set<Room>();
@@ -45,6 +46,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(24);
             entity.Property(x => x.StatusReason).HasMaxLength(1000);
             entity.Property(x => x.SubscriptionTier).HasConversion<string>().HasMaxLength(24);
+        });
+
+        modelBuilder.Entity<RegistrationVerification>(entity =>
+        {
+            entity.HasKey(x => x.Email);
+            entity.Property(x => x.Email).HasMaxLength(320);
+            entity.HasIndex(x => x.ChallengeHash).IsUnique();
+            entity.Property(x => x.ChallengeHash).HasMaxLength(64).IsConcurrencyToken();
+            entity.Property(x => x.SendCount).IsConcurrencyToken();
+            entity.Property(x => x.FailedAttempts).IsConcurrencyToken();
+            entity.Property(x => x.ConsumedAt).IsConcurrencyToken();
         });
 
         modelBuilder.Entity<AuthSession>(entity =>
@@ -193,7 +205,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasIndex(x => new { x.InvoiceId, x.Status });
             entity.HasIndex(x => x.InvoiceId).IsUnique().HasDatabaseName("IX_PayOsAttempts_InvoiceId_Pending")
                 .HasFilter("\"Status\" = 'Pending'");
-            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsConcurrencyToken();
             entity.Property(x => x.Kind).HasMaxLength(40);
             entity.Property(x => x.CheckoutUrl).HasMaxLength(2048);
             entity.Property(x => x.PaymentLinkId).HasMaxLength(160);

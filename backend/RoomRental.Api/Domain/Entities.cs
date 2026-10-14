@@ -29,6 +29,25 @@ public sealed class AppUser
     public int MaxRooms => IsPro ? int.MaxValue : FreeTierMaxRooms;
 }
 
+// No login-capable user exists until this email challenge has been consumed.
+public sealed class RegistrationVerification
+{
+    public required string Email { get; set; }
+    public string ChallengeHash { get; set; } = "";
+    public Guid UserId { get; set; }
+    public string Name { get; set; } = "";
+    public string? Phone { get; set; }
+    public string PasswordHash { get; set; } = "";
+    public string CodeHash { get; set; } = "";
+    public DateTimeOffset ExpiresAt { get; set; }
+    public DateTimeOffset CodeExpiresAt { get; set; }
+    public DateTimeOffset LastSentAt { get; set; }
+    public DateTimeOffset WindowStartedAt { get; set; }
+    public DateTimeOffset? ConsumedAt { get; set; }
+    public int SendCount { get; set; }
+    public int FailedAttempts { get; set; }
+}
+
 public sealed class AuthSession
 {
     public required string Id { get; set; }

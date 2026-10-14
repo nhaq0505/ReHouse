@@ -6,6 +6,13 @@ Cập nhật: **14/10/2026 — Asia/Ho_Chi_Minh**.
 
 ## 1. Trạng thái hiện tại
 
+**Phát hành 14/10 — người dùng yêu cầu push:** đóng gói các mục36–38 (SMTP OTP, bỏ copy link thanh toán, cash tự hủy payOS) lên main. Kết quả QA tại các mục tương ứng; SMTP thật vẫn chưa cấu hình, cần thiết lập trước khi đăng ký mới có thể gửi OTP. File secret local bị ignore, không nằm trong commit. Push main kích hoạt pipeline CI/publish/deploy hiện có; phải kiểm tra trạng thái workflow riêng, không coi push thành công là deploy thành công. Các câu “chưa commit/push” ở các checkpoint dưới là lịch sử trước yêu cầu phát hành này.
+
+**Mới nhất — thu tiền mặt khi có payOS pending:** source đã tự xác minh/hủy order chưa nhận tiền rồi ghi khoản thu nguyên tử; thu đủ Paid, thu một phần Partial. Online đã trả đủ thì đối soát payOS và không ghi cash; thiếu bằng chứng hủy/đã nhận một phần thì giữ pending. SQLite165/PostgreSQL167 service assertions pass bằng provider giả, HTTP nghiệp vụ59/59. Chưa commit/push/deploy; xem mục38.
+
+**Mới nhất — OTP xác nhận email đăng ký (SMTP):** source/local đã có luồng đăng ký chờ OTP, chỉ tạo user sau xác minh, gửi lại có cooldown/hạn mức. SMTP Gmail là lựa chọn khởi đầu đã hướng dẫn; chưa có hộp thư/mật khẩu ứng dụng, chưa gửi email thật. File `backend/RoomRental.Api/appsettings.Email.local.json` đã tạo rỗng và bị Git bỏ qua, quyền0600; người dùng tự điền thông tin bí mật. OTP mặc định bật; Production không cho tắt. API local5080 đã chạy bản mới, DB được backup trước khi thêm bảng RegistrationVerifications, tài chính319 invoice/250783641/Paid46440913 và digest giữ nguyên. Chi tiết mục36 và [hướng dẫn Gmail/SMTP](email-otp-setup.md). Mã đợt35 đã push main9921eef; thay đổi OTP chưa commit/push/deploy.
+
+
 **Mới nhất 14/10 — tối ưu backend/security/ops đã triển khai local:** SQL aggregation Dashboard, giới hạn lịch sử đọc số, lọc hóa đơn, health DB, đổi mật khẩu giữ sid hiện tại, Modal/i18n và vendor chunks; backup off-host opt-in. SQLite 59/59; PostgreSQL 55 test methods (48 pass, 7 SQLite-only skip) và một fixture class skip, unittest báo `skipped=8`; service 81 assertions. DB thật 319 hóa đơn / 250.783.641 VND / Paid 46.440.913 VND giữ nguyên qua đối chiếu read-only. **Có sự cố QA ban đầu: 2 yêu cầu checkout bằng khóa giả đã ra payOS và bị từ chối mã 214; không có checkout/giao dịch.** Các lượt sau chặn outbound bằng proxy local. Chi tiết mục 35 và [báo cáo nâng cấp](backend-performance-security-ops-report.md). Không deploy, không nâng schema DB thật.
 
 
@@ -65,7 +72,8 @@ Người dùng đã yêu cầu triển khai bằng agent Luna reasoning max. Đ�
 | 12 | Migration, triển khai, sao lưu và khôi phục vận hành | VPS public HTTPS đang chạy, backup/rollback đã cài; populated/empty restore đã thử trên database tạm, không chạm database live. Chưa có migrations đầy đủ, off-host backup hoặc HA; schema vẫn dùng EnsureCreated |
 | 13 | Camera và AI nhận diện qua API | Hoãn theo yêu cầu người dùng; chưa triển khai |
 | 14 | Báo cáo thu tiền/công nợ/cọc, Excel và lưu trữ mềm dãy/phòng | Đã triển khai local; SQLite 38/38, PostgreSQL 32 pass + 2 SQLite-only skip; chưa deploy |
-| 15 | Tối ưu truy vấn backend, tài khoản, bundle và backup off-host | Local hoàn thành; SQLite 59/59, PostgreSQL 48 pass, service 81 assertions; chưa deploy; xem mục 35 về sự cố outbound QA |
+| 15 | Tối ưu truy vấn backend, tài khoản, bundle và backup off-host | Đã push main9921eef; xem mục35 về kiểm tra và sự cố outbound QA |
+| 16 | OTP email cho đăng ký mới (SMTP) | Source/local xong, SMTP thật chờ cấu hình; service113 assertions, OTP SQLite10/10, PostgreSQL3/3; chưa push/deploy |
 
 ## 4. Những gì đang dùng được
 
@@ -99,7 +107,7 @@ Người dùng đã yêu cầu triển khai bằng agent Luna reasoning max. Đ�
 - Hóa đơn có lifecycle Draft/Issued; luồng publish và correction đủ điều kiện ghi revision/version và actor/reason audit. Không có sửa hoặc xóa tự do mọi hóa đơn.
 - Ghi nhận tiền có idempotency; webhook lặp chỉ tạo một khoản thu; xác minh chữ ký, chủ nhận, order và số tiền.
 - Khi tạo checkout gặp kết quả không chắc chắn, giữ giao dịch để đối soát, không tạo thêm checkout có thể dẫn tới thu trùng.
-- Không đổi khóa payOS, ghi nhận thu ngoài hoặc chuyển người thuê đi khi còn giao dịch pending chưa được xử lý, theo quy tắc hiện tại.
+- Không đổi khóa payOS hoặc chuyển người thuê đi khi còn giao dịch pending chưa được xử lý. Thu ngoài tự kiểm tra/hủy payOS chưa nhận tiền trước khi ghi khoản thu (mục38).
 
 ## 5. Phản hồi FE gần nhất và phần đã sửa
 
@@ -189,6 +197,8 @@ Docker: sao chép `.env.example` thành `.env`, thay mật khẩu/URL phù hợp
 
 ### Kết quả kiểm tra đã có
 
+- OTP SMTP: API/migrator build0 warning/error; dependency audit không có cảnh báo; frontend build và i18n929 ×4 pass. Service113 assertions; OTP HTTP SQLite10/10, PostgreSQL3/3; SQLite nghiệp vụ59/59. Migration đọc cả snapshot cũ/chứa bảng OTP, source read-only. Chi tiết mục36.
+
 - Đợt mới nhất backend/security/ops: build API 0 warning/error; frontend không còn warning chunk/circular, lớn nhất 484,95 kB; i18n 908 × 4 pass. SQLite 59/59; PostgreSQL 55 methods (48 pass, 7 skip) + fixture class skip. Service 81 assertions; health 200→503→200 trên DB riêng và 7 ca backup giả lập pass. Xem mục 35.
 
 - MVP: backend build 0 lỗi/0 cảnh báo; frontend build thành công.
@@ -205,7 +215,7 @@ Docker: sao chép `.env.example` thành `.env`, thay mật khẩu/URL phù hợp
 
 Đây là kế hoạch tiếp tục, không phải các việc đã hoàn thành hay một yêu cầu mới được người dùng giao.
 
-1. **Hoàn tất review local hiện tại:** root đang làm source audit cuối; xem lại thay đổi và trạng thái trước khi kết thúc. Chưa push/deploy. Sau đó UAT cùng người dùng: chủ trọ mới đăng ký/chờ duyệt, tạo dãy/phòng, thêm khách, chốt điện, xem báo cáo/xuất Excel, lưu trữ/khôi phục, mở link khách và kết thúc lượt thuê.
+1. **Hoàn tất review local hiện tại:** cấu hình Gmail SMTP theo `email-otp-setup.md`, người dùng tự nhập mật khẩu ứng dụng vào file local bị Git bỏ qua, rồi UAT email thật; root đang làm source audit cuối; xem lại thay đổi và trạng thái trước khi kết thúc. Chưa push/deploy. Sau đó UAT cùng người dùng: chủ trọ mới đăng ký/chờ duyệt, tạo dãy/phòng, thêm khách, chốt điện, xem báo cáo/xuất Excel, lưu trữ/khôi phục, mở link khách và kết thúc lượt thuê.
 2. **Kiểm chứng payOS thật:** HTTPS callback origin đã có, nhưng VPS chưa có khóa payOS/owner settings và chưa thực hiện giao dịch thật. Chỉ thêm khóa do chủ trọ cung cấp và thử checkout/webhook/đối soát khi có sự đồng ý rõ ràng; kiểm tra webhook lặp, sai số tiền, mất callback và giao dịch hủy/hết hạn. Không tạo giao dịch thật chỉ để smoke test hạ tầng.
 3. **Hoàn thiện vận hành công khai:** code backup off-host opt-in đã có, còn cài đặt remote/khóa và restore drill trên host theo yêu cầu riêng; bổ sung EF/versioned migrations, sao lưu off-host và restore drill định kỳ, giám sát lỗi/job, rà soát/luân chuyển tài khoản quản trị. Caddy HTTPS, redirect và proxy trust đã được cấu hình. PostgreSQL vẫn là container một máy, không phải HA.
 4. **Tối ưu FE tiếp theo nếu cần:** giảm bundle thư viện dùng chung, bổ sung kiểm thử UI cho luồng có rủi ro thực tế. Không thay stack hoặc viết lại giao diện chỉ để tối ưu cảnh báo build.
@@ -576,3 +586,27 @@ Chi tiết file, API, kiểm tra và lưu ý: [account-occupancy-dashboard-repor
 - Bản cuối: API build 0 warning/error; service 81 assertions. Full disposable SQLite 59/59: API20, billing17, reports6, payos4, account12. PostgreSQL container riêng `rehouse-upgrade-qa-20261014`, DB rehouse_qa port15494: API20 pass, billing15 pass+2 skip, reports6 pass, account7 pass+5 skip; fixture payos class skip. `Ran 55 tests`, `OK (skipped=8)`; 48 methods pass, 7 methods skip + 1 class skip. Health kiểm tra khi dừng/khởi động đúng container QA: 200→503→200. Logs tại `/tmp/rehouse-upgrade-qa.VfeGS0`.
 - **Minh bạch sự cố an toàn:** 2 lượt suite ban đầu chạy callback HTTP localhost nhưng test Subscription upgrade có sẵn vẫn gọi payOS bằng khóa giả; cả hai nhận HTTP200/code214, không có PaymentLinkId/CheckoutUrl, 2 subscription attempts Failed. Vì vậy không được báo toàn phiên là “không gọi API payOS thật”. Đã dừng API, đặt HTTPS_PROXY/HTTP_PROXY/ALL_PROXY về proxy local chỉ trả502 CONNECT, NO_PROXY cho loopback, rồi chạy lại toàn bộ suite trên cả SQLite/PostgreSQL. Outbound sau đó bị chặn tại máy. Tests README nay yêu cầu proxy chặn outbound vì callback HTTP chỉ ngăn đăng ký webhook.
 - DB Development thật chỉ đọc trong transaction READ ONLY: trước/sau đều 319 invoice, Total250783641.00, Paid46440913.00, digest theo Id/Total/Paid `aebb0c3698576d08c7f515c15ebb40c9`. Không reset/seed/test/upgrade DB thật, không sửa snapshot `.local-data`; không commit/push/deploy. Không đối soát pending thật. Tài nguyên QA riêng được dừng sau kiểm tra; log/ảnh giữ trong /tmp.
+
+## 36. OTP email xác nhận đăng ký — SMTP (14/10/2026)
+
+- Người dùng yêu cầu xác minh email đăng ký, chọn SMTP rồi nhờ hướng dẫn vì chưa chọn hộp thư. Đã hướng dẫn dùng Gmail riêng, bật xác minh2 bước và tạo App Password; không yêu cầu gửi mật khẩu qua chat. SMTP thật chưa cấu hình và chưa gửi mail thật.
+- Register mặc định trả202 challenge, chưa tạo Users. Verify nhận token +OTP6digits, tạo Approved Free Owner nguyên tử và trả201; đăng nhập riêng sau đó. Challenge256-bit30 phút, code10 phút; chỉ lưu token/code hash gắn secret, không lưu OTP plaintext.5 lần sai/mã, resend60 giây và5 sends/email/hour, hạn mức giữ khi đăng ký lại. Resend thay mã, đăng ký lại thay token/credentials để tránh kế thừa mật khẩu do người khác đặt trước. SMTP lỗi rollback reservation, giữ code cũ khi resend lỗi. Concurrent verify một winner; replay bị chặn.
+- Sender MailKit4.18.1, TLS bắt buộc khi gửi ra ngoài; None chỉ Development +loopback. From config/SMTP credentials không log; thiếu cấu hình trả503, không bypass. Pkcs10.0.13 ghim theo advisory để dependency audit sạch. Chỉ được tắt OTP bằng EmailVerification__Enabled=false trong Development cho fixture nghiệp vụ; Production từ chối startup nếu tắt (đã kiểm tra trước khi tạo DB).
+- FE register hai bước, nhập code một ô numeric/one-time-code; đếm ngược resend, báo hết hạn/lỗi, sửa thông tin, giữ challenge/email/timing trong sessionStorage khi refresh nhưng không giữ mật khẩu/OTP. Copy chờ admin duyệt được thay bằng xác minh email/gói Free. i18n thêm21 chuỗi, tổng929 ×4 catalogs (5 ngôn ngữ gồm vi). Bản build thật test bằng UI fixture synthetic:375px không tràn, validation bỏ trống và quay lại form hoạt động, console không warn/error. Ảnh `/tmp/rehouse-otp-qa.68NCpB/otp-mobile.jpg`; không nhập password hay OTP thật bằng CUA.
+- Schema: thêm bảng RegistrationVerifications có hash password đang chờ, state/hạn mức/consumed audit; không đổi Users/Invoices cũ. DbMigrator cho phép snapshot legacy thiếu bảng mới và copy bảng khi có. Đã import disposable snapshot legacy63 invoice và snapshot hiện tại7 registration rows vào DB riêng; nâng startup clone cũ tạo lại bảng với financial digest không đổi.
+- QA chỉ dùng /tmp, PostgreSQL container riêng rehouse-otp-qa-20261014 port15497 và SMTP sink127.0.0.1:5098 không relay. Service113 assertions; HTTP OTP SQLite10/10 và PostgreSQL3/3. Full SQLite nghiệp vụ59/59 (OTP classes opt-in skip), không gọi payOS thật; HTTPS/HTTP proxy trỏ loopback từ đầu, callback HTTP localhost, jobs tắt. API/migrator build0 warning/error; frontend build không warning chunk/circular, i18n929 ×4 pass; dependency audit không có package vulnerability.
+- Runtime local thật: đã dump backup `/tmp/rehouse-otp-qa.68NCpB/development-before-otp.dump` quyền0600 trước restart. Chỉ thêm bảng OTP rỗng, không reset/seed/integration test vào DB thật. Trước/sau319 invoice, Total250783641.00, Paid46440913.00, digest `aebb0c3698576d08c7f515c15ebb40c9`; RegistrationVerifications=0. API5080/FE5173 health OK, sweep/reconciliation tắt và payOS outbound vẫn chặn. Không sửa SQLite snapshots .local-data.
+- File secret `appsettings.Email.local.json` chỉ nạp trong Development, tự reload; ignore đã kiểm tra. Cần người dùng điền Email.FromAddress/Email.Smtp.Username bằng Gmail và Email.Smtp.Password bằng App Password trước khi test gửi thật. Production cấu hình SMTP_* trong runtime.env; host cũ phải cập nhật compose rồi recreate, không chỉ đổi runtime.env. Xem `docs/email-otp-setup.md`; thay đổi mới chưa commit/push/deploy. Dịch vụ QA riêng được dừng sau kiểm tra, local5080/5173 giữ chạy.
+
+## 37. Bỏ thao tác sao chép link thanh toán riêng — 14/10/2026
+
+- Theo yêu cầu người dùng, bỏ nút/icon “Sao chép link thanh toán” ở cả danh sách và drawer chi tiết hóa đơn trong InvoicesPage.tsx; xóa handler/import không còn dùng. Khách tiếp tục dùng link portal đã cấp để xem hóa đơn và thanh toán. Thao tác sao chép tin nhắn thu tiền hiện có giữ nguyên.
+- Frontend production build và git diff --check pass. Không đổi API, thanh toán, guest token hoặc dữ liệu; không chạy integration test trên DB thật. Bản local nhận cập nhật qua Vite; chưa commit/push/deploy thay đổi này, các thay đổi OTP đang làm giữ nguyên.
+
+## 38. Thu tiền mặt tự hủy payOS đang chờ — 14/10/2026
+
+- Theo yêu cầu người dùng, POST receipts tự kiểm tra GET order và POST cancel của payOS nếu pending chưa nhận tiền. Xác minh chữ ký, order, amount và amountPaid cho cả hai phản hồi; chỉ CANCELLED/EXPIRED có amountPaid=0 mới ghi cash. Không suy diễn từ lỗi lookup hoặc thiếu link metadata. Hủy trạng thái local + receipt + Paid/Version commit trong Serializable transaction; Status concurrency token và unique pending index ngăn checkout/receipt xen vào. Thu đủ Paid, một phần Partial và checkout sau dùng số dư.
+- Nếu provider đã nhận đủ trước/trong lúc hủy: nhánh cash rollback, đối soát payOS bằng bằng chứng đã ký qua luồng receipt hiện có; trả409 giải thích và FE tải lại invoice/dashboard/rooms/reports. Nếu online một phần, trạng thái lạ, sai chữ ký/amount, timeout hoặc chưa xác nhận hủy: không ghi thêm cash. Reconciliation cũ cũng được sửa để không giải phóng order đóng nhưng có khoản tiền chưa khớp.
+- Idempotent retry trả receipt cũ trước provider/version check, payload khác409. expectedVersion optional chặn dữ liệu cũ. Remote cancel thành công nhưng DB rollback/timeout: retry lấy lại bằng chứng CANCELLED rồi ghi cash, không hủy local tùy tiện. UI cập nhật lời dẫn/xác nhận, giữ nút đối soát là tùy chọn; i18n940 ×4 catalogs, FE build pass.
+- QA provider hoàn toàn giả lập: SQLite165 assertions; PostgreSQL167 gồm hai lần thu đồng thời chỉ một commit. DB riêng mỗi fixture tại instance disposable port15496, không dùng DB thật; test bao gồm cash đầy đủ/một phần, payOS thắng race, partial online, terminal reconciliation, invalid signature/order/amount/missing amountPaid, lỗi mạng, retry/rollback, owner/version/idempotency và callback muộn. HTTP regression59/59 trên SQLite riêng với outbound proxy chặn và callback HTTP localhost. Logs /tmp/rehouse-cash-qa.D6729K và /tmp/rehouse-manual-cancel-service.log.
+- Không tạo/hủy thanh toán payOS thật, không ghi cash thử vào DB vận hành. API local5080 đã restart bản mới (session78399), FE5173 vẫn chạy; health200. Đối chiếu READ ONLY trước/sau giữ319 hóa đơn, Total250783641.00, Paid46440913.00; digest định dạng Id:Total:Paid phân cách | là63eb0245c7bc11c9355be6a8efcb591c ở cả hai lần. Không đổi schema cho tính năng cash. API/container QA riêng đã dừng/xóa. Các thay đổi OTP/mục37 giữ nguyên; chưa commit/push/deploy. Local vẫn tắt seed/sweep/reconciliation và chặn outbound payOS trong phiên QA, nên chưa dùng local này để hủy order thật.

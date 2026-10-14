@@ -13,7 +13,7 @@ HTTPS_PROXY=http://127.0.0.1:9 HTTP_PROXY=http://127.0.0.1:9 \
 ALL_PROXY=http://127.0.0.1:9 NO_PROXY=localhost,127.0.0.1 \
 ASPNETCORE_ENVIRONMENT=Development DatabaseProvider=SQLite \
 ConnectionStrings__DefaultConnection="Data Source=$REHOUSE_QA_DIR/qa.db" \
-DataProtection__KeysPath="$REHOUSE_QA_DIR/keys" SeedDemo=true \
+DataProtection__KeysPath="$REHOUSE_QA_DIR/keys" SeedDemo=true EmailVerification__Enabled=false \
 EnableInvoiceSweep=false EnablePaymentReconciliation=false AuthRequestsPerMinute=1000 \
 WebhookBaseUrl=http://localhost:5094 PublicBaseUrl=http://localhost:5094 \
 dotnet run --no-launch-profile --project backend/RoomRental.Api --urls http://localhost:5094
@@ -235,3 +235,72 @@ explicitly insert `Kind='Invoice'` required by the current schema.
 Latest isolated run: SQLite 59/59; PostgreSQL 55 test methods: 48 pass, 7 SQLite-only skips, plus one skipped webhook fixture class (`OK (skipped=8)`).
 The service suite uses an in-process HTTP fake. Full evidence and the initial outbound-request
 incident are recorded in `docs/PROJECT_HANDOFF.md` and the upgrade report.
+
+## Registration email OTP (SMTP)
+
+Verification defaults to enabled; Production refuses EmailVerification__Enabled=false.
+The legacy business suite explicitly opts out only on its disposable Development API.
+`dotnet run --project tests/RoomRental.WebhookTests` includes sender-fake/controlled-clock OTP
+checks without external email. A separate real SMTP-protocol sink never relays beyond loopback.
+
+Create `/tmp/rehouse-otp-qa.REPLACE` (a fresh mktemp directory) and start the sink:
+
+```sh
+python3 tests/otp_smtp_fixture.py --outbox /tmp/rehouse-otp-qa.REPLACE/outbox --port 5098
+```
+
+Start a new dedicated API in another terminal, with these environment overrides (same path):
+
+```sh
+ASPNETCORE_ENVIRONMENT=Development DatabaseProvider=SQLite \
+ConnectionStrings__DefaultConnection='Data Source=/tmp/rehouse-otp-qa.REPLACE/otp.db' \
+DataProtection__KeysPath=/tmp/rehouse-otp-qa.REPLACE/keys \
+SeedDemo=false EnableInvoiceSweep=false EnablePaymentReconciliation=false \
+EmailVerification__Enabled=true AuthRequestsPerMinute=1000 \
+Email__FromAddress=otp@example.invalid Email__Smtp__Host=127.0.0.1 \
+Email__Smtp__Port=5098 Email__Smtp__Security=None \
+Email__Smtp__Username= Email__Smtp__Password= \
+WebhookBaseUrl=http://localhost:5097 PublicBaseUrl=http://localhost:5097 \
+HTTPS_PROXY=http://127.0.0.1:9 HTTP_PROXY=http://127.0.0.1:9 \
+ALL_PROXY=http://127.0.0.1:9 NO_PROXY=localhost,127.0.0.1 \
+dotnet run --no-launch-profile --project backend/RoomRental.Api --urls http://localhost:5097
+```
+
+Run OTP tests:
+
+```sh
+API_BASE_URL=http://localhost:5097 TEST_SQLITE_DB=/tmp/rehouse-otp-qa.REPLACE/otp.db \
+TEST_OTP_OUTBOX=/tmp/rehouse-otp-qa.REPLACE/outbox \
+python3 -m unittest discover -s tests -p test_registration_otp.py -v
+```
+
+Only fake recipients/codes are stored under /tmp with0700/0600 permissions; never configure a real
+SMTP server for these tests. The fixture rejects non-local API/outbox paths. Against a dedicated
+PostgreSQL API using the same SMTP sink, run just the provider-independent tests:
+
+```sh
+API_BASE_URL=http://localhost:5100 TEST_OTP_OUTBOX=/tmp/rehouse-otp-qa.REPLACE/outbox \
+PYTHONPATH=tests python3 -m unittest test_registration_otp.RegistrationOtpHttpTests -v
+```
+
+OTP HTTP coverage: pre-verification login rejection, one-time consume, wrong-code lockout,
+expiry, per-email resend budget, token replacement/password binding, SMTP failure rollback,
+and concurrent consume. Service suite now113 assertions; SQLite OTP10/10; PostgreSQL HTTP3/3.
+Existing SQLite business suite59/59 remains green, with opt-in OTP classes skipped.
+
+## Cash receipts with pending payOS (14/10/2026)
+
+`dotnet run --project tests/RoomRental.WebhookTests` includes ManualReceiptTests with an
+in-process fake signed payOS handler. Covers atomic full/partial cash cancellation, retries,
+provider-paid races, partial online money, malformed/signature/amount/order/timeout failures,
+rollback recovery, legacy reservations, owner/version/idempotency and terminal reconciliation.
+Latest SQLite service suite:165 assertions passed. No live provider calls.
+
+For PostgreSQL service coverage, use a dedicated disposable PostgreSQL instance bound only to
+127.0.0.1:15496. Set TEST_ALLOW_DISPOSABLE_PAYMENT_POSTGRES=1 and
+TEST_PAYMENT_POSTGRES_CONNECTION to its admin database, then run the same command. The fixture
+requires this exact loopback port, creates a fresh random rehouse_payment_qa_* database per
+fixture and drops only that generated database afterwards. Never point it at the application DB.
+Latest PostgreSQL run:167 assertions passed, including simultaneous cash submissions with
+exactly one committed receipt. The disposable HTTP regression API also passed59/59 business
+tests (two OTP fixture classes skipped), with outbound proxy blocking and localhost callback.

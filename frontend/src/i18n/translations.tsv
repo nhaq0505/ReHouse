@@ -906,3 +906,35 @@
 905|The new password must contain 8 to 256 characters.|新密码须包含 8 至 256 个字符。|새 비밀번호는 8~256자여야 합니다.|नया पासवर्ड 8 से 256 अक्षरों का होना चाहिए।
 906|Invalid invoice lifecycle state.|账单发布状态无效。|청구서 발행 상태가 올바르지 않습니다.|चालान की जारी स्थिति अमान्य है।
 907|Invalid invoice payment status.|账单付款状态无效。|청구서 결제 상태가 올바르지 않습니다.|चालान की भुगतान स्थिति अमान्य है।
+908|Register, verify your email and start managing rentals on the Free plan.|注册并验证邮箱，即可使用免费套餐管理租房。|가입 후 이메일을 인증하고 무료 요금제로 임대를 관리하세요.|पंजीकरण करें, ईमेल सत्यापित करें और निःशुल्क योजना पर किराये का प्रबंधन शुरू करें।
+909|Verify email|验证邮箱|이메일 인증|ईमेल सत्यापित करें
+910|Enter the code sent to your email|输入发送至邮箱的验证码|이메일로 받은 코드를 입력하세요|अपने ईमेल पर भेजा गया कोड दर्ज करें
+911|Verify your email before signing in.|登录前请验证邮箱。|로그인 전에 이메일을 인증하세요.|लॉग इन करने से पहले ईमेल सत्यापित करें।
+912|Enter the 6-digit code sent to {0}.|请输入发送至 {0} 的六位验证码。|{0}(으)로 보낸 6자리 코드를 입력하세요.|{0} पर भेजा गया 6 अंकों का कोड दर्ज करें।
+913|The code has expired. Request a new code.|验证码已过期，请重新发送。|코드가 만료되었습니다. 새 코드를 요청하세요.|कोड की समय सीमा समाप्त हो गई। नया कोड मँगाएँ।
+914|Verification code|验证码|인증 코드|सत्यापन कोड
+915|Enter all 6 digits of the verification code.|请输入完整的六位验证码。|인증 코드 6자리를 모두 입력하세요.|सत्यापन कोड के सभी 6 अंक दर्ज करें।
+916|The code is valid for 10 minutes. Check your spam folder if it has not arrived.|验证码有效期为10分钟。如未收到，请检查垃圾邮件。|코드는 10분간 유효합니다. 받지 못했다면 스팸함을 확인하세요.|कोड 10 मिनट तक मान्य है। न मिले तो स्पैम फ़ोल्डर देखें।
+917|Resend code in {0} seconds|{0} 秒后重新发送|{0}초 후 코드 재전송|{0} सेकंड बाद कोड फिर भेजें
+918|Resend code|重新发送验证码|코드 재전송|कोड फिर भेजें
+919|Edit registration details|修改注册信息|가입 정보 수정|पंजीकरण विवरण बदलें
+920|Send verification code|发送验证码|인증 코드 보내기|सत्यापन कोड भेजें
+921|Email verified. Sign in to get started.|邮箱已验证，请登录开始使用。|이메일 인증이 완료되었습니다. 로그인하여 시작하세요.|ईमेल सत्यापित हो गया। शुरू करने के लिए लॉग इन करें।
+922|Could not verify your email. Please try again.|无法验证邮箱，请重试。|이메일을 인증하지 못했습니다. 다시 시도하세요.|ईमेल सत्यापित नहीं हो सका। फिर प्रयास करें।
+923|Could not resend the code. Please try again.|无法重新发送验证码，请重试。|코드를 다시 보내지 못했습니다. 다시 시도하세요.|कोड फिर नहीं भेज सके। फिर प्रयास करें।
+924|Email delivery is unavailable. Try again later or contact the administrator.|邮件发送暂不可用，请稍后重试或联系管理员。|이메일을 보낼 수 없습니다. 나중에 다시 시도하거나 관리자에게 문의하세요.|ईमेल भेजना उपलब्ध नहीं है। बाद में प्रयास करें या व्यवस्थापक से संपर्क करें।
+925|The verification code is invalid or expired.|验证码无效或已过期。|인증 코드가 올바르지 않거나 만료되었습니다.|सत्यापन कोड अमान्य है या समय सीमा समाप्त हो गई है।
+926|Too many incorrect attempts. Request a new code.|错误次数过多，请重新发送验证码。|코드 입력 오류가 너무 많습니다. 새 코드를 요청하세요.|बहुत बार गलत कोड दर्ज किया। नया कोड मँगाएँ।
+927|The code sending limit has been reached. Try again in one hour.|已达到发送次数上限，请一小时后重试。|코드 전송 한도에 도달했습니다. 한 시간 후 다시 시도하세요.|कोड भेजने की सीमा पूरी हो गई। एक घंटे बाद प्रयास करें।
+928|Wait 60 seconds before requesting another code.|请等待60秒后再重新发送验证码。|코드를 다시 요청하기 전에 60초 기다려 주세요.|दूसरा कोड मँगाने से पहले 60 सेकंड प्रतीक्षा करें।
+929|payOS has confirmed payment. The invoice is updated; no additional cash receipt was recorded.|payOS 已确认付款，账单已更新，未重复记录现金收款。|payOS 결제가 확인되어 청구서가 갱신되었습니다. 현금 수납을 추가로 기록하지 않았습니다.|payOS ने भुगतान की पुष्टि कर दी है। चालान अपडेट है; अतिरिक्त नकद प्राप्ति दर्ज नहीं की गई।
+930|This payOS order is not an invoice payment.|该 payOS 订单不是账单付款。|이 payOS 주문은 청구서 결제가 아닙니다.|यह payOS आदेश चालान का भुगतान नहीं है।
+931|Cannot check the payOS order. Check your payment settings.|无法检查 payOS 订单，请检查支付配置。|payOS 주문을 확인할 수 없습니다. 결제 설정을 확인하세요.|payOS आदेश जाँचा नहीं जा सका। भुगतान सेटिंग जाँचें।
+932|The payOS status is unconfirmed. No cash receipt has been recorded.|payOS 状态尚未确认，现金收款未记录。|payOS 상태를 확인하지 못했습니다. 현금 수납은 기록되지 않았습니다.|payOS स्थिति की पुष्टि नहीं हुई। नकद प्राप्ति दर्ज नहीं की गई।
+933|payOS has not confirmed cancellation. No cash receipt has been recorded.|payOS 尚未确认取消，现金收款未记录。|payOS에서 취소를 확인하지 않았습니다. 현금 수납은 기록되지 않았습니다.|payOS ने रद्द करने की पुष्टि नहीं की। नकद प्राप्ति दर्ज नहीं की गई।
+934|Cannot confirm payOS cancellation. No cash receipt was recorded; please retry.|无法确认 payOS 取消，现金收款未记录，请重试。|payOS 취소를 확인할 수 없습니다. 현금 수납은 기록되지 않았습니다. 다시 시도하세요.|payOS रद्द होने की पुष्टि नहीं हो सकी। नकद प्राप्ति दर्ज नहीं हुई; फिर प्रयास करें।
+935|payOS returned an invalid status response. No cash receipt has been recorded.|payOS 返回无效状态，现金收款未记录。|payOS가 올바르지 않은 상태를 반환했습니다. 현금 수납은 기록되지 않았습니다.|payOS ने अमान्य स्थिति लौटाई। नकद प्राप्ति दर्ज नहीं की गई।
+936|The payOS order has received money or lacks payment evidence. Reconcile it before recording cash.|payOS 订单已收到款项或确认信息不足，请先核对再记录现金。|payOS 주문에 입금이 있거나 확인 정보가 부족합니다. 현금 수납 전에 대사하세요.|payOS आदेश में धन मिला है या पुष्टि के प्रमाण अधूरे हैं। नकद दर्ज करने से पहले मिलान करें।
+937|The system will check and cancel the unpaid payOS link before recording this receipt. If payOS has received payment, the invoice will be reconciled without adding another receipt.|系统会先检查并取消未付款的 payOS 链接，再记录收款。如 payOS 已收款，将核对并更新账单，不重复收款。|수납 기록 전에 미결제 payOS 링크를 확인하고 취소합니다. payOS 입금이 확인되면 청구서를 대사하고 수납을 중복 기록하지 않습니다.|यह प्राप्ति दर्ज करने से पहले सिस्टम बकाया payOS लिंक जाँचकर रद्द करेगा। payOS पर भुगतान मिला हो तो चालान का मिलान होगा, प्राप्ति दोबारा दर्ज नहीं होगी।
+938|View the invoice online payment status.|查看账单的在线支付状态。|청구서의 온라인 결제 상태를 확인하세요.|चालान के ऑनलाइन भुगतान की स्थिति देखें।
+939|A pending payOS link will be checked and cancelled automatically when recording an external receipt.|记录线下收款时，将自动检查并取消待处理的 payOS 链接。|외부 수납을 기록할 때 대기 중인 payOS 링크를 자동으로 확인하고 취소합니다.|बाहरी प्राप्ति दर्ज करते समय लंबित payOS लिंक अपने आप जाँचकर रद्द किया जाएगा।

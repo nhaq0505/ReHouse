@@ -87,6 +87,13 @@ jobs:
             --env DataProtection__KeysPath=/app/data/keys \
             --env WebhookBaseUrl=http://localhost:5080 \
             --env SeedDemo=true \
+            --env EmailVerification__Enabled=false \
+            --env EnableInvoiceSweep=false \
+            --env EnablePaymentReconciliation=false \
+            --env HTTPS_PROXY=http://127.0.0.1:9 \
+            --env HTTP_PROXY=http://127.0.0.1:9 \
+            --env ALL_PROXY=http://127.0.0.1:9 \
+            --env NO_PROXY=localhost,127.0.0.1 \
             "$image"
 
           ready=false

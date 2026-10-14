@@ -58,6 +58,13 @@ services:
       BootstrapAdmin__Email: ${BOOTSTRAP_ADMIN_EMAIL:-}
       BootstrapAdmin__Password: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       AuthRequestsPerMinute: "10"
+      Email__FromAddress: ${SMTP_FROM_ADDRESS:-}
+      Email__FromName: ${SMTP_FROM_NAME:-Rehouse}
+      Email__Smtp__Host: ${SMTP_HOST:-}
+      Email__Smtp__Port: ${SMTP_PORT:-587}
+      Email__Smtp__Security: ${SMTP_SECURITY:-StartTls}
+      Email__Smtp__Username: ${SMTP_USERNAME:-}
+      Email__Smtp__Password: ${SMTP_PASSWORD:-}
       SeedDemo: "false"
     volumes:
       - app_keys:/app/data

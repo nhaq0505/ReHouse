@@ -421,80 +421,11 @@ public static class BillingEndpoints
             return Results.Ok(new { status, invoice = InvoiceService.ToDto(refreshed) });
         }).RequireRateLimiting("tenant-payment");
 
-        routes.MapPost("/invoices/{id:guid}/receipts", async (Guid id, ReceiptRequest request, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
-        {
-            var ownerId = ApiSupport.OwnerId(context);
-            var idempotencyKey = context.Request.Headers["Idempotency-Key"].FirstOrDefault()?.Trim();
-            if (string.IsNullOrWhiteSpace(idempotencyKey)) idempotencyKey = request.IdempotencyKey?.Trim();
-            if (idempotencyKey is { Length: > 100 })
-                throw new ApiException(StatusCodes.Status400BadRequest, "Idempotency key must be 100 characters or fewer.");
-            var amount = ValidateCharge(request.Amount);
-            if (amount <= 0) throw new ApiException(StatusCodes.Status400BadRequest, "Receipt amount must be positive.");
-            var note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
-            if (note is { Length: > 500 }) throw new ApiException(StatusCodes.Status400BadRequest, "Receipt note must be 500 characters or fewer.");
+        routes.MapPost("/invoices/{id:guid}/receipts", async (Guid id, ReceiptRequest request, HttpContext context,
+            ManualReceiptService receipts, CancellationToken cancellationToken) =>
+            Results.Ok(await receipts.RecordAsync(ApiSupport.OwnerId(context), id, request,
+                context.Request.Headers["Idempotency-Key"].FirstOrDefault(), cancellationToken)));
 
-            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
-            var invoice = await db.Invoices.SingleOrDefaultAsync(row => row.Id == id && row.OwnerId == ownerId, cancellationToken)
-                ?? throw new ApiException(StatusCodes.Status404NotFound, "Invoice was not found.");
-            if (!string.IsNullOrWhiteSpace(idempotencyKey))
-            {
-                var priorReceipt = await db.Receipts.SingleOrDefaultAsync(row => row.InvoiceId == id && row.IdempotencyKey == idempotencyKey, cancellationToken);
-                if (priorReceipt is not null)
-                {
-                    if (priorReceipt.Amount != amount || !string.Equals(priorReceipt.Note, note, StringComparison.Ordinal))
-                        throw new ApiException(StatusCodes.Status409Conflict, "This idempotency key was already used for a different receipt.");
-                    await transaction.CommitAsync(cancellationToken);
-                    return Results.Ok(new
-                    {
-                        id = priorReceipt.Id,
-                        invoiceId = invoice.Id,
-                        amount = priorReceipt.Amount,
-                        paid = invoice.Paid,
-                        outstanding = Math.Max(0, invoice.Total - invoice.Paid),
-                        status = invoice.Status.ToString(),
-                        version = invoice.Version
-                    });
-                }
-            }
-
-            if (invoice.LifecycleState != InvoiceLifecycleState.Issued)
-                throw new ApiException(409, "Draft invoices cannot receive payments. Publish the invoice first.");
-            if (request.ExpectedVersion is long expectedVersion && invoice.Version != expectedVersion)
-                throw new ApiException(409, "Invoice changed. Refresh it and retry the receipt.");
-
-            var pendingAttempt = await db.PayOsAttempts.AnyAsync(row => row.InvoiceId == id && row.OwnerId == ownerId && row.Status == PaymentAttemptStatus.Pending, cancellationToken);
-            if (pendingAttempt)
-                throw new ApiException(StatusCodes.Status409Conflict, "Reconcile or finish the pending payOS payment before recording another receipt.");
-            var outstanding = invoice.Total - invoice.Paid;
-            if (amount > outstanding)
-                throw new ApiException(StatusCodes.Status409Conflict, "Receipt amount cannot exceed the outstanding balance.");
-            var receipt = new PaymentReceipt
-            {
-                OwnerId = ownerId,
-                InvoiceId = invoice.Id,
-                Amount = amount,
-                Note = note,
-                IdempotencyKey = string.IsNullOrWhiteSpace(idempotencyKey) ? null : idempotencyKey,
-                Source = "Manual",
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-            db.Receipts.Add(receipt);
-            invoice.Paid += amount;
-            invoice.Version++;
-            InvoiceService.RecalculateStatus(invoice);
-            await db.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            return Results.Ok(new
-            {
-                id = receipt.Id,
-                invoiceId = invoice.Id,
-                amount = receipt.Amount,
-                paid = invoice.Paid,
-                outstanding = Math.Max(0, invoice.Total - invoice.Paid),
-                status = invoice.Status.ToString(),
-                version = invoice.Version
-            });
-        });
     }
 
     private sealed record ReadingWork(Room Room, Building Building, Occupancy Occupancy, string Period,

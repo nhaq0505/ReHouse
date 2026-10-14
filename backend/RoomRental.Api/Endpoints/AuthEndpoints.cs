@@ -15,7 +15,7 @@ public static class AuthEndpoints
     {
         var routes = app.MapGroup("/api/auth");
 
-        routes.MapPost("/register", async (RegisterRequest request, AppDbContext db, IPasswordHasher<AppUser> hasher, CancellationToken cancellationToken) =>
+        routes.MapPost("/register", async (RegisterRequest request, AppDbContext db, IPasswordHasher<AppUser> hasher, RegistrationVerificationService verification, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             var name = request.Name?.Trim();
             var email = request.Email?.Trim().ToLowerInvariant();
@@ -41,10 +41,23 @@ public static class AuthEndpoints
                 CreatedAt = DateTimeOffset.UtcNow
             };
             user.PasswordHash = hasher.HashPassword(user, request.Password);
+            if (configuration.GetValue("EmailVerification:Enabled", true))
+                return Results.Json(await verification.StartAsync(user, cancellationToken), statusCode: 202);
             db.Users.Add(user);
             await db.SaveChangesAsync(cancellationToken);
             return Results.Created("/api/auth/me", ToDto(user));
         }).RequireRateLimiting("auth");
+
+        routes.MapPost("/verify-registration", async (VerifyRegistrationRequest request,
+            RegistrationVerificationService verification, CancellationToken ct) =>
+        {
+            var user = await verification.VerifyAsync(request.ChallengeToken, request.Code, ct);
+            return Results.Created("/api/auth/me", ToDto(user));
+        }).RequireRateLimiting("auth");
+
+        routes.MapPost("/resend-registration", async (ResendRegistrationRequest request,
+            RegistrationVerificationService verification, CancellationToken ct) =>
+            Results.Ok(await verification.ResendAsync(request.ChallengeToken, ct))).RequireRateLimiting("auth");
 
         routes.MapPost("/login", async (LoginRequest request, HttpContext context, AppDbContext db, IPasswordHasher<AppUser> hasher, CancellationToken cancellationToken) =>
         {

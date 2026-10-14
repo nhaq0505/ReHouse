@@ -483,7 +483,9 @@ internal sealed class FakePayOsHandler(string checksumKey) : HttpMessageHandler,
 
 internal sealed class PayOsFixture : IDisposable
 {
-    private readonly SqliteConnection _connection = new("Data Source=:memory:");
+    private readonly System.Data.Common.DbConnection _connection;
+    private readonly string? _postgresAdmin;
+    private readonly string? _postgresDatabase;
     private readonly IDataProtectionProvider _protection = new EphemeralDataProtectionProvider();
     public AppDbContext Db { get; }
     public Guid OwnerId { get; } = Guid.NewGuid();
@@ -491,9 +493,35 @@ internal sealed class PayOsFixture : IDisposable
 
     public PayOsFixture()
     {
+        var options = new DbContextOptionsBuilder<AppDbContext>();
+        var postgres = Environment.GetEnvironmentVariable("TEST_PAYMENT_POSTGRES_CONNECTION");
+        if (!string.IsNullOrWhiteSpace(postgres))
+        {
+            var settings = new Npgsql.NpgsqlConnectionStringBuilder(postgres);
+            if (Environment.GetEnvironmentVariable("TEST_ALLOW_DISPOSABLE_PAYMENT_POSTGRES") != "1" ||
+                settings.Host is not ("127.0.0.1" or "localhost") || settings.Port != 15496)
+                throw new InvalidOperationException("Payment PostgreSQL tests require explicit disposable loopback port 15496.");
+            _postgresAdmin = settings.ConnectionString;
+            _postgresDatabase = "rehouse_payment_qa_" + Guid.NewGuid().ToString("N");
+            using (var admin = new Npgsql.NpgsqlConnection(_postgresAdmin))
+            {
+                admin.Open();
+                using var create = new Npgsql.NpgsqlCommand($"CREATE DATABASE \"{_postgresDatabase}\"", admin);
+                create.ExecuteNonQuery();
+            }
+            settings.Database = _postgresDatabase;
+            settings.Pooling = false;
+            PostgresTestConnection = settings.ConnectionString;
+            _connection = new Npgsql.NpgsqlConnection(settings.ConnectionString);
+            options.UseNpgsql(_connection);
+        }
+        else
+        {
+            _connection = new SqliteConnection("Data Source=:memory:");
+            options.UseSqlite(_connection);
+        }
         _connection.Open();
-        var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options;
-        Db = new AppDbContext(options);
+        Db = new AppDbContext(options.Options);
         Db.Database.EnsureCreated();
 
         Db.Users.Add(new AppUser
@@ -533,6 +561,7 @@ internal sealed class PayOsFixture : IDisposable
     }
 
     public IDataProtectionProvider Protection => _protection;
+    public string? PostgresTestConnection { get; private set; }
 
     public PayOsService CreateService(IHttpClientFactory fakeHttpClientFactory, PaymentWebhookService? webhookService = null)
     {
@@ -547,5 +576,12 @@ internal sealed class PayOsFixture : IDisposable
     {
         Db.Dispose();
         _connection.Dispose();
+        if (_postgresAdmin is not null && _postgresDatabase is not null)
+        {
+            using var admin = new Npgsql.NpgsqlConnection(_postgresAdmin);
+            admin.Open();
+            using var drop = new Npgsql.NpgsqlCommand($"DROP DATABASE \"{_postgresDatabase}\" WITH (FORCE)", admin);
+            drop.ExecuteNonQuery();
+        }
     }
 }

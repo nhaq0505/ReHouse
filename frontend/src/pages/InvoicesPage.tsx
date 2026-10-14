@@ -2,7 +2,7 @@ import { dateFormat, formatDate, getLocale, t } from '../i18n/runtime';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, App, Button, Col, Collapse, DatePicker, Drawer, Form, Input, InputNumber, Row, Select, Space, Tag, Tooltip, Typography } from 'antd';
 import type { TableProps } from 'antd';
-import { ArrowRightOutlined, CheckCircleFilled, CreditCardOutlined, FileTextOutlined, LinkOutlined, MessageOutlined, PlusOutlined, SearchOutlined, WalletOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, CheckCircleFilled, CreditCardOutlined, FileTextOutlined, MessageOutlined, PlusOutlined, SearchOutlined, WalletOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -85,10 +85,15 @@ export default function InvoicesPage() {
     },
     onError: (e: Error) => message.error(e.message),
   });
+  const refreshPayments = (id: string) => Promise.all([
+    client.invalidateQueries({ queryKey: ['invoice', id] }), client.invalidateQueries({ queryKey: ['invoices'] }),
+    client.invalidateQueries({ queryKey: ['invoiceCorrections', id] }), client.invalidateQueries({ queryKey: ['dashboard'] }),
+    client.invalidateQueries({ queryKey: ['rooms'] }), client.invalidateQueries({ queryKey: ['reports'] }),
+  ]);
   const receiptMutation = useMutation({
-    mutationFn: ({ id, values, idempotencyKey }: { id: string; values: { amount: number; note?: string }; idempotencyKey: string }) => api.invoices.addReceipt(id, { amount: values.amount, note: values.note?.trim() || '', idempotencyKey }),
-    onSuccess: async (_, variables) => { await Promise.all([client.invalidateQueries({ queryKey: ['invoice', variables.id] }), client.invalidateQueries({ queryKey: ['invoices'] }), client.invalidateQueries({ queryKey: ['dashboard'] }), client.invalidateQueries({ queryKey: ['rooms'] })]); receiptKeys.current.delete(`${variables.id}:${JSON.stringify(variables.values)}`); receiptForm.resetFields(); message.success(t("Đã ghi nhận khoản thu.")); },
-    onError: (e: Error) => message.error(e.message),
+    mutationFn: ({ id, values, idempotencyKey, expectedVersion }: { id: string; values: { amount: number; note?: string }; idempotencyKey: string; expectedVersion?: number }) => api.invoices.addReceipt(id, { amount: values.amount, note: values.note?.trim() || '', idempotencyKey, expectedVersion }),
+    onSuccess: async (_, variables) => { await refreshPayments(variables.id); receiptKeys.current.delete(`${variables.id}:${JSON.stringify(variables.values)}`); receiptForm.resetFields(); message.success(t("Đã ghi nhận khoản thu.")); },
+    onError: async (e: Error, variables) => { await refreshPayments(variables.id); message.error(e.message); },
   });
   const invoice = detailQuery.data;
   useEffect(() => { setAdjustmentExpanded(false); }, [selectedId]);
@@ -109,10 +114,13 @@ export default function InvoicesPage() {
     if (!idempotencyKey) { idempotencyKey = crypto.randomUUID(); receiptKeys.current.set(snapshot, idempotencyKey); }
     modal.confirm({
       title: t("Ghi nhận khoản thu này?"),
-      content: t("Bạn sắp ghi nhận {0}{1}. Khoản thu này sẽ được lưu vào sổ hóa đơn.", [formatVnd(normalized.amount), normalized.note ? ` (${normalized.note})` : '']),
+      content: <>
+        <p>{t("Bạn sắp ghi nhận {0}{1}. Khoản thu này sẽ được lưu vào sổ hóa đơn.", [formatVnd(normalized.amount), normalized.note ? ` (${normalized.note})` : ''])}</p>
+        {invoice.hasPendingPayment && <p>{t("Hệ thống sẽ kiểm tra và hủy link payOS chưa thanh toán trước khi ghi nhận khoản thu này. Nếu payOS đã nhận tiền, hóa đơn sẽ được đối soát và không ghi thu thêm.")}</p>}
+      </>,
       okText: t("Ghi nhận khoản thu"),
       cancelText: t("Kiểm tra lại"),
-      onOk: () => receiptMutation.mutateAsync({ id: invoice.id, values: normalized, idempotencyKey }),
+      onOk: () => receiptMutation.mutateAsync({ id: invoice.id, values: normalized, idempotencyKey, expectedVersion: invoice.version }),
     });
   };
   const closeInvoice = () => setSearchParams({});
@@ -167,20 +175,6 @@ export default function InvoicesPage() {
     }
   };
 
-  const copyPaymentLink = async (item: Invoice) => {
-    const url = getCheckoutUrl(item);
-    if (!url) {
-      message.warning(t("Chưa có liên kết thanh toán cho hóa đơn này."));
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      message.success(t("Đã sao chép link thanh toán."));
-    } catch {
-      message.info(t("Không thể sao chép tự động."));
-    }
-  };
-
   const columns: TableProps<Invoice>['columns'] = [
     { title: t("PHÒNG / NGƯỜI THUÊ"), key: 'room', width: 220, render: (_, item) => <div className="room-name-cell"><div className="room-avatar room-avatar-invoice"><FileTextOutlined /></div><div><strong>{item.roomName}</strong><span>{item.tenantName || t("Người thuê")} · {item.buildingName || t("Dãy trọ")}</span></div></div> },
     { title: t("LOẠI HÓA ĐƠN"), key: 'kind', width: 140, render: (_, item) => <Tag className={`invoice-kind-tag invoice-kind-${item.kind.toLowerCase()}`}>{invoiceKindLabel(item.kind)}</Tag> },
@@ -203,13 +197,6 @@ export default function InvoicesPage() {
                   size="small"
                   icon={<MessageOutlined />}
                   onClick={(e) => { e.stopPropagation(); void copyReminderMessage(item); }}
-                />
-              </Tooltip>
-              <Tooltip title={t("Sao chép link thanh toán")}>
-                <Button
-                  size="small"
-                  icon={<LinkOutlined />}
-                  onClick={(e) => { e.stopPropagation(); void copyPaymentLink(item); }}
                 />
               </Tooltip>
             </>
@@ -253,19 +240,13 @@ export default function InvoicesPage() {
             >
               {t("Copy tin nhắn thu tiền")}
             </Button>
-            <Button
-              icon={<LinkOutlined />}
-              onClick={() => void copyPaymentLink(invoice)}
-            >
-              {t("Sao chép link thanh toán")}
-            </Button>
           </div>
         )}
         {invoice.kind === 'Supplemental' ? <div className="invoice-breakdown"><div><span>{t("Nội dung")}</span><strong style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{invoice.description}</strong></div>{invoice.isFinalMeterReading && <><div><span>{t("Điện cuối kỳ ·")} {invoice.previousReading} → {invoice.currentReading} kWh</span><strong>{formatVnd(invoice.electricityAmount)}</strong></div><div><span>{t("Khoản còn lại")}</span><strong>{formatVnd(invoice.serviceAmount)}</strong></div></>}<div className="breakdown-total"><span>{t("Số tiền")}</span><strong>{formatVnd(invoice.total)}</strong></div></div> : invoice.kind === 'Deposit' ? <div className="invoice-breakdown"><div className="breakdown-total"><span>{t("Tiền cọc yêu cầu")}</span><strong>{formatVnd(invoice.total)}</strong></div></div> : <div className="invoice-breakdown"><div><span>{t("Tiền thuê phòng")}</span><strong>{formatVnd(invoice.rent)}</strong></div><div><span>{t("Tiền điện")} <small>{invoice.consumption} kWh · {invoice.previousReading} → {invoice.currentReading}</small></span><strong>{formatVnd(invoice.electricityAmount)}</strong></div><div><span>{t("Tiền nước")}</span><strong>{formatVnd(invoice.waterAmount)}</strong></div><div><span>{t("Phí dịch vụ")}</span><strong>{formatVnd(invoice.serviceAmount)}</strong></div><div className="breakdown-total"><span>{t("Tổng hóa đơn")}</span><strong>{formatVnd(invoice.total)}</strong></div></div>}
         {invoice.lifecycleState === 'Draft' ? <Alert type="warning" showIcon message={t("Bản nháp chưa gửi cho khách")} description={t("Bản nháp chưa có trạng thái thanh toán. Mở trang Chỉ số điện để chỉnh và phát hành.")} /> : <>
           <div className="invoice-balance-box"><div><span>{t("Đã ghi nhận")}</span><strong>{formatVnd(invoice.paid)}</strong></div><div><span>{t("Còn phải thu")}</span><strong className={invoice.outstanding > 0 ? 'balance-due' : 'balance-clear'}>{formatVnd(invoice.outstanding)}</strong></div>{invoice.dueDate && <span className="due-date-note">{t("Hạn thanh toán:")} {dayjs(invoice.dueDate).format(dateFormat())}</span>}</div>
-          {invoice.outstanding > 0 && <div className="receipt-form-block"><div className="receipt-form-title"><CreditCardOutlined /><div><strong>{t("Đối soát thanh toán payOS")}</strong><span>{t("Kiểm tra trạng thái giao dịch với payOS trước khi ghi nhận khoản thu ngoài.")}</span></div></div><Button block loading={reconcileMutation.isPending && reconcileMutation.variables === invoice.id} onClick={() => reconcileMutation.mutate(invoice.id)}>{t("Kiểm tra giao dịch payOS")}</Button></div>}
-          {invoice.outstanding > 0 ? <div className="receipt-form-block"><div className="receipt-form-title"><WalletOutlined /><div><strong>{t("Ghi nhận khoản thu")}</strong><span>{t("Tiền mặt hoặc chuyển khoản đã nhận bên ngoài.")}</span></div></div><Form form={receiptForm} layout="vertical" requiredMark={false} onFinish={confirmReceipt}><Form.Item label={t("Số tiền nhận")} name="amount" rules={[{ required: true, type: 'number', min: 1, max: invoice.outstanding, message: t("Nhập số tiền từ 1 đến {0}.", [formatVnd(invoice.outstanding)]) }]}><MoneyInput min={1} max={invoice.outstanding} precision={0} addonAfter={t("đ")} style={{ width: '100%' }} /></Form.Item><Form.Item label={t("Ghi chú")} name="note"><Input placeholder={t("Ví dụ: Chuyển khoản ngày 12/10")} maxLength={200} /></Form.Item><Button type="primary" block htmlType="submit" loading={receiptMutation.isPending}>{t("Lưu khoản thu")}</Button></Form></div> : <div className="invoice-paid-note"><CheckCircleFilled /> {t("Hóa đơn đã được thanh toán đầy đủ.")}</div>}
+          {invoice.outstanding > 0 && <div className="receipt-form-block"><div className="receipt-form-title"><CreditCardOutlined /><div><strong>{t("Đối soát thanh toán payOS")}</strong><span>{t("Xem trạng thái thanh toán trực tuyến của hóa đơn.")}</span></div></div><Button block loading={reconcileMutation.isPending && reconcileMutation.variables === invoice.id} onClick={() => reconcileMutation.mutate(invoice.id)}>{t("Kiểm tra giao dịch payOS")}</Button></div>}
+          {invoice.outstanding > 0 ? <div className="receipt-form-block"><div className="receipt-form-title"><WalletOutlined /><div><strong>{t("Ghi nhận khoản thu")}</strong><span>{invoice.hasPendingPayment ? t("Link payOS đang chờ sẽ được tự động kiểm tra và hủy khi ghi nhận khoản thu ngoài.") : t("Tiền mặt hoặc chuyển khoản đã nhận bên ngoài.")}</span></div></div><Form form={receiptForm} layout="vertical" requiredMark={false} onFinish={confirmReceipt}><Form.Item label={t("Số tiền nhận")} name="amount" rules={[{ required: true, type: 'number', min: 1, max: invoice.outstanding, message: t("Nhập số tiền từ 1 đến {0}.", [formatVnd(invoice.outstanding)]) }]}><MoneyInput min={1} max={invoice.outstanding} precision={0} addonAfter={t("đ")} style={{ width: '100%' }} /></Form.Item><Form.Item label={t("Ghi chú")} name="note"><Input placeholder={t("Ví dụ: Chuyển khoản ngày 12/10")} maxLength={200} /></Form.Item><Button type="primary" block htmlType="submit" loading={receiptMutation.isPending}>{t("Lưu khoản thu")}</Button></Form></div> : <div className="invoice-paid-note"><CheckCircleFilled /> {t("Hóa đơn đã được thanh toán đầy đủ.")}</div>}
         </>}
         {invoice.lifecycleState !== 'Draft' && <section className="invoice-corrections">
           <Collapse

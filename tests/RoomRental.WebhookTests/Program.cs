@@ -73,6 +73,8 @@ Assert(await db.Receipts.CountAsync() == 0, "confirmation never creates financia
 await PayOsPaymentTests.RunAsync();
 
 AccountOccupancyTests.Run();
+await RegistrationVerificationTests.RunAsync();
+await ManualReceiptTests.RunAsync();
 
 sealed class FakeHandler : HttpMessageHandler, IHttpClientFactory
 {

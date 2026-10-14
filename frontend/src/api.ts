@@ -341,14 +341,24 @@ async function requestBlob(path: string): Promise<Blob> {
 const json = (body: unknown): string => JSON.stringify(body);
 const post = (body?: unknown): RequestInit => ({ method: 'POST', ...(body === undefined ? {} : { body: json(body) }) });
 
+export interface RegistrationVerification {
+  verificationRequired: true;
+  challengeToken: string;
+  email: string;
+  expiresAt: string;
+  resendAvailableAt: string;
+}
+
 export const api = {
   auth: {
     login: (email: string, password: string) => request<User>('/api/auth/login', post({ email, password })),
+    verifyRegistration: (challengeToken: string, code: string) => request<User>('/api/auth/verify-registration', post({ challengeToken, code })),
+    resendRegistration: (challengeToken: string) => request<RegistrationVerification>('/api/auth/resend-registration', post({ challengeToken })),
     me: () => request<User>('/api/auth/me'),
     changePassword: (body: { currentPassword: string; newPassword: string; confirmPassword?: string }) => request<{ success: boolean }>('/api/auth/change-password', post(body)),
     resetPassword: (body: { email: string; token: string; newPassword: string; confirmPassword: string }) => request<{ success: boolean }>('/api/auth/reset-password', post(body)),
     logout: () => request<void>('/api/auth/logout', post()),
-    register: (body: { name: string; email: string; password: string; phone: string }) => request<User>('/api/auth/register', post(body)),
+    register: (body: { name: string; email: string; password: string; phone: string }) => request<User | RegistrationVerification>('/api/auth/register', post(body)),
   },
   dashboard: () => request<DashboardSummary>('/api/dashboard'),
   buildings: {
@@ -384,7 +394,7 @@ export const api = {
     generate: (period: string) => request<unknown>('/api/invoices/generate', post({ period })),
     get: (id: string) => request<Invoice>(`/api/invoices/${encodeURIComponent(id)}`),
     reconcile: (id: string) => request<PaymentReconcileResult>(`/api/invoices/${encodeURIComponent(id)}/reconcile`, post()),
-    addReceipt: (id: string, body: { amount: number; note: string; idempotencyKey: string }) => request<ReceiptResult>(`/api/invoices/${encodeURIComponent(id)}/receipts`, post(body)),
+    addReceipt: (id: string, body: { amount: number; note: string; idempotencyKey: string; expectedVersion?: number }) => request<ReceiptResult>(`/api/invoices/${encodeURIComponent(id)}/receipts`, post(body)),
   },
   owners: {
     resetPassword: (id: string, currentPassword: string) => request<{ token: string; expiresAt: string }>(`/api/admin/owners/${encodeURIComponent(id)}/reset-password`, post({ currentPassword })),

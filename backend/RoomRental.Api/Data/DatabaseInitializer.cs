@@ -22,6 +22,7 @@ public static class DatabaseInitializer
         await UpgradeMoveoutCompletionSchemaAsync(db);
         await UpgradeAccountOccupancySchemaAsync(db);
         await UpgradeSubscriptionSchemaAsync(db);
+        await UpgradeRegistrationVerificationSchemaAsync(db);
         // Additive upgrade for existing MVP databases: keep settings and financial data intact.
         const string webhookTableSql = """
             CREATE TABLE IF NOT EXISTS "PaymentWebhookRegistrations" (
@@ -46,6 +47,33 @@ public static class DatabaseInitializer
         {
             await BootstrapAdminAsync(db, app.Configuration);
         }
+    }
+
+    private static async Task UpgradeRegistrationVerificationSchemaAsync(AppDbContext db)
+    {
+        var dateType = db.Database.IsSqlite() ? "INTEGER" : "timestamp with time zone";
+        var idType = db.Database.IsSqlite() ? "TEXT" : "uuid";
+        var tableSql = """
+            CREATE TABLE IF NOT EXISTS "RegistrationVerifications" (
+                "Email" TEXT PRIMARY KEY,
+                "ChallengeHash" TEXT NOT NULL,
+                "UserId" __ID_TYPE__ NOT NULL,
+                "Name" TEXT NOT NULL,
+                "Phone" TEXT NULL,
+                "PasswordHash" TEXT NOT NULL,
+                "CodeHash" TEXT NOT NULL,
+                "ExpiresAt" __DATE_TYPE__ NOT NULL,
+                "CodeExpiresAt" __DATE_TYPE__ NOT NULL,
+                "LastSentAt" __DATE_TYPE__ NOT NULL,
+                "WindowStartedAt" __DATE_TYPE__ NOT NULL,
+                "ConsumedAt" __DATE_TYPE__ NULL,
+                "SendCount" INTEGER NOT NULL,
+                "FailedAttempts" INTEGER NOT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_RegistrationVerifications_ChallengeHash"
+            ON "RegistrationVerifications" ("ChallengeHash");
+            """;
+        await db.Database.ExecuteSqlRawAsync(tableSql.Replace("__ID_TYPE__", idType).Replace("__DATE_TYPE__", dateType));
     }
 
     private static async Task UpgradeAccountOccupancySchemaAsync(AppDbContext db)

@@ -1,6 +1,6 @@
 import type { ThemeConfig } from 'antd';
 
-// Pilot contract: keep Nhà Mình's green; use one font and shared control geometry.
+// Pilot contract: keep Roomie's green; use one font and shared control geometry.
 export const roomDesignTokens = {
   accent: '#0a796a',
   accentHover: '#086454',

@@ -59,7 +59,7 @@ services:
       BootstrapAdmin__Password: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       AuthRequestsPerMinute: "10"
       Email__FromAddress: ${SMTP_FROM_ADDRESS:-}
-      Email__FromName: ${SMTP_FROM_NAME:-Rehouse}
+      Email__FromName: ${SMTP_FROM_NAME:-Roomie}
       Email__Smtp__Host: ${SMTP_HOST:-}
       Email__Smtp__Port: ${SMTP_PORT:-587}
       Email__Smtp__Security: ${SMTP_SECURITY:-StartTls}

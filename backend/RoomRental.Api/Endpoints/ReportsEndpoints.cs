@@ -97,7 +97,7 @@ public static class ReportsEndpoints
             await snapshot.CommitAsync(ct);
             await using var stream = new MemoryStream();
             workbook.SaveAs(stream);
-            var fileName = $"rehouse-{reportType.ToLowerInvariant()}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
+            var fileName = $"roomie-{reportType.ToLowerInvariant()}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
             return Results.File(stream.ToArray(), XlsxContentType, fileName);
         });
     }

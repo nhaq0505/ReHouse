@@ -1,4 +1,14 @@
-demo.yourdomain.com {
+roomie.io.vn {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8080
+}
+
+www.roomie.io.vn {
+	redir https://roomie.io.vn{uri} permanent
+}
+
+# Preserve existing guest links, payment return URLs and provider callbacks.
+roomiedemo.duckdns.org {
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:8080
 }

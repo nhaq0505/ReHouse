@@ -93,8 +93,8 @@ function TenantPageContent({ token }: { token: string }) {
 }
 
 export function TenantBrand() {
-  return <header className="tenant-header"><div className="brand-mark"><span>⌂</span></div><div className="tenant-brand-copy"><strong>Rehouse</strong><span>{t("HÓA ĐƠN PHÒNG TRỌ")}</span></div><LanguageSelector /><div className="tenant-header-secure"><LockOutlined />  {t("Liên kết riêng tư")}</div></header>;
+  return <header className="tenant-header"><div className="brand-mark"><span>⌂</span></div><div className="tenant-brand-copy"><strong>Roomie</strong><span>{t("HÓA ĐƠN PHÒNG TRỌ")}</span></div><LanguageSelector /><div className="tenant-header-secure"><LockOutlined />  {t("Liên kết riêng tư")}</div></header>;
 }
 export function TenantFooter() {
-  return <footer className="tenant-footer"><span>{t("Rehouse giúp việc quản lý nhà trọ rõ ràng hơn.")}</span><span>{t("Hỗ trợ thanh toán an toàn")}</span></footer>;
+  return <footer className="tenant-footer"><span>{t("Roomie giúp việc quản lý nhà trọ rõ ràng hơn.")}</span><span>{t("Hỗ trợ thanh toán an toàn")}</span></footer>;
 }

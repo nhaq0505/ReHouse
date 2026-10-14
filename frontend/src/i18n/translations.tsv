@@ -245,7 +245,7 @@
 244|Invoice updates automatically|账单自动更新|청구서 자동 갱신|बिल स्वतः अपडेट होता है
 245|Payments are confirmed through a verified webhook.|通过已验证的 Webhook 确认收款。|검증된 웹훅으로 수납이 확인됩니다.|सत्यापित webhook से भुगतान की पुष्टि होती है।
 246|Payment security|交易安全|거래 보안|भुगतान सुरक्षा
-247|Connection details are encrypted on the server. Rehouse does not store tenants' card or bank details.|连接信息在服务器端加密。Rehouse 不保存租客的银行卡或银行资料。|연결 정보는 서버에서 암호화됩니다. Rehouse는 임차인의 카드 및 은행 정보를 저장하지 않습니다.|कनेक्शन जानकारी सर्वर पर एन्क्रिप्ट होती है। Rehouse किरायेदार के कार्ड या बैंक की जानकारी नहीं रखता।
+247|Connection details are encrypted on the server. Roomie does not store tenants' card or bank details.|连接信息在服务器端加密。Roomie 不保存租客的银行卡或银行资料。|연결 정보는 서버에서 암호화됩니다. Roomie는 임차인의 카드 및 은행 정보를 저장하지 않습니다.|कनेक्शन जानकारी सर्वर पर एन्क्रिप्ट होती है। Roomie किरायेदार के कार्ड या बैंक की जानकारी नहीं रखता।
 248|Encrypted connection keys|连接密钥加密|연결 키 암호화|एन्क्रिप्टेड कनेक्शन कुंजियाँ
 249|Verified payment results|验证付款结果|결제 결과 검증|भुगतान परिणाम सत्यापन
 250|Automatic invoice reconciliation|自动核对账单|청구서 자동 대사|स्वचालित बिल मिलान
@@ -429,7 +429,7 @@
 428|New invoices appear here after the owner finalizes billing.|房东完成账单确认后，新账单将在这里显示。|임대인이 청구를 확정하면 새 청구서가 표시됩니다.|मकान मालिक बिल तय करेगा तब नए बिल यहाँ दिखेंगे।
 429|This information is only for holders of the room's private link.|此信息仅供持有房间专属链接的人查看。|이 정보는 방 전용 링크를 가진 분만 이용할 수 있습니다.|यह जानकारी केवल कमरे का निजी लिंक रखने वालों के लिए है।
 430|RENTAL INVOICES|出租房账单|임대 청구서|किराये के बिल
-431|Rehouse makes rental management clearer.|Rehouse 让出租房管理更清晰。|Rehouse로 임대 관리를 더 명확하게.|Rehouse से किराया प्रबंधन अधिक स्पष्ट होता है।
+431|Roomie makes rental management clearer.|Roomie 让出租房管理更清晰。|Roomie로 임대 관리를 더 명확하게.|Roomie से किराया प्रबंधन अधिक स्पष्ट होता है।
 432|Secure payment support|安全支付支持|안전한 결제 지원|सुरक्षित भुगतान सुविधा
 433|Overview|概览|개요|अवलोकन
 434|MAIN MENU|主菜单|주 메뉴|मुख्य मेनू
@@ -844,7 +844,7 @@
 843|Manage unlimited buildings and rental rooms|无限制管理房屋楼栋与出租房间|건물 및 임대 객실 무제한 관리|असीमित इमारतों और कमरों का प्रबंधन करें
 844|Automatic meter closing & invoice issuance|自动抄水电表并自动生成账单|전기/수도 검침 및 청구서 자동 발행|स्वचालित मीटर क्लोजिंग और इनवॉइस जारी करना
 845|payOS online payment gateway & automatic reconciliation|payOS在线支付网关与自动对账|payOS 온라인 결제 게이트웨이 및 자동 대사|payOS ऑनलाइन भुगतान गेटवे और स्वचालित मिलान
-846|24/7 priority technical support from the Rehouse team|Rehouse团队提供24/7全天候优先技术支持|Rehouse 팀의 24/7 우선 기술 지원|Rehouse टीम से 24/7 प्राथमिकता तकनीकी सहायता
+846|24/7 priority technical support from the Roomie team|Roomie团队提供24/7全天候优先技术支持|Roomie 팀의 24/7 우선 기술 지원|Roomie टीम से 24/7 प्राथमिकता तकनीकी सहायता
 847|Renew Pro package|续费Pro专业版|Pro 요금제 연장|प्रो पैकेज का नवीनीकरण करें
 848|Upgrade to Pro account|升级到Pro专业版账户|Pro 계정으로 업그레이드|प्रो खाते में अपग्रेड करें
 849|Renew now|立即续费|지금 연장하기|अभी नवीनीकृत करें

@@ -34,12 +34,12 @@ public sealed class SmtpRegistrationEmailSender(IConfiguration config, IHostEnvi
         try
         {
             var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(config["Email:FromName"] ?? "Rehouse", config["Email:FromAddress"]!));
+            message.From.Add(new MailboxAddress(config["Email:FromName"] ?? "Roomie", config["Email:FromAddress"]!));
             message.To.Add(MailboxAddress.Parse(email));
-            message.Subject = "Mã xác nhận đăng ký Rehouse";
+            message.Subject = "Mã xác nhận đăng ký Roomie";
             message.Body = new TextPart("plain")
             {
-                Text = $"Mã xác nhận đăng ký Rehouse của bạn là: {code}\n\nMã có hiệu lực tối đa 10 phút. Không chia sẻ mã này với bất kỳ ai.\nNếu bạn không đăng ký Rehouse, hãy bỏ qua email này."
+                Text = $"Mã xác nhận đăng ký Roomie của bạn là: {code}\n\nMã có hiệu lực tối đa 10 phút. Không chia sẻ mã này với bất kỳ ai.\nNếu bạn không đăng ký Roomie, hãy bỏ qua email này."
             };
             using var client = new SmtpClient { Timeout = 15000 };
             var security = config["Email:Smtp:Security"] ?? "StartTls";

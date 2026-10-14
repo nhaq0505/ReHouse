@@ -31,7 +31,7 @@ function LocalizedRoot() {
   const locales = { vi: viVN, en: enUS, zh: zhCN, ko: koKR, hi: hiIN };
   dayjs.locale(language === 'zh' ? 'zh-cn' : language);
   document.documentElement.lang = getLocale();
-  document.title = { vi: 'Rehouse — Quản lý phòng trọ', en: 'Rehouse — Rental management', zh: 'Rehouse — 出租房管理', ko: 'Rehouse — 임대 관리', hi: 'Rehouse — किराया प्रबंधन' }[language];
+  document.title = { vi: 'Roomie — Quản lý phòng trọ', en: 'Roomie — Rental management', zh: 'Roomie — 出租房管理', ko: 'Roomie — 임대 관리', hi: 'Roomie — किराया प्रबंधन' }[language];
   return (
     <ConfigProvider
       locale={locales[language]}

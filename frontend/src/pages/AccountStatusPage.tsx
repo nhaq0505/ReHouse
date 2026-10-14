@@ -35,7 +35,7 @@ export default function AccountStatusPage() {
 
   return <div className="status-page">
     <div className="public-language"><LanguageSelector /></div>
-    <div className="status-brand"><div className="brand-mark"><span>⌂</span></div><strong>Rehouse</strong></div>
+    <div className="status-brand"><div className="brand-mark"><span>⌂</span></div><strong>Roomie</strong></div>
     <div className="status-card">
       <Result
         status={config.icon}
@@ -203,7 +203,7 @@ function ApprovedSubscriptionDashboard() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <SafetyCertificateOutlined style={{ color: '#1890ff' }} />
-              <Typography.Text>{t("Hỗ trợ kỹ thuật ưu tiên 24/7 từ đội ngũ Rehouse")}</Typography.Text>
+              <Typography.Text>{t("Hỗ trợ kỹ thuật ưu tiên 24/7 từ đội ngũ Roomie")}</Typography.Text>
             </div>
           </Space>
         </SectionCard>

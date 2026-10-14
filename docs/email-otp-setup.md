@@ -22,16 +22,16 @@ SMTP gửi trong transaction sau reservation DB; một email đã được nhậ
 chứa mã không dùng được. Không tự retry mail; người dùng có thể gửi lại sau cooldown.
 Tài khoản có sẵn không bị buộc xác minh lại. OTP chứng minh quyền truy cập hộp thư, không xác minh danh tính pháp lý.
 
-## Cách đơn giản để bắt đầu: Gmail riêng cho Rehouse
+## Cách đơn giản để bắt đầu: Gmail riêng cho Roomie
 
-1. Tạo/chọn một Gmail riêng dùng làm địa chỉ gửi Rehouse.
+1. Tạo/chọn một Gmail riêng dùng làm địa chỉ gửi Roomie.
 2. Bật Xác minh 2 bước tại https://myaccount.google.com/security .
-3. Mở https://myaccount.google.com/apppasswords , đặt tên Rehouse OTP, tạo mật khẩu ứng dụng.
+3. Mở https://myaccount.google.com/apppasswords , đặt tên Roomie OTP, tạo mật khẩu ứng dụng.
    Nếu không thấy mục này, xem điều kiện tài khoản tại [hướng dẫn Google](https://support.google.com/accounts/answer/185833?hl=vi).
 4. Mở `backend/RoomRental.Api/appsettings.Email.local.json` đã chuẩn bị sẵn (file bị Git bỏ qua, quyền 0600).
    Điền Email.FromAddress và Email.Smtp.Username bằng cùng Gmail; điền Email.Smtp.Password
    bằng mật khẩu ứng dụng vừa tạo. Không dùng mật khẩu đăng nhập Gmail, không gửi mật khẩu qua chat.
-5. Cấu hình Gmail đã có sẵn: Host=smtp.gmail.com, Port=587, Security=StartTls, FromName=Rehouse.
+5. Cấu hình Gmail đã có sẵn: Host=smtp.gmail.com, Port=587, Security=StartTls, FromName=Roomie.
    Lưu file; backend Development đọc lại cấu hình khi file đổi.
 6. Mở http://127.0.0.1:5173/register và tự đăng ký bằng một email bạn nhận được thư.
    Kiểm tra Inbox/Spam, nhập mã và đăng nhập sau khi xác nhận thành công.
@@ -45,7 +45,7 @@ Cấu hình biến trong `/etc/rehouse/runtime.env` (root quản lý, chmod 0600
 
 ```dotenv
 SMTP_FROM_ADDRESS=
-SMTP_FROM_NAME=Rehouse
+SMTP_FROM_NAME=Roomie
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURITY=StartTls

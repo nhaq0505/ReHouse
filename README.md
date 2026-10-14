@@ -1,4 +1,4 @@
-# Rehouse — Quản lý phòng trọ
+# Roomie — Quản lý phòng trọ
 
 **Agent tiếp tục dự án: đọc [kế hoạch và tài liệu bàn giao](docs/PROJECT_HANDOFF.md) trước.**
 

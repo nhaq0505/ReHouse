@@ -2,6 +2,7 @@ import { errorText } from './i18n/errors';
 import { getLocale, t } from './i18n/runtime';
 export type Role = 'Admin' | 'Owner';
 export type AccountStatus = 'Approved' | 'Pending' | 'Rejected' | 'Suspended';
+export type SubscriptionTier = 'Free' | 'Pro';
 
 export interface User {
   id: string;
@@ -9,6 +10,13 @@ export interface User {
   email: string;
   role: Role;
   status?: AccountStatus;
+  phone?: string;
+  rejectionReason?: string | null;
+  subscriptionTier?: SubscriptionTier;
+  subscriptionExpiresAt?: string | null;
+  isPro?: boolean;
+  roomCount?: number;
+  maxRooms?: number | null;
 }
 
 export interface Building {
@@ -60,6 +68,11 @@ export interface DashboardSummary {
   totalPaid: number;
   totalOutstanding: number;
   pendingReadings: number;
+  period: string;
+  monthlyBilled: number;
+  monthlyPaid: number;
+  monthlyOutstanding: number;
+  collectionRate: number;
 }
 
 export interface Reading {
@@ -117,6 +130,7 @@ export interface Invoice {
   hasPendingPayment?: boolean;
   canCorrectMeter?: boolean;
   meterCorrectionBlockedReason?: string | null;
+  tenantToken?: string;
 }
 
 export interface ReadingSaveResult {
@@ -176,6 +190,29 @@ export interface OwnerRequest {
   status: AccountStatus;
   reason?: string | null;
   createdAt?: string;
+  subscriptionTier?: SubscriptionTier;
+  subscriptionExpiresAt?: string | null;
+  isPro?: boolean;
+  roomCount?: number;
+  maxRooms?: number | null;
+}
+
+export interface SubscriptionPackage {
+  id: string;
+  name: string;
+  days: number;
+  priceVnd: number;
+  description: string;
+  maxRooms: number;
+}
+
+export interface SubscriptionStatus {
+  tier: SubscriptionTier;
+  expiresAt: string | null;
+  isPro: boolean;
+  currentRooms: number;
+  maxRooms: number | null;
+  availablePackages: SubscriptionPackage[];
 }
 
 export interface ReceiptResult {
@@ -308,6 +345,8 @@ export const api = {
   auth: {
     login: (email: string, password: string) => request<User>('/api/auth/login', post({ email, password })),
     me: () => request<User>('/api/auth/me'),
+    changePassword: (body: { currentPassword: string; newPassword: string; confirmPassword: string }) => request<{ success: boolean }>('/api/auth/change-password', post(body)),
+    resetPassword: (body: { email: string; token: string; newPassword: string; confirmPassword: string }) => request<{ success: boolean }>('/api/auth/reset-password', post(body)),
     logout: () => request<void>('/api/auth/logout', post()),
     register: (body: { name: string; email: string; password: string; phone: string }) => request<User>('/api/auth/register', post(body)),
   },
@@ -325,6 +364,7 @@ export const api = {
     get: (id: string) => request<Room>(`/api/rooms/${encodeURIComponent(id)}`),
     create: (body: { buildingId: string; name: string; rent: number; electricityRate: number; waterFee: number; waterPerPerson: boolean; serviceFee: number; initialReading: number }) => request<Room>('/api/rooms', post(body)),
     update: (id: string, body: Partial<Room>) => request<Room>(`/api/rooms/${encodeURIComponent(id)}`, { method: 'PATCH', body: json(body) }),
+    editOccupancy: (id: string, body: { occupancyId: string; tenantName: string; phone?: string; people: number }) => request<Room>(`/api/rooms/${encodeURIComponent(id)}/occupancy`, { method: 'PATCH', body: json(body) }),
     startOccupancy: (id: string, body: { tenantName: string; phone: string; people: number; startDate: string; depositAmount: number }) => request<Room>(`/api/rooms/${encodeURIComponent(id)}/occupancy`, post(body)),
     rotateLink: (id: string) => request<{ token: string; url: string }>(`/api/rooms/${encodeURIComponent(id)}/rotate-link`, post()),
     archive: (id: string) => request<{ archived: boolean; archiveBatchId: string }>(`/api/rooms/${encodeURIComponent(id)}`, { method: 'DELETE' }),
@@ -347,8 +387,15 @@ export const api = {
     addReceipt: (id: string, body: { amount: number; note: string; idempotencyKey: string }) => request<ReceiptResult>(`/api/invoices/${encodeURIComponent(id)}/receipts`, post(body)),
   },
   owners: {
+    resetPassword: (id: string, currentPassword: string) => request<{ token: string; expiresAt: string }>(`/api/admin/owners/${encodeURIComponent(id)}/reset-password`, post({ currentPassword })),
     list: () => request<unknown>('/api/admin/owners').then(listFrom<OwnerRequest>),
     updateStatus: (id: string, body: { status: AccountStatus; reason?: string }) => request<OwnerRequest>(`/api/admin/owners/${encodeURIComponent(id)}/status`, post(body)),
+    updateSubscription: (id: string, body: { tier: SubscriptionTier; days?: number; expiresAt?: string; reason?: string }) => request<OwnerRequest>(`/api/admin/owners/${encodeURIComponent(id)}/subscription`, post(body)),
+  },
+  subscription: {
+    getStatus: () => request<SubscriptionStatus>('/api/subscription'),
+    upgrade: (packageId?: string) => request<TenantCheckout>('/api/subscription/upgrade', post({ packageId })),
+    reconcile: (orderCode: number | string) => request<SubscriptionStatus>(`/api/subscription/reconcile/${encodeURIComponent(orderCode)}`, post()),
   },
   paymentSettings: {
     get: () => request<PaymentSettings>('/api/settings/payment'),

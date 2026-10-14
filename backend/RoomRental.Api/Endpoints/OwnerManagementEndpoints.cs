@@ -11,7 +11,7 @@ public static class OwnerManagementEndpoints
     {
         var routes = app.MapGroup("/api").RequireAuthorization(policy => policy.RequireRole("Owner"));
 
-        routes.MapGet("/dashboard", async (HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
+        routes.MapGet("/dashboard", async (HttpContext context, AppDbContext db, TimeProvider clock, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
             var roomIds = await (from room in db.Rooms.AsNoTracking()
@@ -21,10 +21,13 @@ public static class OwnerManagementEndpoints
             var occupiedRooms = await db.Occupancies.AsNoTracking().CountAsync(row => roomIds.Contains(row.RoomId) && row.IsActive, cancellationToken);
             var invoiceTotals = await db.Invoices.AsNoTracking().Where(row => row.OwnerId == ownerId &&
                     row.LifecycleState == InvoiceLifecycleState.Issued && row.Kind != "Deposit")
-                .Select(row => new { row.Total, row.Paid }).ToListAsync(cancellationToken);
+                .Select(row => new { row.Total, row.Paid, row.Period }).ToListAsync(cancellationToken);
             var billed = invoiceTotals.Sum(row => row.Total);
             var paid = invoiceTotals.Sum(row => row.Paid);
-            var period = CurrentVietnamPeriod();
+            var period = ApiSupport.VietnamDate(clock.GetUtcNow()).ToString("yyyy-MM");
+            var monthly = invoiceTotals.Where(row => row.Period == period).ToList();
+            var monthlyBilled = monthly.Sum(row => row.Total);
+            var monthlyPaid = monthly.Sum(row => row.Paid);
             var roomCount = roomIds.Count;
             var activeOccupancyIds = await db.Occupancies.AsNoTracking()
                 .Where(row => row.IsActive && roomIds.Contains(row.RoomId)).Select(row => row.Id).ToListAsync(cancellationToken);
@@ -39,7 +42,12 @@ public static class OwnerManagementEndpoints
                 totalBilled = billed,
                 totalPaid = paid,
                 totalOutstanding = Math.Max(0, billed - paid),
-                pendingReadings
+                pendingReadings,
+                period,
+                monthlyBilled,
+                monthlyPaid,
+                monthlyOutstanding = monthly.Sum(row => Math.Max(0, row.Total - row.Paid)),
+                collectionRate = monthlyBilled == 0 ? 0 : decimal.Round(monthlyPaid / monthlyBilled * 100, 2)
             });
         });
 
@@ -190,6 +198,18 @@ public static class OwnerManagementEndpoints
         {
             var ownerId = ApiSupport.OwnerId(context);
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var owner = await db.Users.SingleOrDefaultAsync(u => u.Id == ownerId, cancellationToken)
+                ?? throw new ApiException(StatusCodes.Status404NotFound, "Owner was not found.");
+            if (!owner.IsPro)
+            {
+                var activeRooms = await (from r in db.Rooms
+                                         join b in db.Buildings on r.BuildingId equals b.Id
+                                         where b.OwnerId == ownerId && r.ArchivedAt == null && b.ArchivedAt == null
+                                         select r.Id).CountAsync(cancellationToken);
+                if (activeRooms >= AppUser.FreeTierMaxRooms)
+                    throw new ApiException(StatusCodes.Status403Forbidden,
+                        $"Gói Miễn phí chỉ được tạo tối đa {AppUser.FreeTierMaxRooms} phòng. Vui lòng nâng cấp tài khoản Pro để thêm phòng.");
+            }
             var building = await FindBuildingAsync(db, ownerId, request.BuildingId, cancellationToken);
             ValidateFees(request.Name, request.Rent, request.ElectricityRate, request.WaterFee, request.ServiceFee, request.InitialReading);
             var room = new Room
@@ -277,12 +297,66 @@ public static class OwnerManagementEndpoints
                 throw new ApiException(StatusCodes.Status409Conflict, "Phòng chưa được lưu trữ.");
             if (row.Building.ArchivedAt is not null)
                 throw new ApiException(StatusCodes.Status409Conflict, "Cần khôi phục dãy trọ trước khi khôi phục phòng.");
+            var owner = await db.Users.SingleOrDefaultAsync(u => u.Id == ownerId, cancellationToken)
+                ?? throw new ApiException(StatusCodes.Status404NotFound, "Owner was not found.");
+            if (!owner.IsPro)
+            {
+                var activeRooms = await (from r in db.Rooms
+                                         join b in db.Buildings on r.BuildingId equals b.Id
+                                         where b.OwnerId == ownerId && r.ArchivedAt == null && b.ArchivedAt == null
+                                         select r.Id).CountAsync(cancellationToken);
+                if (activeRooms >= AppUser.FreeTierMaxRooms)
+                    throw new ApiException(StatusCodes.Status403Forbidden,
+                        $"Gói Miễn phí chỉ được tạo tối đa {AppUser.FreeTierMaxRooms} phòng. Vui lòng nâng cấp tài khoản Pro để khôi phục phòng.");
+            }
             row.Room.ArchivedAt = null;
             row.Room.ArchivedBy = null;
             row.Room.ArchiveBatchId = null;
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return Results.Ok(new { restored = true });
+        });
+
+        routes.MapMethods("/rooms/{id:guid}/occupancy", ["PATCH"], async (Guid id, OccupancyUpdateRequest request,
+            HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken ct) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            var (room, building) = await FindRoomAsync(db, ownerId, id, ct);
+            var occupancy = await db.Occupancies.SingleOrDefaultAsync(x => x.Id == request.OccupancyId && x.RoomId == id && x.IsActive, ct)
+                ?? throw new ApiException(409, "Lượt thuê đã thay đổi hoặc không còn hoạt động. Vui lòng tải lại phòng.");
+            if (string.IsNullOrWhiteSpace(request.TenantName) || request.TenantName.Trim().Length > 160)
+                throw new ApiException(400, "Tên người thuê cần từ 1 đến 160 ký tự.");
+            if (request.Phone?.Trim().Length > 60) throw new ApiException(400, "Số điện thoại tối đa 60 ký tự.");
+            if (request.People is < 1 or > 30) throw new ApiException(400, "Số người ở cần từ 1 đến 30.");
+            var peopleChanged = occupancy.People != request.People;
+            occupancy.TenantName = request.TenantName.Trim();
+            occupancy.Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
+            occupancy.People = request.People;
+            if (peopleChanged)
+            {
+                // Issued invoices (including unpaid ones) are finalized snapshots. Only unpaid drafts may change.
+                var drafts = await db.Invoices.Where(x => x.OwnerId == ownerId && x.OccupancyId == occupancy.Id &&
+                    x.Kind == "Monthly" && x.LifecycleState == InvoiceLifecycleState.Draft && x.WaterPerPerson == true).ToListAsync(ct);
+                foreach (var draft in drafts)
+                {
+                    if (draft.Paid != 0 || draft.Status == InvoiceStatus.Paid ||
+                        await db.Receipts.AnyAsync(x => x.InvoiceId == draft.Id, ct) ||
+                        await db.PayOsAttempts.AnyAsync(x => x.InvoiceId == draft.Id && x.Status == PaymentAttemptStatus.Pending, ct))
+                        throw new ApiException(409, "Hóa đơn nháp có thanh toán hoặc giao dịch đang chờ. Cần xử lý trước khi đổi số người.");
+                    if (draft.WaterRate is null) throw new ApiException(409, "Hóa đơn nháp thiếu bảng phí nước đã lưu.");
+                    var before = BillingEndpoints.SerializeSnapshot(draft);
+                    draft.WaterAmount = ApiSupport.RoundVnd(draft.WaterRate.Value * occupancy.People);
+                    draft.Total = InvoiceService.ValidateTotal(draft.Rent, draft.ElectricityAmount, draft.WaterAmount, draft.ServiceAmount);
+                    draft.Version++;
+                    InvoiceService.RecalculateStatus(draft);
+                    await BillingEndpoints.AddRevisionAsync(db, draft, Guid.NewGuid(), BillingEndpoints.Fingerprint(request),
+                        "Cập nhật số người ở cho hóa đơn nháp.", ownerId, before, BillingEndpoints.SerializeSnapshot(draft), ct);
+                }
+            }
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return Results.Ok(await ToRoomDtoAsync(db, tokenService, room, building, occupancy, CurrentVietnamPeriod(), ct));
         });
 
         routes.MapPost("/rooms/{id:guid}/occupancy", async (Guid id, OccupancyRequest request, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
@@ -451,10 +525,7 @@ public static class OwnerManagementEndpoints
 
     internal static DateOnly TodayVietnam()
     {
-        TimeZoneInfo zone;
-        try { zone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"); }
-        catch (TimeZoneNotFoundException) { zone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"); }
-        return DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).DateTime);
+        return ApiSupport.VietnamDate(DateTimeOffset.UtcNow);
     }
 
     private static void ValidateFees(string name, decimal rent, decimal electricityRate, decimal waterFee, decimal serviceFee, decimal initialReading)

@@ -2,21 +2,31 @@ namespace RoomRental.Api.Domain;
 
 public enum UserRole { Admin, Owner }
 public enum OwnerStatus { Pending, Approved, Rejected, Suspended }
+public enum SubscriptionTier { Free, Pro }
 public enum InvoiceStatus { Unpaid, Partial, Paid }
 public enum InvoiceLifecycleState { Draft, Issued }
 public enum PaymentAttemptStatus { Pending, Paid, Failed }
 
 public sealed class AppUser
 {
+    public const int FreeTierMaxRooms = 5;
+
     public Guid Id { get; set; } = Guid.NewGuid();
     public required string Name { get; set; }
     public required string Email { get; set; }
     public string? Phone { get; set; }
     public required string PasswordHash { get; set; }
+    public string? PasswordResetHash { get; set; }
+    public DateTimeOffset? PasswordResetExpiresAt { get; set; }
     public UserRole Role { get; set; } = UserRole.Owner;
-    public OwnerStatus Status { get; set; } = OwnerStatus.Pending;
+    public OwnerStatus Status { get; set; } = OwnerStatus.Approved;
     public string? StatusReason { get; set; }
+    public SubscriptionTier SubscriptionTier { get; set; } = SubscriptionTier.Free;
+    public DateTimeOffset? SubscriptionExpiresAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public bool IsPro => SubscriptionTier == SubscriptionTier.Pro && (SubscriptionExpiresAt == null || SubscriptionExpiresAt > DateTimeOffset.UtcNow);
+    public int MaxRooms => IsPro ? int.MaxValue : FreeTierMaxRooms;
 }
 
 public sealed class AuthSession
@@ -74,6 +84,7 @@ public sealed class Occupancy
 
 public sealed class MonthlyReading
 {
+    public int? OccupantsCount { get; set; }
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid RoomId { get; set; }
     public Guid OccupancyId { get; set; }
@@ -215,6 +226,8 @@ public sealed class PayOsAttempt
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid OwnerId { get; set; }
     public Guid InvoiceId { get; set; }
+    public string Kind { get; set; } = "Invoice";
+    public int? SubscriptionDays { get; set; }
     public long OrderCode { get; set; }
     public int Amount { get; set; }
     public string? PaymentLinkId { get; set; }

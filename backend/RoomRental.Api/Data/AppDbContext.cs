@@ -39,10 +39,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.Email).HasMaxLength(320);
             entity.Property(x => x.Name).HasMaxLength(160);
             entity.Property(x => x.Phone).HasMaxLength(60);
-            entity.Property(x => x.PasswordHash).HasMaxLength(1024);
+            entity.Property(x => x.PasswordHash).HasMaxLength(1024).IsConcurrencyToken();
+            entity.Property(x => x.PasswordResetHash).HasMaxLength(64).IsConcurrencyToken();
             entity.Property(x => x.Role).HasConversion<string>().HasMaxLength(24);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(24);
             entity.Property(x => x.StatusReason).HasMaxLength(1000);
+            entity.Property(x => x.SubscriptionTier).HasConversion<string>().HasMaxLength(24);
         });
 
         modelBuilder.Entity<AuthSession>(entity =>
@@ -192,6 +194,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasIndex(x => x.InvoiceId).IsUnique().HasDatabaseName("IX_PayOsAttempts_InvoiceId_Pending")
                 .HasFilter("\"Status\" = 'Pending'");
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.Kind).HasMaxLength(40);
             entity.Property(x => x.CheckoutUrl).HasMaxLength(2048);
             entity.Property(x => x.PaymentLinkId).HasMaxLength(160);
             entity.Property(x => x.QrCode).HasMaxLength(4096);

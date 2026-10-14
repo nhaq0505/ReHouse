@@ -20,6 +20,8 @@ public static class DatabaseInitializer
         await UpgradePayOsAttemptCheckoutSchemaAsync(db);
         await UpgradeBillingSchemaAsync(db);
         await UpgradeMoveoutCompletionSchemaAsync(db);
+        await UpgradeAccountOccupancySchemaAsync(db);
+        await UpgradeSubscriptionSchemaAsync(db);
         // Additive upgrade for existing MVP databases: keep settings and financial data intact.
         const string webhookTableSql = """
             CREATE TABLE IF NOT EXISTS "PaymentWebhookRegistrations" (
@@ -43,6 +45,56 @@ public static class DatabaseInitializer
         else
         {
             await BootstrapAdminAsync(db, app.Configuration);
+        }
+    }
+
+    private static async Task UpgradeAccountOccupancySchemaAsync(AppDbContext db)
+    {
+        await db.Database.OpenConnectionAsync();
+        try
+        {
+            var columns = await ReadColumnNamesAsync(db, "Users");
+            await using var transaction = await db.Database.BeginTransactionAsync();
+            await AddColumnIfMissingAsync(db, columns, "Users", "PasswordResetHash", "TEXT NULL");
+            await AddColumnIfMissingAsync(db, columns, "Users", "PasswordResetExpiresAt",
+                db.Database.IsSqlite() ? "INTEGER NULL" : "timestamp with time zone NULL");
+            var readingColumns = await ReadColumnNamesAsync(db, "Readings");
+            await AddColumnIfMissingAsync(db, readingColumns, "Readings", "OccupantsCount", "INTEGER NULL");
+            // Never infer historical headcount from the current occupancy.
+            await transaction.CommitAsync();
+        }
+        finally { await db.Database.CloseConnectionAsync(); }
+    }
+
+    private static async Task UpgradeSubscriptionSchemaAsync(AppDbContext db)
+    {
+        await db.Database.OpenConnectionAsync();
+        try
+        {
+            var sqlite = db.Database.IsSqlite();
+            var userColumns = await ReadColumnNamesAsync(db, "Users");
+            var attemptColumns = await ReadColumnNamesAsync(db, "PayOsAttempts");
+            var offsetType = sqlite ? "INTEGER" : "timestamp with time zone";
+
+            await using var transaction = await db.Database.BeginTransactionAsync();
+            await AddColumnIfMissingAsync(db, userColumns, "Users", "SubscriptionTier", "TEXT NOT NULL DEFAULT 'Free'");
+            await AddColumnIfMissingAsync(db, userColumns, "Users", "SubscriptionExpiresAt", $"{offsetType} NULL");
+
+            await AddColumnIfMissingAsync(db, attemptColumns, "PayOsAttempts", "Kind", "TEXT NOT NULL DEFAULT 'Invoice'");
+            await AddColumnIfMissingAsync(db, attemptColumns, "PayOsAttempts", "SubscriptionDays", "INTEGER NULL");
+
+            await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS \"SchemaUpgrades\" (\"Key\" TEXT PRIMARY KEY, \"AppliedAt\" TEXT NOT NULL)");
+            var appliedAt = DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+            if (sqlite)
+                await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO \"SchemaUpgrades\" (\"Key\", \"AppliedAt\") VALUES ({0}, {1})", "subscription-freemium-v1", appliedAt);
+            else
+                await db.Database.ExecuteSqlRawAsync("INSERT INTO \"SchemaUpgrades\" (\"Key\", \"AppliedAt\") VALUES ({0}, {1}) ON CONFLICT (\"Key\") DO NOTHING", "subscription-freemium-v1", appliedAt);
+
+            await transaction.CommitAsync();
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
         }
     }
 

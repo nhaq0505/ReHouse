@@ -6,7 +6,7 @@ import type { MenuProps } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppstoreOutlined, BankOutlined, CalculatorOutlined, CreditCardOutlined, BarChartOutlined,
-  FileTextOutlined, HomeOutlined, LogoutOutlined, MenuOutlined, UserOutlined,
+  CrownOutlined, FileTextOutlined, HomeOutlined, LogoutOutlined, MenuOutlined, UserOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../auth';
 
@@ -30,6 +30,7 @@ const ownerItems = [
   { key: '/reports', icon: <BarChartOutlined />, label: t("Báo cáo") },
   { type: 'divider' as const },
   { key: '/settings/payment', icon: <CreditCardOutlined />, label: t("Thanh toán trực tuyến") },
+  { key: '/account-status', icon: <CrownOutlined />, label: t("Gói cước & tài khoản") },
 ];
 const adminItems = [{ key: '/admin/owners', icon: <UserOutlined />, label: t("Chủ trọ") }];
   const isAdmin = user?.role === 'Admin';
@@ -39,9 +40,13 @@ const adminItems = [{ key: '/admin/owners', icon: <UserOutlined />, label: t("Ch
   const userMenu: MenuProps['items'] = [
     { key: 'account', label: <div className="user-menu-info"><strong>{user?.name}</strong><span>{user?.email}</span></div>, disabled: true },
     { type: 'divider' },
+    ...(!isAdmin ? [{ key: 'subscription', icon: <CrownOutlined />, label: t("Gói cước & tài khoản") }] : []),
+    { key: 'password', label: t("Đổi mật khẩu") },
     { key: 'logout', icon: <LogoutOutlined />, label: t("Đăng xuất") },
   ];
   const handleMenu = ({ key }: { key: string }) => {
+    if (key === 'subscription') navigate('/account-status');
+    if (key === 'password') navigate('/change-password');
     if (key === 'logout') void signOut().then(() => navigate('/login'));
   };
   const menu = <Menu theme="dark" mode="inline" selectedKeys={[location.pathname]} items={items} onClick={({ key }) => { navigate(key); setMobileOpen(false); }} />;

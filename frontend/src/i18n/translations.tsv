@@ -787,3 +787,116 @@
 786|Confirm move-out|确认退租|퇴실 확인|निकासी की पुष्टि करें
 787|No deposit is currently held|当前没有持有押金|현재 보유 중인 보증금이 없습니다|वर्तमान में कोई जमा राशि नहीं रखी गई है
 788|Confirming will end the tenancy without recording a refund or retained deposit.|确认后将结束租期，不会记录退款或押金留存。|확인하면 환불이나 보증금 보유 기록 없이 임대가 종료됩니다.|पुष्टि करने पर वापसी या रोकी गई जमा राशि दर्ज किए बिना किरायेदारी समाप्त होगी।
+789|Reset password|重置密码|비밀번호 재설정|पासवर्ड रीसेट करें
+790|Create reset code|生成重置码|재설정 코드 생성|रीसेट कोड बनाएँ
+791|Share this code privately with the landlord after verifying their identity. It is shown only once.|核实房东身份后，请私下提供此码。此码仅显示一次。|신원 확인 후 임대인에게 코드를 비공개로 전달하세요. 코드는 한 번만 표시됩니다.|पहचान सत्यापित करके मकान मालिक को निजी रूप से कोड दें। यह केवल एक बार दिखता है।
+792|Password reset code|密码重置码|비밀번호 재설정 코드|पासवर्ड रीसेट कोड
+793|Expires: {0}|到期时间：{0}|만료: {0}|समाप्ति: {0}
+794|The landlord can enter the code on Reset password from the sign-in screen.|房东可在登录页面打开“重置密码”并输入此码。|임대인은 로그인 화면의 비밀번호 재설정에서 코드를 입력할 수 있습니다.|मकान मालिक लॉगिन स्क्रीन से पासवर्ड रीसेट पेज पर कोड दर्ज कर सकते हैं।
+795|Creating a code ends the landlord’s sessions and requires a new password before sign-in.|生成此码将结束房东所有会话，并要求设置新密码后才能登录。|코드를 생성하면 임대인의 세션이 종료되며 로그인 전에 새 비밀번호를 설정해야 합니다.|कोड बनाने से मकान मालिक के सत्र समाप्त होंगे और लॉगिन से पहले नया पासवर्ड आवश्यक होगा।
+796|Current password|当前密码|현재 비밀번호|वर्तमान पासवर्ड
+797|Password changed. Please sign in again.|密码已修改，请重新登录。|비밀번호를 변경했습니다. 다시 로그인하세요.|पासवर्ड बदल गया। दोबारा लॉग इन करें।
+798|Change password|修改密码|비밀번호 변경|पासवर्ड बदलें
+799|New password|新密码|새 비밀번호|नया पासवर्ड
+800|Enter your email and the reset code from your administrator. The code is single-use and valid for 30 minutes.|请输入邮箱及管理员提供的重置码。重置码仅可使用一次，30分钟内有效。|이메일과 관리자가 발급한 재설정 코드를 입력하세요. 코드는 30분 내 한 번만 사용할 수 있습니다.|ईमेल और व्यवस्थापक का रीसेट कोड दर्ज करें। कोड 30 मिनट में केवल एक बार इस्तेमाल हो सकता है।
+801|Changing your password ends all sign-in sessions.|修改密码后，所有登录会话将结束。|비밀번호를 변경하면 모든 로그인 세션이 종료됩니다.|पासवर्ड बदलने पर सभी लॉगिन सत्र समाप्त होंगे।
+802|Enter the 64-character code from your administrator.|请输入管理员提供的64位重置码。|관리자가 발급한 64자 코드를 입력하세요.|व्यवस्थापक का 64-अक्षर वाला कोड दर्ज करें।
+803|12–256 characters, with uppercase and lowercase letters, a number and a special character.|12–256个字符，包含大写字母、小写字母、数字及特殊字符。|12~256자이며 대문자, 소문자, 숫자, 특수문자를 포함해야 합니다.|12–256 अक्षर, बड़े और छोटे अक्षर, अंक और विशेष चिह्न के साथ।
+804|Include uppercase and lowercase letters, a number and a special character.|请包含大写字母、小写字母、数字及特殊字符。|대문자, 소문자, 숫자, 특수문자를 포함하세요.|बड़े और छोटे अक्षर, अंक और विशेष चिह्न शामिल करें।
+805|Confirm new password|确认新密码|새 비밀번호 확인|नए पासवर्ड की पुष्टि करें
+806|Passwords do not match.|两次密码不一致。|비밀번호가 일치하지 않습니다.|पासवर्ड मेल नहीं खाते।
+807|Save password|保存密码|비밀번호 저장|पासवर्ड सहेजें
+808|Tenant updated.|已更新租客信息。|세입자 정보를 수정했습니다.|किरायेदार की जानकारी अपडेट हुई।
+809|Edit tenant details|编辑租客信息|세입자 정보 수정|किरायेदार की जानकारी बदलें
+810|The new headcount applies to unpaid drafts and periods without invoices. Issued invoices stay unchanged.|新人数适用于未收款草稿及尚未开票的账期。已开具账单保持不变。|새 인원수는 미수금 초안과 미발행 기간에 적용됩니다. 발행된 청구서는 유지됩니다.|नई संख्या अवैतनिक ड्राफ्ट और बिना बिल वाली अवधि पर लागू होगी। जारी बिल अपरिवर्तित रहेंगे।
+811|Collection rate|收款比例|수금 비율|वसूली दर
+812|Total due this month|本月应收总额|이번 달 청구 총액|इस महीने कुल देय
+813|Collected this month|本月已收|이번 달 수금액|इस महीने वसूली
+814|Outstanding on this month’s invoices|本月账单未收金额|이번 달 청구서 미수금|इस महीने के बिलों की बकाया राशि
+815|All-time totals|累计统计|전체 기간 통계|सभी समय के कुल आँकड़े
+816|Total due: {0} · Collected: {1} · Outstanding: {2}|应收：{0} · 已收：{1} · 未收：{2}|청구액: {0} · 수금액: {1} · 미수금: {2}|कुल देय: {0} · वसूली: {1} · बकाया: {2}
+817|New passwords require 12–256 characters with uppercase and lowercase letters, a number and a special character.|新密码需12–256个字符，并包含大写字母、小写字母、数字及特殊字符。|새 비밀번호는 12~256자이며 대문자, 소문자, 숫자, 특수문자를 포함해야 합니다.|नए पासवर्ड में 12–256 अक्षर, बड़े और छोटे अक्षर, अंक और विशेष चिह्न होने चाहिए।
+818|The current password is incorrect.|当前密码不正确。|현재 비밀번호가 올바르지 않습니다.|वर्तमान पासवर्ड गलत है।
+819|The new password must differ from the current password.|新密码必须与当前密码不同。|새 비밀번호는 현재 비밀번호와 달라야 합니다.|नया पासवर्ड वर्तमान पासवर्ड से अलग होना चाहिए।
+820|Reset your password using the code from your administrator before signing in.|登录前请使用管理员提供的重置码重置密码。|로그인 전에 관리자가 발급한 코드로 비밀번호를 재설정하세요.|लॉगिन से पहले व्यवस्थापक के कोड से पासवर्ड रीसेट करें।
+821|The password reset code is invalid or expired.|密码重置码无效或已过期。|비밀번호 재설정 코드가 유효하지 않거나 만료되었습니다.|पासवर्ड रीसेट कोड अमान्य या समाप्त हो गया है।
+822|Tenant names must contain 1–160 characters.|租客姓名需1–160个字符。|세입자 이름은 1~160자여야 합니다.|किरायेदार का नाम 1–160 अक्षरों का होना चाहिए।
+823|Phone numbers may contain at most 60 characters.|电话号码最多60个字符。|전화번호는 최대 60자입니다.|फोन नंबर अधिकतम 60 अक्षरों का हो सकता है।
+824|The number of occupants must be between 1 and 30.|入住人数需为1–30人。|거주 인원은 1~30명이어야 합니다.|रहने वालों की संख्या 1 से 30 के बीच होनी चाहिए।
+825|The occupancy has changed or is no longer active. Reload the room.|租期已更改或已结束，请重新加载房间。|임대 정보가 변경되었거나 종료되었습니다. 방 정보를 다시 불러오세요.|किराया अवधि बदल गई या सक्रिय नहीं है। कमरे को फिर लोड करें।
+826|The draft has a payment or a pending transaction. Resolve it before changing the headcount.|草稿账单已有付款或待处理交易，请先处理再更改人数。|초안에 결제 또는 대기 중인 거래가 있습니다. 인원 변경 전에 처리하세요.|ड्राफ्ट में भुगतान या लंबित लेनदेन है। संख्या बदलने से पहले इसे हल करें।
+827|The draft is missing its saved water rate.|草稿账单缺少保存的水费单价。|초안에 저장된 수도 요금이 없습니다.|ड्राफ्ट में सहेजी गई पानी की दर नहीं है।
+828|Upgraded to Pro package successfully!|成功升级至Pro专业版！|Pro 요금제로 성공적으로 업그레이드되었습니다!|प्रो पैकेज में सफलतापूर्वक अपग्रेड किया गया!
+829|SUBSCRIPTION & ACCOUNT|套餐与账户|구독 및 계정|सदस्यता और खाता
+830|Service Packages & Room Limit|服务套餐与房间限额|서비스 요금제 및 객실 제한|सेवा पैकेज और कमरे की सीमा
+831|Manage your subscription packages, expiration date, and upgrade your account.|管理您的服务套餐、使用期限并升级您的账户。|서비스 요금제, 유효 기간을 관리하고 계정을 업그레이드하세요.|अपने सेवा पैकेज, समाप्ति तिथि प्रबंधित करें और अपना खाता अपग्रेड करें।
+832|Reached Free tier room limit|已达到免费版房间上限|무료 요금제 객실 한도에 도달했습니다|निःशुल्क योजना की कमरा सीमा समाप्त हो गई है
+833|You are managing {0}/{1} maximum rooms on the Free tier. Upgrade to Pro to create unlimited rooms.|您正在管理免费版最多 {0}/{1} 间出租房。请升级至Pro版以创建无限制房间。|현재 무료 요금제 최대 {0}/{1}개의 객실을 관리하고 있습니다. 무제한 객실을 만들려면 Pro로 업그레이드하세요.|आप निःशुल्क योजना के अधिकतम {0}/{1} कमरों का प्रबंधन कर रहे हैं। असीमित कमरे बनाने के लिए प्रो में अपग्रेड करें।
+834|Current package information|当前套餐信息|현재 요금제 정보|वर्तमान पैकेज की जानकारी
+835|Service package:|服务套餐：|서비스 요금제:|सेवा पैकेज:
+836|Free|免费|무료|निःशुल्क
+837|Expiration date:|使用期限：|유효 기간:|उपयोग की अवधि:
+838|No expiration (Free tier)|无时间限制（免费版）|무제한 유효 기간 (무료 요금제)|समय की कोई सीमा नहीं (निःशुल्क योजना)
+839|Managed rooms:|正在管理的房间数：|관리 중인 객실 수:|प्रबंधित किए जा रहे कमरे:
+840|{0} rooms (Unlimited)|{0} 间房间（无限制）|{0}개 객실 (무제한)|{0} कमरे (असीमित)
+841|{0} / {1} rooms|{0} / {1} 间|{0} / {1}개 객실|{0} / {1} कमरे
+842|Pro package benefits|Pro专业版特权|Pro 요금제 혜택|प्रो पैकेज के लाभ
+843|Manage unlimited buildings and rental rooms|无限制管理房屋楼栋与出租房间|건물 및 임대 객실 무제한 관리|असीमित इमारतों और कमरों का प्रबंधन करें
+844|Automatic meter closing & invoice issuance|自动抄水电表并自动生成账单|전기/수도 검침 및 청구서 자동 발행|स्वचालित मीटर क्लोजिंग और इनवॉइस जारी करना
+845|payOS online payment gateway & automatic reconciliation|payOS在线支付网关与自动对账|payOS 온라인 결제 게이트웨이 및 자동 대사|payOS ऑनलाइन भुगतान गेटवे और स्वचालित मिलान
+846|24/7 priority technical support from the Rehouse team|Rehouse团队提供24/7全天候优先技术支持|Rehouse 팀의 24/7 우선 기술 지원|Rehouse टीम से 24/7 प्राथमिकता तकनीकी सहायता
+847|Renew Pro package|续费Pro专业版|Pro 요금제 연장|प्रो पैकेज का नवीनीकरण करें
+848|Upgrade to Pro account|升级到Pro专业版账户|Pro 계정으로 업그레이드|प्रो खाते में अपग्रेड करें
+849|Renew now|立即续费|지금 연장하기|अभी नवीनीकृत करें
+850|Upgrade account|升级账户|계정 업그레이드|खाता अपग्रेड करें
+851|Best value|最划算|최대 절약|सर्वोत्तम बचत
+852|Popular|热门推荐|인기|लोकप्रिय
+853|Valid for {0} days|使用时长 {0} 天|{0}일 동안 사용|{0} दिनों के लिए मान्य
+854|Scan QR code to pay for Pro upgrade|扫描QR二维码支付升级Pro|Pro 업그레이드 결제를 위한 QR 코드 스캔|प्रो अपग्रेड भुगतान के लिए क्यूआर कोड स्कैन करें
+855|Done|完成|완료|संपन्न
+856|Open PayOS page|打开PayOS支付页面|PayOS 페이지 열기|PayOS पेज खोलें
+857|Check payment|检查支付状态|결제 확인|भुगतान जांचें
+858|Your account has been upgraded to Pro. You can now create unlimited rental rooms.|您的账户已升级至Pro版。您现在可以创建不限数量的房间。|계정이 Pro로 업그레이드되었습니다. 이제 무제한으로 객실을 등록할 수 있습니다.|आपका खाता प्रो में अपग्रेड हो गया है। अब आप असीमित कमरे बना सकते हैं।
+859|Open your banking app and scan the VietQR code below for automatic payment.|打开银行应用并扫描下方VietQR二维码进行自动支付。|은행 앱을 열고 아래 VietQR 코드를 스캔하여 자동 결제하세요.|अपने बैंकिंग ऐप को खोलें और स्वचालित भुगतान के लिए नीचे दिए गए VietQR कोड को स्कैन करें।
+860|Amount:|金额：|금액:|राशि:
+861|Account holder:|收款人：|예금주:|खाता धारक:
+862|Account number:|银行账号：|계좌 번호:|खाता संख्या:
+863|Account number copied|已复制银行账号|계좌 번호가 복사되었습니다|खाता संख्या कॉपी की गई
+864|Description:|附言内容：|입금 통장 표시:|विवरण:
+865|Transfer description copied|已复制转账附言|입금 내용이 복사되었습니다|स्थानांतरण विवरण कॉपी किया गया
+866|The system will automatically activate Pro within 1-2 minutes after receiving payment.|系统将在收到转账后 1-2 分钟内自动激活 Pro 专业版。|입금이 확인되면 1-2분 이내에 시스템에서 자동으로 Pro 요금제가 활성화됩니다.|भुगतान प्राप्त होने के 1-2 मिनट के भीतर सिस्टम स्वचालित रूप से प्रो सक्रिय कर देगा।
+867|Updated owner subscription package.|已更新房东套餐。|임대인의 요금제가 업데이트되었습니다.|मकान मालिक का पैकेज अपडेट कर दिया गया है।
+868|PACKAGE|套餐|요금제|पैकेज
+869|Active|活跃中|활성|सक्रिय
+870|ROOMS|房间数|객실 수|कमरे
+871|Package|套餐|요금제|पैकेज
+872|Manage package · {0}|管理套餐 · {0}|요금제 관리 · {0}|पैकेज प्रबंधित करें · {0}
+873|Update package|更新套餐|요금제 업데이트|पैकेज अपडेट करें
+874|Owner:|房东：|임대인:|मकान मालिक:
+875|Current status:|当前状态：|현재 상태:|वर्तमान स्थिति:
+876|Service package|服务套餐|서비스 요금제|सेवा पैकेज
+877|Pro package (Unlimited rooms)|Pro版（无限制房间）|Pro 요금제 (객실 무제한)|प्रो पैकेज (असीमित कमरे)
+878|Free package (Max 5 rooms)|免费版（最多5间房）|무료 요금제 (최대 5개 객실)|निःशुल्क पैकेज (अधिकतम 5 कमरे)
+879|Add extra days|增加天数|추가 일수|अतिरिक्त दिन जोड़ें
+880|Please enter number of days.|请输入天数。|일수를 입력해 주세요.|कृपया दिनों की संख्या दर्ज करें।
+881|+30 days (1 month)|+30天（1个月）|+30일 (1개월)|+30 दिन (1 महीना)
+882|+90 days (3 months)|+90天（3个月）|+90일 (3개월)|+90 दिन (3 महीने)
+883|+365 days (1 year)|+365天（1年）|+365일 (1년)|+365 दिन (1 वर्ष)
+884|days|天|일|दिन
+885|Note / Reason for change|备注 / 变更原因|메모 / 변경 사유|टिप्पणी / परिवर्तन का कारण
+886|Example: Event promotion, direct bank transfer...|例如：活动促销、银行直接转账...|예: 이벤트 프로모션, 무통장 직접 입금...|उदाहरण: कार्यक्रम प्रचार, बैंक से सीधा भुगतान...
+887|The Free tier only allows managing up to {0} rooms. Please upgrade to Pro to create unlimited rooms.|免费版仅支持最多管理 {0} 间房间。请升级到Pro专业版以创建无限制房间。|무료 요금제는 최대 {0}개 객실만 관리할 수 있습니다. 무제한으로 객실을 등록하려면 Pro로 업그레이드하세요.|निःशुल्क योजना में केवल {0} कमरों तक का प्रबंधन करने की अनुमति है। असीमित कमरे बनाने के लिए कृपया प्रो में अपग्रेड करें।
+888|Upgrade now|立即升级|지금 업그레이드|अभी अपग्रेड करें
+889|Later|稍后再说|나중에|बाद में
+890|rooms (Free tier)|间房间（免费版）|개 객실 (무료 요금제)|कमरे (निःशुल्क योजना)
+891|Subscription & Account|套餐与账户|요금제 및 계정|सदस्यता और खाता
+892|Copy collection message|复制催缴账单信息|청구 메시지 복사|भुगतान संदेश कॉपी करें
+893|Copy payment link|复制支付链接|결제 링크 복사|भुगतान लिंक कॉपी करें
+894|Collection message copied.|已复制催缴账单信息。|청구 메시지가 복사되었습니다.|भुगतान संदेश कॉपी किया गया।
+895|Payment link copied.|已复制支付链接。|결제 링크가 복사되었습니다.|भुगतान लिंक कॉपी किया गया।
+896|No payment link available for this invoice.|该账单暂无支付链接。|이 청구서에 사용할 수 있는 결제 링크가 없습니다.|इस चालान के लिए कोई भुगतान लिंक उपलब्ध नहीं है।
+897|ACTIONS|操作|작업|कार्रवाई
+898|🔔 Room fee notice for {0} - Period {1}|🔔 房费通知 {0} - 账期 {1}|🔔 객실 요금 알림 {0} - {1} 회차|🔔 कमरा शुल्क सूचना {0} - अवधि {1}
+899|💰 Total: {0}|💰 合计：{0}|💰 합계: {0}|💰 कुल: {0}
+900|👉 View utility readings and scan QR code for automatic payment at: {0}|👉 查看水电度数详情并扫描二维码自动支付：{0}|👉 수도·전기 계량 상세 확인 및 QR 코드로 자동 결제하기: {0}|👉 उपयोगिता रीडिंग देखें और स्वचालित भुगतान के लिए क्यूआर कोड स्कैन करें: {0}
+901|Cannot copy automatically.|无法自动复制。|자동 복사에 실패했습니다.|स्वचालित रूप से कॉपी नहीं किया जा सका।

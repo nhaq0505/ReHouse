@@ -13,6 +13,14 @@ public sealed class ApiException(int statusCode, string message) : Exception(mes
 
 public static class ApiSupport
 {
+    public static DateOnly VietnamDate(DateTimeOffset instant)
+    {
+        TimeZoneInfo zone;
+        try { zone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"); }
+        catch (TimeZoneNotFoundException) { zone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"); }
+        return DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(instant, zone).DateTime);
+    }
+
     public static Guid UserId(HttpContext context)
     {
         var value = context.User.FindFirstValue(ClaimTypes.NameIdentifier);

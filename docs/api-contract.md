@@ -95,3 +95,53 @@ POST /api/rooms/{id}/complete-moveout {occupancyId,finalInvoiceId} checks final 
 no pending attempts, no outstanding non-deposit debt and no held deposit; updates meter baseline,
 ends occupancy and revokes token transactionally. Replay after completion does not close a new occupant.
 Legacy end-occupancy remains compatible but blocks debt after a final invoice was created.
+
+## Active occupancy, password recovery and monthly dashboard (14/10/2026)
+
+`PATCH /api/rooms/{roomId}/occupancy` (approved Owner):
+`{ occupancyId, tenantName, phone?, people }` → `RoomDto`.
+Requires the exact active occupancy ID; rejects inactive/stale occupants with 409,
+other owners' rooms with 404, empty/overlong name (160), phone >60 or people outside 1–30 with 400.
+Does not change dates, deposit, room fees or tenant links. Newly recorded readings snapshot
+`OccupantsCount`. Per-person unpaid Monthly Drafts use their saved WaterRate and the new
+headcount, increment Version and record an InvoiceRevision. Drafts with a paid status,
+nonzero Paid, receipts or pending payOS block the entire update. All Issued invoices,
+including Unpaid/Partial/Paid, remain unchanged. Legacy per-person readings without a
+headcount snapshot and without an invoice are skipped by regeneration rather than
+reinterpreted using today's occupants.
+
+`POST /api/auth/change-password` (signed-in Owner/Admin, including Pending Owner):
+`{ currentPassword, newPassword, confirmPassword }` → `{ success: true }`.
+New password: 12–256 characters including uppercase, lowercase, digit and non-whitespace
+special character; confirmation must match and the password must differ from the current one.
+Invalid input/current password returns 400. Hashes with ASP.NET PasswordHasher, clears
+outstanding reset codes and revokes every session, including the current one; sign in again.
+Existing registration/login contracts and legacy passwords remain supported.
+
+`POST /api/admin/owners/{id}/reset-password` (Admin, current-password reauthentication):
+`{ currentPassword }` → `{ token, expiresAt }`, `Cache-Control: no-store`.
+Token is a cryptographically random 32-byte value encoded as 64 hex characters; only its
+SHA-256 hash and 30-minute UTC expiry are stored. Only Owner targets are accepted (404 otherwise).
+Replaces any older code and revokes existing sessions immediately. Login with the old
+password returns 403 until a new password is set. The admin displays the code once and
+must privately deliver it after verifying the owner's identity; there is no email provider.
+
+`POST /api/auth/reset-password` (public, rate limited):
+`{ email, token, newPassword, confirmPassword }` → `{ success: true }`.
+Same new-password policy; invalid/expired/replayed code or wrong email returns the same 400
+message. Successful reset atomically consumes the code and revokes sessions; does not
+sign in automatically or change account approval/suspension. Concurrent consumption has
+at most one success; the loser returns 400 or 409. An expired admin-issued code requires
+the admin to issue another; expiry alone does not restore access with the old password.
+All credential endpoints share the existing auth rate limiter, Origin checks for signed-in
+mutations and serializable transactions. Passwords and reset tokens are never included in URLs.
+
+`GET /api/dashboard`: existing `totalBilled`, `totalPaid`, `totalOutstanding`, room counts and
+`pendingReadings` retain their semantics. Adds `period`, `monthlyBilled`, `monthlyPaid`,
+`monthlyOutstanding`, `collectionRate` (0–100 percent, two decimal places; zero when no bills).
+The period uses Asia/Ho_Chi_Minh and the server clock. Monthly values include Issued
+non-Deposit invoices whose Period matches the current Vietnamese month; Drafts and deposits
+are excluded. `monthlyPaid` is paid balance on those invoices, not cash received during
+this calendar month. Use the receipt report for cash-flow reporting. Frontend primary KPIs
+use the monthly fields; all-time values appear in a separate block. Recent invoices use
+the period returned by the dashboard API.

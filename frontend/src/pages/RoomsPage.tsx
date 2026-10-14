@@ -1,8 +1,8 @@
 import { dateFormat, getLanguage, languages, t, type Language } from '../i18n/runtime';
 import { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Col, ConfigProvider, DatePicker, Dropdown, Form, Grid, Input, InputNumber, Modal, Row, Select, Tag, Typography } from 'antd';
+import { Alert, App, Button, Card, Col, ConfigProvider, DatePicker, Dropdown, Form, Grid, Input, InputNumber, Modal, Row, Select, Space, Tag, Typography } from 'antd';
 import type { MenuProps, TableProps } from 'antd';
-import { FileAddOutlined, CopyOutlined, EditOutlined, EllipsisOutlined, HomeOutlined, LinkOutlined, PlusOutlined, UserAddOutlined, RollbackOutlined } from '@ant-design/icons';
+import { FileAddOutlined, CopyOutlined, CrownOutlined, EditOutlined, EllipsisOutlined, HomeOutlined, LinkOutlined, PlusOutlined, UserAddOutlined, RollbackOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -14,7 +14,7 @@ import MoneyInput from '../components/MoneyInput';
 import ResponsiveTable from '../components/ResponsiveTable';
 import { EmptyPanel, LoadError, PageTitle, SectionCard } from '../components/Ui';
 
-type RoomMode = 'create' | 'duplicate' | 'settings' | 'occupancy' | null;
+type RoomMode = 'create' | 'duplicate' | 'settings' | 'occupancy' | 'edit-occupancy' | null;
 type ArchiveFilter = 'Active' | 'Archived';
 
 
@@ -45,20 +45,28 @@ function RoomsContent() {
   const [supplementalForm] = Form.useForm();
   const [roomForm] = Form.useForm();
   const [occupancyForm] = Form.useForm();
+  const [editOccupancyForm] = Form.useForm();
   const buildingFilter = searchParams.get('building') || undefined;
   const [statusFilter, setStatusFilter] = useState<'all' | 'occupied' | 'vacant'>('all');
   const buildingsQuery = useQuery({ queryKey: ['buildings', 'room-options'], queryFn: () => api.buildings.list(true) });
   const roomsQuery = useQuery({ queryKey: ['rooms', 'archive-view'], queryFn: () => api.rooms.list(undefined, true) });
+  const subQuery = useQuery({ queryKey: ['subscription'], queryFn: api.subscription.getStatus });
 
-  const refreshData = async () => { await Promise.all([client.invalidateQueries({ queryKey: ['rooms'] }), client.invalidateQueries({ queryKey: ['dashboard'] }), client.invalidateQueries({ queryKey: ['buildings'] }), client.invalidateQueries({ queryKey: ['invoices'] })]); };
+  const refreshData = async () => { await Promise.all([client.invalidateQueries({ queryKey: ['rooms'] }), client.invalidateQueries({ queryKey: ['dashboard'] }), client.invalidateQueries({ queryKey: ['buildings'] }), client.invalidateQueries({ queryKey: ['invoices'] }), client.invalidateQueries({ queryKey: ['subscription'] })]); };
   const createMutation = useMutation({ mutationFn: api.rooms.create, onSuccess: async () => { await refreshData(); message.success(t("Đã thêm phòng.")); setMode(null); roomForm.resetFields(); }, onError: (e: Error) => message.error(e.message) });
   const supplementalMutation = useMutation({ mutationFn: ({ roomId, body }: { roomId: string; body: Parameters<typeof api.invoices.createSupplemental>[1] }) => api.invoices.createSupplemental(roomId, body), onSuccess: async () => { await refreshData(); message.success(t("Đã tạo hóa đơn bổ sung trên link khách.")); setSupplemental(null); supplementalForm.resetFields(); }, onError: (e: Error) => message.error(e.message) });
   const updateMutation = useMutation({ mutationFn: ({ id, values }: { id: string; values: Parameters<typeof api.rooms.update>[1] }) => api.rooms.update(id, values), onSuccess: async () => { await refreshData(); message.success(t("Đã cập nhật thông tin phòng.")); setMode(null); }, onError: (e: Error) => message.error(e.message) });
   const occupancyMutation = useMutation({ mutationFn: ({ id, values }: { id: string; values: { tenantName: string; phone: string; people: number; startDate: string; depositAmount: number } }) => api.rooms.startOccupancy(id, values), onSuccess: async () => { await refreshData(); message.success(t("Đã ghi nhận người thuê và khoản cọc nếu có.")); setMode(null); }, onError: (e: Error) => message.error(e.message) });
+  const editOccupancyMutation = useMutation({ mutationFn: ({ id, values }: { id: string; values: Parameters<typeof api.rooms.editOccupancy>[1] }) => api.rooms.editOccupancy(id, values), onSuccess: async () => { await refreshData(); message.success(t("Đã cập nhật người thuê.")); setMode(null); }, onError: (e: Error) => message.error(e.message) });
   const archiveMutation = useMutation({ mutationFn: api.rooms.archive, onSuccess: async () => { await refreshData(); message.success(t("Đã lưu trữ phòng. Lịch sử và hóa đơn vẫn được giữ.")); }, onError: (error: Error) => message.error(error.message) });
   const restoreMutation = useMutation({ mutationFn: api.rooms.restore, onSuccess: async () => { await refreshData(); message.success(t("Đã khôi phục phòng.")); }, onError: (error: Error) => message.error(error.message) });
 
   const rotateMutation = useMutation({ mutationFn: api.rooms.rotateLink, onSuccess: (result, id) => { setLinkInfo({ ...result, room: roomsQuery.data?.find((room) => room.id === id), newlyIssued: true }); void refreshData(); }, onError: (e: Error) => message.error(e.message) });
+
+  const isPro = subQuery.data?.isPro ?? false;
+  const maxRooms = subQuery.data?.maxRooms ?? 5;
+  const activeRoomCount = (roomsQuery.data ?? []).filter((room) => !room.isArchived).length;
+  const isQuotaReached = !isPro && activeRoomCount >= maxRooms;
 
   const visibleRooms = useMemo(() => (roomsQuery.data ?? []).filter((room) => archiveFilter === 'Archived' ? !!room.isArchived : !room.isArchived), [roomsQuery.data, archiveFilter]);
   const buildingRooms = useMemo(() => visibleRooms.filter((room) => !buildingFilter || room.buildingId === buildingFilter), [visibleRooms, buildingFilter]);
@@ -66,8 +74,30 @@ function RoomsContent() {
   const occupiedCount = buildingRooms.filter((room) => room.occupancy).length;
   const vacancyCount = buildingRooms.length - occupiedCount;
   const activeBuildings = (buildingsQuery.data ?? []).filter((building) => !building.isArchived);
-  const openCreate = () => { setSelectedRoom(null); roomForm.resetFields(); roomForm.setFieldsValue({ rent: 0, electricityRate: 3500, waterFee: 0, waterPerPerson: false, serviceFee: 0, initialReading: 0, buildingId: activeBuildings.some((building) => building.id === buildingFilter) ? buildingFilter : (activeBuildings.length === 1 ? activeBuildings[0].id : undefined) }); setMode('create'); };
+  const openCreate = () => {
+    if (isQuotaReached) {
+      modal.confirm({
+        title: t("Đã đạt giới hạn phòng của gói Miễn phí"),
+        content: t("Gói Miễn phí chỉ cho phép quản lý tối đa {0} phòng. Vui lòng nâng cấp lên gói Pro để tạo thêm phòng không giới hạn.", [maxRooms]),
+        okText: t("Nâng cấp ngay"),
+        cancelText: t("Để sau"),
+        onOk: () => navigate('/account-status'),
+      });
+      return;
+    }
+    setSelectedRoom(null); roomForm.resetFields(); roomForm.setFieldsValue({ rent: 0, electricityRate: 3500, waterFee: 0, waterPerPerson: false, serviceFee: 0, initialReading: 0, buildingId: activeBuildings.some((building) => building.id === buildingFilter) ? buildingFilter : (activeBuildings.length === 1 ? activeBuildings[0].id : undefined) }); setMode('create');
+  };
   const openDuplicate = (room: Room) => {
+    if (isQuotaReached) {
+      modal.confirm({
+        title: t("Đã đạt giới hạn phòng của gói Miễn phí"),
+        content: t("Gói Miễn phí chỉ cho phép quản lý tối đa {0} phòng. Vui lòng nâng cấp lên gói Pro để tạo thêm phòng không giới hạn.", [maxRooms]),
+        okText: t("Nâng cấp ngay"),
+        cancelText: t("Để sau"),
+        onOk: () => navigate('/account-status'),
+      });
+      return;
+    }
     const baseName = room.name.slice(0, 60);
     const existingNames = new Set((roomsQuery.data ?? []).filter((candidate) => candidate.buildingId === room.buildingId).map((candidate) => candidate.name.toLocaleLowerCase()));
     let name = t("{0} (bản sao)", [baseName]);
@@ -83,6 +113,7 @@ function RoomsContent() {
 
   const getActions = (room: Room): MenuProps['items'] => [
     { key: 'edit', icon: <EditOutlined />, label: t("Sửa thông tin phòng") },
+    ...(room.occupancy ? [{ key: 'edit-occupancy', icon: <EditOutlined />, label: t("Sửa thông tin người thuê") }] : []),
     { key: 'duplicate', icon: <CopyOutlined />, label: t("Nhân bản phòng") },
     { key: 'supplemental', icon: <FileAddOutlined />, label: t("Tạo hóa đơn bổ sung"), disabled: !room.occupancy },
     ...(room.occupancy?.depositInvoiceId ? [{ key: 'deposit', label: <Link to={`/invoices?invoice=${room.occupancy.depositInvoiceId}`}>{t("Thu / quyết toán cọc")}</Link> }] : []),
@@ -93,6 +124,7 @@ function RoomsContent() {
   ];
   const onAction = (key: string, room: Room) => {
     if (key === 'edit') openSettings(room);
+    if (key === 'edit-occupancy' && room.occupancy) { setSelectedRoom(room); editOccupancyForm.resetFields(); editOccupancyForm.setFieldsValue(room.occupancy); setMode('edit-occupancy'); }
     if (key === 'duplicate') openDuplicate(room);
     if (key === 'supplemental' && room.occupancy) { supplementalForm.resetFields(); supplementalForm.setFieldsValue({ dueDate: dayjs() }); setSupplemental({ room, requestId: crypto.randomUUID() }); }
     if (key === 'occupancy') openOccupancy(room);
@@ -131,7 +163,45 @@ function RoomsContent() {
   const clearFilters = () => { setStatusFilter('all'); setArchiveFilter('Active'); setSearchParams({}); };
 
   return <div className="rooms-workspace">
-    <PageTitle title={t("Phòng & người thuê")} subtitle={t("Quản lý phòng, người thuê và link hóa đơn.")} extra={archiveFilter === 'Active' ? <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!activeBuildings.length}>{t("Tạo phòng trọ")}</Button> : undefined} />
+    <PageTitle
+      title={t("Phòng & người thuê")}
+      subtitle={t("Quản lý phòng, người thuê và link hóa đơn.")}
+      extra={archiveFilter === 'Active' ? (
+        <Space wrap>
+          {isPro ? (
+            <Tag color="gold" icon={<CrownOutlined />} style={{ padding: '4px 8px' }}>
+              PRO ({activeRoomCount} {t("phòng")})
+            </Tag>
+          ) : (
+            <Tag color={isQuotaReached ? 'error' : 'default'} style={{ padding: '4px 8px' }}>
+              {activeRoomCount} / {maxRooms} {t("phòng (Gói Miễn phí)")}
+            </Tag>
+          )}
+          <Button
+            type="primary"
+            icon={isQuotaReached ? <CrownOutlined /> : <PlusOutlined />}
+            onClick={isQuotaReached ? () => navigate('/account-status') : openCreate}
+            disabled={!activeBuildings.length && !isQuotaReached}
+          >
+            {isQuotaReached ? t("Nâng cấp tài khoản") : t("Tạo phòng trọ")}
+          </Button>
+        </Space>
+      ) : undefined}
+    />
+    {isQuotaReached && archiveFilter === 'Active' && (
+      <Alert
+        style={{ marginBottom: 16 }}
+        type="warning"
+        showIcon
+        message={t("Đã đạt giới hạn phòng của gói Miễn phí")}
+        description={
+          <span>
+            {t("Gói Miễn phí chỉ cho phép quản lý tối đa {0} phòng. Vui lòng nâng cấp lên gói Pro để tạo thêm phòng không giới hạn.", [maxRooms])}{' '}
+            <Link to="/account-status"><strong>{t("Nâng cấp ngay")}</strong></Link>
+          </span>
+        }
+      />
+    )}
     {!buildingsQuery.isPending && !buildingsQuery.isError && activeBuildings.length === 0 && archiveFilter === 'Active' && <AlertBanner onCreate={() => navigate('/buildings?create=1')} />}
     {buildingsQuery.isError && <LoadError error={buildingsQuery.error} onRetry={() => void buildingsQuery.refetch()} />}
     {roomsQuery.isError ? <LoadError error={roomsQuery.error} onRetry={() => void roomsQuery.refetch()} /> : <SectionCard className="room-directory">
@@ -144,7 +214,7 @@ function RoomsContent() {
       {roomsQuery.isPending ? <div className="room-list-loading"><div className="loading-placeholder" /></div> : rooms.length ? <ResponsiveTable className="room-table" rowKey="id" columns={columns} dataSource={rooms} renderCompact={compactRoom} pagination={{ pageSize: 8, showSizeChanger: false, hideOnSinglePage: true }} scroll={{ x: 900 }} /> : <EmptyPanel title={archiveFilter === 'Archived' ? t("Chưa có phòng được lưu trữ") : (roomsQuery.data?.length ?? 0) === 0 ? t("Chưa có phòng nào") : t("Không tìm thấy phòng phù hợp")} description={archiveFilter === 'Archived' ? t("Phòng đã lưu trữ sẽ xuất hiện ở đây để khôi phục.") : (roomsQuery.data?.length ?? 0) === 0 ? t("Tạo phòng trong một dãy trọ để bắt đầu quản lý người thuê.") : t("Không có phòng khớp với bộ lọc hiện tại.")} action={archiveFilter === 'Active' && (roomsQuery.data?.length ?? 0) === 0 ? <Button type="primary" icon={<PlusOutlined />} disabled={!activeBuildings.length} onClick={openCreate}>{t("Tạo phòng trọ")}</Button> : rooms.length === 0 && (buildingFilter || statusFilter !== 'all' || archiveFilter !== 'Active') ? <Button onClick={clearFilters}>{t("Xóa lọc")}</Button> : undefined} />}
     </SectionCard>}
     {moveoutRoom && <MoveoutDrawer room={moveoutRoom} onClose={() => setMoveoutRoom(null)} />}
-    <Modal className="room-editor" maskClosable={false} title={isCreating ? (mode === 'duplicate' ? t("Nhân bản {0}", [selectedRoom?.name ?? t("phòng")]) : t("Thêm phòng mới")) : mode === 'settings' ? t("Thông tin {0}", [selectedRoom?.name ?? t("phòng")]) : t("Thêm người thuê · {0}", [selectedRoom?.name ?? ''])} open={mode !== null} onCancel={() => setMode(null)} onOk={() => (mode === 'occupancy' ? occupancyForm.submit() : roomForm.submit())} okText={isCreating ? t("Tạo phòng") : mode === 'settings' ? t("Lưu thay đổi") : t("Lưu người thuê")} cancelText={t("Hủy")} confirmLoading={isBusy} width={610} destroyOnClose>
+    <Modal className="room-editor" maskClosable={false} title={isCreating ? (mode === 'duplicate' ? t("Nhân bản {0}", [selectedRoom?.name ?? t("phòng")]) : t("Thêm phòng mới")) : mode === 'settings' ? t("Thông tin {0}", [selectedRoom?.name ?? t("phòng")]) : t("Thêm người thuê · {0}", [selectedRoom?.name ?? ''])} open={mode !== null && mode !== 'edit-occupancy'} onCancel={() => setMode(null)} onOk={() => (mode === 'occupancy' ? occupancyForm.submit() : roomForm.submit())} okText={isCreating ? t("Tạo phòng") : mode === 'settings' ? t("Lưu thay đổi") : t("Lưu người thuê")} cancelText={t("Hủy")} confirmLoading={isBusy} width={610} destroyOnClose>
       {mode === 'occupancy' ? <><Typography.Paragraph className="modal-intro">{t("Nhập tiền cọc thỏa thuận riêng với khách. Khoản cọc được tạo riêng và thanh toán qua link khách sau khi lưu.")}</Typography.Paragraph><Form form={occupancyForm} layout="vertical" requiredMark={false} onFinish={(values) => selectedRoom && occupancyMutation.mutate({ id: selectedRoom.id, values: { ...values, startDate: values.startDate.format('YYYY-MM-DD') } })}><Form.Item label={t("Tên người thuê")} name="tenantName" rules={[{ required: true, whitespace: true, message: t("Vui lòng nhập tên người thuê.") }]}><Input placeholder={t("Họ và tên")} /></Form.Item><Row gutter={14}><Col xs={24} sm={12}><Form.Item label={t("Số điện thoại")} name="phone"><Input placeholder="09xx xxx xxx" /></Form.Item></Col><Col xs={24} sm={12}><Form.Item label={t("Số người ở")} name="people" rules={[{ required: true, type: 'number', min: 1, max: 30, message: t("Nhập từ 1 đến 30 người.") }]}><InputNumber min={1} max={30} precision={0} style={{ width: '100%' }} /></Form.Item></Col></Row><Form.Item label={t("Tiền cọc yêu cầu")} name="depositAmount" extra={t("Nhập 0 nếu không thu cọc. Đây là khoản phải thu, chưa ghi nhận khách đã trả.")} rules={[{ required: true, type: 'number', min: 0, max: 2147483647, message: t("Nhập số tiền cọc hợp lệ.") }]}><MoneyInput min={0} max={2147483647} precision={0} addonAfter={t("đ")} style={{ width: '100%' }} /></Form.Item><Form.Item label={t("Ngày chuyển vào")} name="startDate" rules={[{ required: true, message: t("Vui lòng chọn ngày.") }]}><DatePicker format={dateFormat()} disabledDate={(date) => date.isAfter(dayjs(), 'day')} style={{ width: '100%' }} /></Form.Item></Form></> : <>
         {isCreating && <Typography.Paragraph className="modal-intro">{mode === 'duplicate' ? t("Đã sao chép dãy trọ và các mức phí. Chỉnh tên phòng và nhập chỉ số công tơ mới trước khi tạo. Phòng mới chưa có người thuê, tiền cọc hoặc hóa đơn.") : t("Nhập giá thuê và các khoản phí để dùng khi lập hóa đơn hàng tháng.")}</Typography.Paragraph>}
         <Form form={roomForm} layout="vertical" requiredMark={false} onFinish={(values) => isCreating ? createMutation.mutate(values) : selectedRoom && updateMutation.mutate({ id: selectedRoom.id, values })}>
@@ -156,6 +226,14 @@ function RoomsContent() {
           {isCreating && <Form.Item label={t("Chỉ số điện ban đầu")} name="initialReading" rules={numberRule}><InputNumber min={0} step={0.001} precision={3} addonAfter="kWh" style={{ width: '100%' }} /></Form.Item>}
         </Form>
       </>}
+    </Modal>
+    <Modal className="room-editor" title={t("Sửa thông tin người thuê")} open={mode === 'edit-occupancy'} maskClosable={false} onCancel={() => { if (!editOccupancyMutation.isPending) setMode(null); }} onOk={() => editOccupancyForm.submit()} okText={t("Lưu thay đổi")} cancelText={t("Hủy")} confirmLoading={editOccupancyMutation.isPending} cancelButtonProps={{ disabled: editOccupancyMutation.isPending }} closable={!editOccupancyMutation.isPending} destroyOnClose>
+      <Typography.Paragraph>{t("Số người mới áp dụng cho hóa đơn nháp chưa thu tiền và kỳ chưa lập hóa đơn. Hóa đơn đã phát hành giữ nguyên.")}</Typography.Paragraph>
+      <Form form={editOccupancyForm} layout="vertical" onFinish={(values) => { if (selectedRoom?.occupancy && !editOccupancyMutation.isPending) editOccupancyMutation.mutate({ id: selectedRoom.id, values: { ...values, occupancyId: selectedRoom.occupancy.id } }); }}>
+        <Form.Item name="tenantName" label={t("Tên người thuê")} rules={[{ required: true, whitespace: true, max: 160, message: t("Vui lòng nhập tên người thuê.") }]}><Input maxLength={160} /></Form.Item>
+        <Form.Item name="phone" label={t("Số điện thoại")}><Input maxLength={60} /></Form.Item>
+        <Form.Item name="people" label={t("Số người ở")} rules={[{ required: true, type: 'integer', min: 1, max: 30, message: t("Nhập từ 1 đến 30 người.") }]}><InputNumber min={1} max={30} precision={0} style={{ width: '100%' }} /></Form.Item>
+      </Form>
     </Modal>
     <Modal className="room-editor" title={t("Tạo hóa đơn bổ sung · {0}", [supplemental?.room.name ?? ''])} open={!!supplemental} maskClosable={false} onCancel={() => { if (!supplementalMutation.isPending) setSupplemental(null); }} onOk={() => supplementalForm.submit()} okText={t("Tạo hóa đơn")} cancelText={t("Hủy")} confirmLoading={supplementalMutation.isPending} cancelButtonProps={{ disabled: supplementalMutation.isPending }} closable={!supplementalMutation.isPending} width={610} destroyOnClose>
       <Typography.Paragraph className="modal-intro">{t("Khoản thu riêng cho")} {supplemental?.room.occupancy?.tenantName}{t(". Sau khi tạo, khách xem và thanh toán qua link đang dùng.")}</Typography.Paragraph>

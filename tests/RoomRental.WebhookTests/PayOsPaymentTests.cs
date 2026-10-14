@@ -32,6 +32,7 @@ internal static class PayOsPaymentTests
         await InvalidCreateResponseIsRejectedAsync(CreateResponseFault.WrongOrder, "checkout order mismatch is rejected");
         await InvalidCreateResponseIsRejectedAsync(CreateResponseFault.ExpiredAtMismatch, "unexpected signed checkout expiry is rejected");
         await WebhookRemainsTheOnlyPaymentConfirmationAsync();
+        await SubscriptionPaymentAndWebhookActivatesProAsync();
     }
 
     private static async Task SignedQrRoundTripAndPendingReuseAsync()
@@ -281,6 +282,54 @@ internal static class PayOsPaymentTests
         Assert(handler.Calls == 0, "webhook confirmation uses no provider request or browser return signal");
     }
 
+    private static async Task SubscriptionPaymentAndWebhookActivatesProAsync()
+    {
+        using var fixture = new PayOsFixture();
+        var handler = new FakePayOsHandler(ChecksumKey);
+        var webhookService = new PaymentWebhookService(fixture.Db, fixture.Protection, handler, new ConfigurationBuilder().Build());
+        var service = fixture.CreateService(handler, webhookService);
+
+        var adminId = Guid.NewGuid();
+        fixture.Db.Users.Add(new AppUser
+        {
+            Id = adminId,
+            Name = "System Administrator",
+            Email = "admin@system.local",
+            PasswordHash = "unused-hash",
+            Role = UserRole.Admin,
+            Status = OwnerStatus.Approved
+        });
+        var protector = fixture.Protection.CreateProtector("RoomRental.OwnerPayOsCredentials.v1");
+        fixture.Db.PaymentSettings.Add(new OwnerPaymentSettings
+        {
+            OwnerId = adminId,
+            ClientId = "admin-client-id",
+            ProtectedApiKey = protector.Protect("admin-api-key"),
+            ProtectedChecksumKey = protector.Protect(ChecksumKey)
+        });
+        await fixture.Db.SaveChangesAsync();
+
+        var checkout = await service.CreateSubscriptionCheckoutAsync(fixture.OwnerId, "pro_1m", default);
+        Assert(checkout.OrderCode > 0, "subscription checkout order code is generated");
+        Assert(checkout.Amount == 99_000, "subscription checkout amount matches package");
+
+        var attempt = await fixture.Db.PayOsAttempts.SingleAsync(a => a.OrderCode == checkout.OrderCode);
+        Assert(attempt.Kind == "Subscription" && attempt.SubscriptionDays == 30, "subscription attempt metadata stored correctly");
+
+        using var webhook = CreateSignedWebhook(checkout.OrderCode, 99_000, "sub-ref-1", ChecksumKey);
+        var processed = await service.ProcessWebhookAsync(adminId, webhook.RootElement, default);
+        Assert(processed, "subscription webhook acknowledged");
+
+        var owner = await fixture.Db.Users.FindAsync(fixture.OwnerId);
+        Assert(owner!.IsPro && owner.SubscriptionTier == SubscriptionTier.Pro && owner.SubscriptionExpiresAt != null,
+            "subscription webhook activates Pro status and sets expiration");
+
+        var originalExpiry = owner.SubscriptionExpiresAt;
+        var replayed = await service.ProcessWebhookAsync(adminId, webhook.RootElement, default);
+        Assert(replayed, "duplicate subscription webhook acknowledged");
+        Assert(owner.SubscriptionExpiresAt == originalExpiry, "subscription webhook replay is idempotent and preserves expiry");
+    }
+
     private static JsonDocument CreateSignedWebhook(long orderCode, int amount, string reference, string checksumKey)
     {
         var data = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -463,13 +512,15 @@ internal sealed class PayOsFixture : IDisposable
         Db.SaveChanges();
     }
 
-    public PayOsService CreateService(IHttpClientFactory fakeHttpClientFactory)
+    public IDataProtectionProvider Protection => _protection;
+
+    public PayOsService CreateService(IHttpClientFactory fakeHttpClientFactory, PaymentWebhookService? webhookService = null)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["PublicBaseUrl"] = "http://localhost:5173"
         }).Build();
-        return new PayOsService(Db, _protection, fakeHttpClientFactory, configuration, NullLogger<PayOsService>.Instance);
+        return new PayOsService(Db, _protection, fakeHttpClientFactory, configuration, NullLogger<PayOsService>.Instance, webhookService);
     }
 
     public void Dispose()

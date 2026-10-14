@@ -89,4 +89,44 @@ public sealed class PaymentWebhookService(AppDbContext db, IDataProtectionProvid
             """, cancellationToken);
         return await GetAsync(ownerId, cancellationToken);
     }
+
+    public async Task<bool> HandleSubscriptionPaymentSuccessAsync(
+        PayOsAttempt attempt, decimal amount, string reference, CancellationToken cancellationToken)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+        var duplicate = await db.ProcessedWebhooks.SingleOrDefaultAsync(
+            row => row.OwnerId == attempt.OwnerId && row.Reference == reference, cancellationToken);
+        if (duplicate is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+
+        var trackedAttempt = await db.PayOsAttempts.SingleAsync(row => row.Id == attempt.Id, cancellationToken);
+        await db.Entry(trackedAttempt).ReloadAsync(cancellationToken);
+        if (trackedAttempt.Status == PaymentAttemptStatus.Paid)
+        {
+            db.ProcessedWebhooks.Add(new ProcessedWebhook { OwnerId = attempt.OwnerId, Reference = reference, OrderCode = attempt.OrderCode });
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+
+        var owner = await db.Users.SingleAsync(row => row.Id == attempt.OwnerId, cancellationToken);
+        var days = attempt.SubscriptionDays ?? 30;
+        var baseDate = (owner.SubscriptionExpiresAt is not null && owner.SubscriptionExpiresAt > DateTimeOffset.UtcNow)
+            ? owner.SubscriptionExpiresAt.Value
+            : DateTimeOffset.UtcNow;
+        owner.SubscriptionTier = SubscriptionTier.Pro;
+        owner.SubscriptionExpiresAt = baseDate.AddDays(days);
+
+        trackedAttempt.Status = PaymentAttemptStatus.Paid;
+        trackedAttempt.ProviderReference = reference;
+        trackedAttempt.PaidAt = DateTimeOffset.UtcNow;
+
+        db.ProcessedWebhooks.Add(new ProcessedWebhook { OwnerId = attempt.OwnerId, Reference = reference, OrderCode = trackedAttempt.OrderCode });
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
 }

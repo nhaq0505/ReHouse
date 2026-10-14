@@ -460,6 +460,127 @@ class BillingUpgradeIntegrationTests(unittest.TestCase):
         with closing(sqlite3.connect(database_path, timeout=10)) as db, db:
             db.execute("UPDATE PayOsAttempts SET Status = 'Failed' WHERE OrderCode = ? AND Status = 'Pending'", (order_code,))
 
+    def test_free_tier_enforces_five_rooms_quota(self) -> None:
+        sub = self.owner.ok("GET", "/api/subscription")
+        self.assertEqual(sub["tier"], "Free")
+        self.assertFalse(sub["isPro"])
+        self.assertEqual(sub["maxRooms"], 5)
+        self.assertEqual(sub["roomCount"], 0)
+
+        building = self.owner.ok("POST", "/api/buildings", {
+            "name": f"Quota-Building-{uuid.uuid4().hex[:6]}", "address": "Quota address"
+        })
+        for i in range(5):
+            room = self.owner.ok("POST", "/api/rooms", {
+                "buildingId": building["id"], "name": f"Room-{i+1}", "rent": 1000,
+                "electricityRate": 3000, "waterFee": 0, "waterPerPerson": False,
+                "serviceFee": 0, "initialReading": 0
+            })
+            self.assertTrue(room["id"])
+
+        status, body, _ = self.owner.request("POST", "/api/rooms", {
+            "buildingId": building["id"], "name": "Room-6-Forbidden", "rent": 1000,
+            "electricityRate": 3000, "waterFee": 0, "waterPerPerson": False,
+            "serviceFee": 0, "initialReading": 0
+        })
+        self.assertEqual(status, 403)
+        self.assertIn("Gói Miễn phí chỉ được tạo tối đa 5 phòng", body["message"])
+
+    def test_admin_can_upgrade_and_downgrade_owner_subscription(self) -> None:
+        building = self.owner.ok("POST", "/api/buildings", {
+            "name": f"Sub-Building-{uuid.uuid4().hex[:6]}", "address": "Sub address"
+        })
+        for i in range(5):
+            self.owner.ok("POST", "/api/rooms", {
+                "buildingId": building["id"], "name": f"Sub-Room-{i+1}", "rent": 1000,
+                "electricityRate": 3000, "waterFee": 0, "waterPerPerson": False,
+                "serviceFee": 0, "initialReading": 0
+            })
+
+        # Verify 6th room creation is blocked on Free
+        self.assertEqual(self.owner.request("POST", "/api/rooms", {
+            "buildingId": building["id"], "name": "Sub-Room-6", "rent": 1000,
+            "electricityRate": 3000, "waterFee": 0, "waterPerPerson": False,
+            "serviceFee": 0, "initialReading": 0
+        })[0], 403)
+
+        # Admin upgrades owner to Pro with 30 days
+        upgraded = self.admin.ok("POST", f"/api/admin/owners/{self.user['id']}/subscription", {
+            "tier": "Pro", "days": 30, "reason": "Integration test upgrade"
+        })
+        self.assertEqual(upgraded["subscriptionTier"], "Pro")
+        self.assertTrue(upgraded["isPro"])
+        self.assertIsNotNone(upgraded["subscriptionExpiresAt"])
+
+        # Owner creates 6th room on Pro tier -> succeeds
+        sub = self.owner.ok("GET", "/api/subscription")
+        self.assertEqual(sub["tier"], "Pro")
+        self.assertTrue(sub["isPro"])
+        room6 = self.owner.ok("POST", "/api/rooms", {
+            "buildingId": building["id"], "name": "Sub-Room-6", "rent": 1000,
+            "electricityRate": 3000, "waterFee": 0, "waterPerPerson": False,
+            "serviceFee": 0, "initialReading": 0
+        })
+        self.assertTrue(room6["id"])
+
+        # Admin downgrades back to Free
+        downgraded = self.admin.ok("POST", f"/api/admin/owners/{self.user['id']}/subscription", {
+            "tier": "Free", "reason": "Integration test downgrade"
+        })
+        self.assertEqual(downgraded["subscriptionTier"], "Free")
+        self.assertFalse(downgraded["isPro"])
+        self.assertIsNone(downgraded["subscriptionExpiresAt"])
+
+        # Owner cannot create 7th room because roomCount (6) >= maxRooms (5)
+        status, body, _ = self.owner.request("POST", "/api/rooms", {
+            "buildingId": building["id"], "name": "Sub-Room-7", "rent": 1000,
+            "electricityRate": 3000, "waterFee": 0, "waterPerPerson": False,
+            "serviceFee": 0, "initialReading": 0
+        })
+        self.assertEqual(status, 403)
+        self.assertIn("Gói Miễn phí chỉ được tạo tối đa 5 phòng", body["message"])
+
+    def test_room_archive_and_restore_respects_free_tier_quota(self) -> None:
+        building = self.owner.ok("POST", "/api/buildings", {
+            "name": f"Restore-Building-{uuid.uuid4().hex[:6]}", "address": "Restore address"
+        })
+        rooms = [
+            self.owner.ok("POST", "/api/rooms", {
+                "buildingId": building["id"], "name": f"Room-Arch-{i+1}", "rent": 1000,
+                "electricityRate": 3000, "waterFee": 0, "waterPerPerson": False,
+                "serviceFee": 0, "initialReading": 0
+            })
+            for i in range(5)
+        ]
+
+        # Archive one room -> active count drops to 4
+        self.owner.ok("DELETE", f"/api/rooms/{rooms[4]['id']}")
+
+        # Owner can create a replacement room to reach 5 again
+        room_replacement = self.owner.ok("POST", "/api/rooms", {
+            "buildingId": building["id"], "name": "Room-Replacement", "rent": 1000,
+            "electricityRate": 3000, "waterFee": 0, "waterPerPerson": False,
+            "serviceFee": 0, "initialReading": 0
+        })
+        self.assertTrue(room_replacement["id"])
+
+        # Restoring the archived room while at 5 rooms fails with 403
+        status, body, _ = self.owner.request("POST", f"/api/rooms/{rooms[4]['id']}/restore")
+        self.assertEqual(status, 403)
+        self.assertIn("khôi phục phòng", body["message"])
+
+    def test_owner_subscription_endpoints_and_package_list(self) -> None:
+        sub = self.owner.ok("GET", "/api/subscription")
+        self.assertIn("availablePackages", sub)
+        package_ids = [p["id"] for p in sub["availablePackages"]]
+        self.assertIn("pro_1m", package_ids)
+        self.assertIn("pro_3m", package_ids)
+        self.assertIn("pro_1y", package_ids)
+
+        # Calling upgrade endpoint returns either checkout or 502 gateway error if payos is unconfigured
+        status, body, _ = self.owner.request("POST", "/api/subscription/upgrade", {"packageId": "pro_1m"})
+        self.assertIn(status, (200, 502))
+
 
 if __name__ == "__main__":
     unittest.main()

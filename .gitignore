@@ -1,6 +1,7 @@
 **/bin/
 **/obj/
 **/node_modules/
+**/node_modules
 **/dist/
 **/*.tsbuildinfo
 **/__pycache__/

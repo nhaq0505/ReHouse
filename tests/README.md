@@ -191,3 +191,19 @@ p50 29.8 ms, p95 44.8 ms) and the 100-worker stage completed 7,078 reads in 5.05
 transport errors. This was one cache-hot synthetic tenant on the local Docker host and does not
 support a production capacity or user-count claim. See [`docs/POSTGRES_QA.md`](../docs/POSTGRES_QA.md)
 for the workload, host limits, teardown, and interpretation.
+
+## Occupancy, credential recovery and monthly KPIs — 14/10/2026
+
+`test_account_occupancy_dashboard.py` adds 12 tests for preserved Issued unpaid/partial/paid
+snapshots, new headcount and fixed water fees, owner scope/stale occupancy/validation,
+Draft revision/version/recalculation and paid/pending guards, saved reading regeneration,
+Owner/Admin password changes, session revocation, admin reauthentication, single-use,
+replaced/expired/concurrently-consumed reset tokens, hash-only storage and monthly KPI
+exclusions/all-time compatibility. SQLite fixtures require `TEST_SQLITE_DB` pointing to the
+same disposable local API database. They never contact payOS.
+
+Latest full-suite result: SQLite **52/52 pass**. PostgreSQL disposable database: **48 run,
+40 pass, 8 skip** (SQLite-only fixtures). The console service suite passes **71 assertions**,
+including Vietnam month/year boundaries and saved-headcount generation. Frontend build
+and i18n checks pass with **828 keys × 4 catalogs**. See
+[implementation report](../docs/account-occupancy-dashboard-report.md) for migration and UI evidence.

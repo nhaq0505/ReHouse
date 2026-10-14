@@ -14,6 +14,40 @@ public static class BillingEndpoints
     {
         var routes = app.MapGroup("/api").RequireAuthorization(policy => policy.RequireRole("Owner"));
 
+        routes.MapGet("/subscription", async (HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            var owner = await db.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == ownerId, cancellationToken)
+                ?? throw new ApiException(StatusCodes.Status404NotFound, "Owner was not found.");
+            var currentRooms = await (from r in db.Rooms.AsNoTracking()
+                                      join b in db.Buildings.AsNoTracking() on r.BuildingId equals b.Id
+                                      where b.OwnerId == ownerId && r.ArchivedAt == null && b.ArchivedAt == null
+                                      select r.Id).CountAsync(cancellationToken);
+
+            return Results.Ok(new SubscriptionStatusDto(
+                owner.SubscriptionTier.ToString(),
+                owner.IsPro,
+                owner.SubscriptionExpiresAt,
+                currentRooms,
+                owner.MaxRooms,
+                PayOsService.DefaultPackages
+            ));
+        });
+
+        routes.MapPost("/subscription/upgrade", async (CreateSubscriptionCheckoutRequest request, HttpContext context, PayOsService payOsService, CancellationToken cancellationToken) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            var checkout = await payOsService.CreateSubscriptionCheckoutAsync(ownerId, request.PackageId, cancellationToken);
+            return Results.Ok(checkout);
+        }).RequireRateLimiting("tenant-payment");
+
+        routes.MapPost("/subscription/reconcile/{orderCode:long}", async (long orderCode, HttpContext context, PayOsService payOsService, CancellationToken cancellationToken) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            var result = await payOsService.ReconcileSubscriptionOrderAsync(ownerId, orderCode, cancellationToken);
+            return Results.Ok(result);
+        }).RequireRateLimiting("tenant-payment");
+
         routes.MapGet("/readings", async (string? period, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
@@ -61,6 +95,7 @@ public static class BillingEndpoints
             var work = await PrepareReadingAsync(db, ownerId, request, cancellationToken);
             var reading = new MonthlyReading
             {
+                OccupantsCount = work.Occupancy.People,
                 RoomId = work.Room.Id,
                 OccupancyId = work.Occupancy.Id,
                 Period = work.Period,
@@ -90,7 +125,7 @@ public static class BillingEndpoints
                 reading.Consumption, reading.RecordedAt, InvoiceService.ToDto(invoice), invoice.LifecycleState.ToString()));
         });
 
-        routes.MapGet("/invoices", async (string? period, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
+        routes.MapGet("/invoices", async (string? period, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
             var query = db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().Where(row => row.OwnerId == ownerId);
@@ -104,7 +139,17 @@ public static class BillingEndpoints
             var pendingIds = await db.PayOsAttempts.AsNoTracking().Where(x => x.OwnerId == ownerId && x.Status == PaymentAttemptStatus.Pending)
                 .Select(x => x.InvoiceId).ToListAsync(cancellationToken);
             var pending = pendingIds.ToHashSet();
-            return Results.Ok(rows.Select(row => InvoiceService.ToDto(row, pending.Contains(row.Id))).ToList());
+
+            var occupancyIds = rows.Select(x => x.OccupancyId).Distinct().ToList();
+            var occupancies = await db.Occupancies.AsNoTracking()
+                .Where(x => occupancyIds.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+            return Results.Ok(rows.Select(row =>
+            {
+                var token = occupancies.TryGetValue(row.OccupancyId, out var occ) ? tokenService.Unprotect(occ) : null;
+                return InvoiceService.ToDto(row, pending.Contains(row.Id), tenantToken: token);
+            }).ToList());
         });
 
         routes.MapPost("/rooms/{id:guid}/supplemental-invoices", async (Guid id, SupplementalInvoiceRequest request,
@@ -149,14 +194,16 @@ public static class BillingEndpoints
             return Results.Ok(new { created = result.Created, skipped = result.Skipped, period });
         });
 
-        routes.MapGet("/invoices/{id:guid}", async (Guid id, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
+        routes.MapGet("/invoices/{id:guid}", async (Guid id, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
             var invoice = await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().SingleOrDefaultAsync(row => row.Id == id && row.OwnerId == ownerId, cancellationToken)
                 ?? throw new ApiException(StatusCodes.Status404NotFound, "Invoice was not found.");
             var pending = await db.PayOsAttempts.AsNoTracking().AnyAsync(x => x.OwnerId == ownerId && x.InvoiceId == id && x.Status == PaymentAttemptStatus.Pending, cancellationToken);
             var meterPolicy = await MeterCorrectionPolicyAsync(db, invoice, cancellationToken);
-            return Results.Ok(InvoiceService.ToDto(invoice, pending, meterPolicy.Allowed, meterPolicy.Reason));
+            var occupancy = await db.Occupancies.AsNoTracking().SingleOrDefaultAsync(x => x.Id == invoice.OccupancyId, cancellationToken);
+            var token = occupancy is null ? null : tokenService.Unprotect(occupancy);
+            return Results.Ok(InvoiceService.ToDto(invoice, pending, meterPolicy.Allowed, meterPolicy.Reason, tenantToken: token));
         });
 
         routes.MapPost("/invoices/{id:guid}/publish", async (Guid id, PublishInvoiceRequest request, HttpContext context, AppDbContext db, CancellationToken ct) =>

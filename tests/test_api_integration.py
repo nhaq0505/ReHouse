@@ -495,37 +495,39 @@ class RoomApiIntegrationTests(unittest.TestCase):
 
     def test_pending_owner_is_denied_until_admin_approval(self) -> None:
         session, user = self.create_owner()
-        self.assertEqual(user.get("status"), "Pending")
+        self.assertEqual(user.get("status"), "Approved")
+        self.assertEqual(user.get("subscriptionTier"), "Free")
 
         owners = as_list(self.admin.ok("GET", "/api/admin/owners"))
-        pending = next((item for item in owners if item.get("id") == user["id"]), None)
-        self.assertIsNotNone(pending, "New owner was not visible to the admin")
-        self.assertEqual(pending.get("status"), "Pending")
+        owner_record = next((item for item in owners if item.get("id") == user["id"]), None)
+        self.assertIsNotNone(owner_record, "New owner was not visible to the admin")
+        self.assertEqual(owner_record.get("status"), "Approved")
+        self.assertEqual(owner_record.get("subscriptionTier"), "Free")
 
         login_status, login_body, _ = session.request(
             "POST", "/api/auth/login", {"email": user["email"], "password": OWNER_PASSWORD}
         )
-        if 200 <= login_status < 300:
-            dashboard_status, dashboard_body, _ = session.request("GET", "/api/dashboard")
-            self.assertIn(
-                dashboard_status,
-                (401, 403),
-                f"Pending owner could access dashboard: {dashboard_body!r}",
-            )
-        else:
-            self.assertIn(
-                login_status,
-                (401, 403),
-                f"Unexpected pending-owner login response: {login_status} {login_body!r}",
-            )
+        self.assertIn(login_status, (200, 201), f"New self-serve owner could not log in: {login_body!r}")
+        dashboard_status, dashboard_body, _ = session.request("GET", "/api/dashboard")
+        self.assertEqual(dashboard_status, 200, f"Approved self-serve owner denied dashboard: {dashboard_body!r}")
 
+        # Admin can still suspend the self-serve owner
+        self.admin.ok(
+            "POST",
+            f"/api/admin/owners/{user['id']}/status",
+            {"status": "Suspended", "reason": "Self-serve admin suspension test"},
+        )
+        dashboard_status, dashboard_body, _ = session.request("GET", "/api/dashboard")
+        self.assertIn(dashboard_status, (401, 403), f"Suspended owner could still access dashboard: {dashboard_body!r}")
+
+        # Admin can re-approve the suspended owner
         self.approve(user)
-        status, body, _ = session.request(
+        login_status, login_body, _ = session.request(
             "POST", "/api/auth/login", {"email": user["email"], "password": OWNER_PASSWORD}
         )
-        self.assertIn(status, (200, 201), f"Approved owner could not log in: {body!r}")
+        self.assertIn(login_status, (200, 201), f"Re-approved owner could not log in: {login_body!r}")
         dashboard_status, dashboard, _ = session.request("GET", "/api/dashboard")
-        self.assertEqual(dashboard_status, 200, f"Approved owner denied: {dashboard!r}")
+        self.assertEqual(dashboard_status, 200, f"Re-approved owner denied: {dashboard!r}")
 
     def test_owner_cannot_read_or_edit_another_owners_room(self) -> None:
         owner_b, user_b = self.create_owner()

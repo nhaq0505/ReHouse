@@ -1,8 +1,8 @@
-import { dateFormat, formatDate, t } from '../i18n/runtime';
+import { dateFormat, formatDate, getLocale, t } from '../i18n/runtime';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, App, Button, Col, Collapse, DatePicker, Drawer, Form, Input, InputNumber, Row, Select, Tag, Typography } from 'antd';
+import { Alert, App, Button, Col, Collapse, DatePicker, Drawer, Form, Input, InputNumber, Row, Select, Space, Tag, Tooltip, Typography } from 'antd';
 import type { TableProps } from 'antd';
-import { ArrowRightOutlined, CheckCircleFilled, CreditCardOutlined, FileTextOutlined, PlusOutlined, SearchOutlined, WalletOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, CheckCircleFilled, CreditCardOutlined, FileTextOutlined, LinkOutlined, MessageOutlined, PlusOutlined, SearchOutlined, WalletOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -133,6 +133,54 @@ export default function InvoicesPage() {
   };
   const adjustmentBlockedReason = invoice?.hasPendingPayment ? t("Hóa đơn có giao dịch payOS đang chờ. Hãy đối soát giao dịch trước khi điều chỉnh.") : invoice?.status === 'Paid' || invoice?.status === 'Partial' || (invoice?.paid ?? 0) > 0 ? t("Chỉ được điều chỉnh hóa đơn chưa thanh toán. Hóa đơn này đã ghi nhận tiền.") : null;
   const hasMonthlyOverlap = !!invoice && invoice.kind === 'Supplemental' && invoice.isFinalMeterReading && (listQuery.data ?? []).some((candidate) => candidate.kind === 'Monthly' && candidate.occupancyId === invoice.occupancyId && candidate.period === invoice.period);
+  const getCheckoutUrl = (item: Invoice) => {
+    if (!item.tenantToken) return '';
+    return `${window.location.origin}/t/${encodeURIComponent(item.tenantToken)}/invoices/${encodeURIComponent(item.id)}/checkout`;
+  };
+
+  const formatReminderMessage = (item: Invoice) => {
+    const url = getCheckoutUrl(item);
+    let periodText = item.period;
+    if (item.kind === 'Deposit') {
+      periodText = t("Tiền cọc nhận phòng");
+    } else if (item.kind === 'Supplemental') {
+      periodText = t("Hóa đơn bổ sung");
+    } else {
+      const [year, month] = item.period.split('-');
+      periodText = month && year ? `${month}/${year}` : item.period;
+    }
+    const amountText = `${new Intl.NumberFormat(getLocale()).format(item.total)} đ`;
+    return [
+      t("🔔 Thông báo tiền phòng {0} - Kỳ {1}", [item.roomName, periodText]),
+      t("💰 Tổng cộng: {0}", [amountText]),
+      t("👉 Xem chi tiết chỉ số điện nước và quét mã QR thanh toán tự động tại: {0}", [url]),
+    ].join('\n');
+  };
+
+  const copyReminderMessage = async (item: Invoice) => {
+    const text = formatReminderMessage(item);
+    try {
+      await navigator.clipboard.writeText(text);
+      message.success(t("Đã sao chép tin nhắn thu tiền."));
+    } catch {
+      message.info(t("Không thể sao chép tự động."));
+    }
+  };
+
+  const copyPaymentLink = async (item: Invoice) => {
+    const url = getCheckoutUrl(item);
+    if (!url) {
+      message.warning(t("Chưa có liên kết thanh toán cho hóa đơn này."));
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      message.success(t("Đã sao chép link thanh toán."));
+    } catch {
+      message.info(t("Không thể sao chép tự động."));
+    }
+  };
+
   const columns: TableProps<Invoice>['columns'] = [
     { title: t("PHÒNG / NGƯỜI THUÊ"), key: 'room', width: 220, render: (_, item) => <div className="room-name-cell"><div className="room-avatar room-avatar-invoice"><FileTextOutlined /></div><div><strong>{item.roomName}</strong><span>{item.tenantName || t("Người thuê")} · {item.buildingName || t("Dãy trọ")}</span></div></div> },
     { title: t("LOẠI HÓA ĐƠN"), key: 'kind', width: 140, render: (_, item) => <Tag className={`invoice-kind-tag invoice-kind-${item.kind.toLowerCase()}`}>{invoiceKindLabel(item.kind)}</Tag> },
@@ -141,7 +189,37 @@ export default function InvoicesPage() {
     { title: t("ĐÃ THU"), dataIndex: 'paid', width: 90, align: 'right', render: (value: number, item) => item.lifecycleState === 'Draft' ? <span>—</span> : <span>{formatVnd(value)}</span> },
     { title: t("CÒN LẠI"), dataIndex: 'outstanding', width: 90, align: 'right', render: (value: number, item) => item.lifecycleState === 'Draft' ? <span>—</span> : <strong className={value > 0 ? 'balance-due' : 'balance-clear'}>{formatVnd(value)}</strong> },
     { title: t("TRẠNG THÁI"), key: 'status', width: 130, render: (_, item) => item.lifecycleState === 'Draft' ? <Tag className="draft-state-tag">{t("Bản nháp")}</Tag> : <Tag className={`status-pill ${statusClass(item.status)}`}>{statusLabel(item.status)}</Tag> },
-    { title: '', key: 'action', width: 100, align: 'right', render: (_, item) => <Button type="link" style={{ whiteSpace: 'nowrap' }} onClick={() => showInvoice(item.id)}>{t("Chi tiết")} <ArrowRightOutlined /></Button> },
+    {
+      title: t("THAO TÁC"),
+      key: 'action',
+      width: 170,
+      align: 'right',
+      render: (_, item) => (
+        <Space size={4}>
+          {item.lifecycleState !== 'Draft' && item.tenantToken && (
+            <>
+              <Tooltip title={t("Copy tin nhắn thu tiền")}>
+                <Button
+                  size="small"
+                  icon={<MessageOutlined />}
+                  onClick={(e) => { e.stopPropagation(); void copyReminderMessage(item); }}
+                />
+              </Tooltip>
+              <Tooltip title={t("Sao chép link thanh toán")}>
+                <Button
+                  size="small"
+                  icon={<LinkOutlined />}
+                  onClick={(e) => { e.stopPropagation(); void copyPaymentLink(item); }}
+                />
+              </Tooltip>
+            </>
+          )}
+          <Button type="link" size="small" style={{ whiteSpace: 'nowrap' }} onClick={() => showInvoice(item.id)}>
+            {t("Chi tiết")} <ArrowRightOutlined />
+          </Button>
+        </Space>
+      ),
+    },
   ];
   const clearFilters = () => { setKindFilter('All'); setIssuanceFilter('All'); setPeriod(null); setStatusFilter('All'); setSearchText(''); };
   const setMonth = (value: Dayjs | null) => setPeriod(value?.format('YYYY-MM') ?? null);
@@ -166,6 +244,23 @@ export default function InvoicesPage() {
       {detailQuery.isPending ? <div className="drawer-loading"><div className="loading-placeholder" /></div> : detailQuery.isError ? <LoadError error={detailQuery.error} onRetry={() => void detailQuery.refetch()} /> : invoice && <>
         <div className="invoice-detail-head"><div className="invoice-detail-mark"><FileTextOutlined /></div><div><Typography.Title level={4}>{invoice.roomName}</Typography.Title><Typography.Text type="secondary">{invoice.buildingName || t("Dãy trọ")} · {invoice.tenantName || t("Người thuê")}</Typography.Text></div>{invoice.lifecycleState === 'Draft' ? <Tag className="draft-state-tag">{t("Bản nháp")}</Tag> : <Tag className={`status-pill ${statusClass(invoice.status)}`}>{statusLabel(invoice.status)}</Tag>}</div>
         <div className="invoice-period-box"><span>{t("Kỳ hóa đơn")}</span><strong>{invoice.kind === 'Deposit' ? t("Tiền cọc nhận phòng") : invoice.kind === 'Supplemental' ? t("Hóa đơn bổ sung") : periodLabel(invoice.period)}</strong><span>{t("Phát hành")} {invoice.issuedAt ? dayjs(invoice.issuedAt).format(dateFormat()) : '—'}</span></div>
+        {invoice.lifecycleState !== 'Draft' && invoice.tenantToken && (
+          <div className="invoice-share-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '14px 0' }}>
+            <Button
+              type="primary"
+              icon={<MessageOutlined />}
+              onClick={() => void copyReminderMessage(invoice)}
+            >
+              {t("Copy tin nhắn thu tiền")}
+            </Button>
+            <Button
+              icon={<LinkOutlined />}
+              onClick={() => void copyPaymentLink(invoice)}
+            >
+              {t("Sao chép link thanh toán")}
+            </Button>
+          </div>
+        )}
         {invoice.kind === 'Supplemental' ? <div className="invoice-breakdown"><div><span>{t("Nội dung")}</span><strong style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{invoice.description}</strong></div>{invoice.isFinalMeterReading && <><div><span>{t("Điện cuối kỳ ·")} {invoice.previousReading} → {invoice.currentReading} kWh</span><strong>{formatVnd(invoice.electricityAmount)}</strong></div><div><span>{t("Khoản còn lại")}</span><strong>{formatVnd(invoice.serviceAmount)}</strong></div></>}<div className="breakdown-total"><span>{t("Số tiền")}</span><strong>{formatVnd(invoice.total)}</strong></div></div> : invoice.kind === 'Deposit' ? <div className="invoice-breakdown"><div className="breakdown-total"><span>{t("Tiền cọc yêu cầu")}</span><strong>{formatVnd(invoice.total)}</strong></div></div> : <div className="invoice-breakdown"><div><span>{t("Tiền thuê phòng")}</span><strong>{formatVnd(invoice.rent)}</strong></div><div><span>{t("Tiền điện")} <small>{invoice.consumption} kWh · {invoice.previousReading} → {invoice.currentReading}</small></span><strong>{formatVnd(invoice.electricityAmount)}</strong></div><div><span>{t("Tiền nước")}</span><strong>{formatVnd(invoice.waterAmount)}</strong></div><div><span>{t("Phí dịch vụ")}</span><strong>{formatVnd(invoice.serviceAmount)}</strong></div><div className="breakdown-total"><span>{t("Tổng hóa đơn")}</span><strong>{formatVnd(invoice.total)}</strong></div></div>}
         {invoice.lifecycleState === 'Draft' ? <Alert type="warning" showIcon message={t("Bản nháp chưa gửi cho khách")} description={t("Bản nháp chưa có trạng thái thanh toán. Mở trang Chỉ số điện để chỉnh và phát hành.")} /> : <>
           <div className="invoice-balance-box"><div><span>{t("Đã ghi nhận")}</span><strong>{formatVnd(invoice.paid)}</strong></div><div><span>{t("Còn phải thu")}</span><strong className={invoice.outstanding > 0 ? 'balance-due' : 'balance-clear'}>{formatVnd(invoice.outstanding)}</strong></div>{invoice.dueDate && <span className="due-date-note">{t("Hạn thanh toán:")} {dayjs(invoice.dueDate).format(dateFormat())}</span>}</div>

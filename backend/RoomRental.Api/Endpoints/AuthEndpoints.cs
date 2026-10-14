@@ -36,7 +36,8 @@ public static class AuthEndpoints
                 Phone = string.IsNullOrWhiteSpace(phone) ? null : phone[..Math.Min(phone.Length, 60)],
                 PasswordHash = "",
                 Role = UserRole.Owner,
-                Status = OwnerStatus.Pending,
+                Status = OwnerStatus.Approved,
+                SubscriptionTier = SubscriptionTier.Free,
                 CreatedAt = DateTimeOffset.UtcNow
             };
             user.PasswordHash = hasher.HashPassword(user, request.Password);
@@ -47,6 +48,7 @@ public static class AuthEndpoints
 
         routes.MapPost("/login", async (LoginRequest request, HttpContext context, AppDbContext db, IPasswordHasher<AppUser> hasher, CancellationToken cancellationToken) =>
         {
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
             var email = request.Email?.Trim().ToLowerInvariant();
             var user = string.IsNullOrWhiteSpace(email)
                 ? null
@@ -60,6 +62,8 @@ public static class AuthEndpoints
             if (user.Status is OwnerStatus.Rejected or OwnerStatus.Suspended)
                 throw new ApiException(StatusCodes.Status403Forbidden, user.StatusReason ?? "Tài khoản này hiện không thể đăng nhập.");
 
+            if (user.PasswordResetHash is not null)
+                throw new ApiException(403, "Tài khoản cần đặt lại mật khẩu bằng mã do quản trị viên cấp.");
             var now = DateTimeOffset.UtcNow;
             var session = new AuthSession
             {
@@ -73,6 +77,7 @@ public static class AuthEndpoints
                 user.PasswordHash = hasher.HashPassword(user, request.Password);
             await db.SaveChangesAsync(cancellationToken);
 
+            await transaction.CommitAsync(cancellationToken);
             var claims = new List<Claim>
             {
                 new(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -89,6 +94,49 @@ public static class AuthEndpoints
                 ExpiresUtc = session.ExpiresAt
             });
             return Results.Ok(ToDto(user));
+        }).RequireRateLimiting("auth");
+
+        routes.MapPost("/change-password", async (ChangePasswordRequest request, HttpContext context,
+            AppDbContext db, IPasswordHasher<AppUser> hasher, CancellationToken ct) =>
+        {
+            PasswordSecurity.ValidateNewPassword(request.NewPassword, request.ConfirmPassword);
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            var user = await db.Users.SingleAsync(x => x.Id == ApiSupport.UserId(context), ct);
+            PasswordSecurity.VerifyCurrentPassword(user, request.CurrentPassword, hasher);
+            if (hasher.VerifyHashedPassword(user, user.PasswordHash, request.NewPassword) != PasswordVerificationResult.Failed)
+                throw new ApiException(400, "Mật khẩu mới phải khác mật khẩu hiện tại.");
+            user.PasswordHash = hasher.HashPassword(user, request.NewPassword);
+            user.PasswordResetHash = null;
+            user.PasswordResetExpiresAt = null;
+            await PasswordSecurity.RevokeSessionsAsync(db, user.Id, ct);
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            context.Response.Headers.CacheControl = "no-store";
+            return Results.Ok(new { success = true });
+        }).RequireAuthorization().RequireRateLimiting("auth");
+
+        routes.MapPost("/reset-password", async (ResetPasswordRequest request, HttpContext context,
+            AppDbContext db, IPasswordHasher<AppUser> hasher, CancellationToken ct) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            PasswordSecurity.ValidateNewPassword(request.NewPassword, request.ConfirmPassword);
+            if (string.IsNullOrWhiteSpace(request.Token) || request.Token.Length != 64)
+                throw new ApiException(400, "Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.");
+            var email = request.Email?.Trim().ToLowerInvariant();
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            var user = await db.Users.SingleOrDefaultAsync(x => x.Email == email && x.Role == UserRole.Owner, ct);
+            if (user?.PasswordResetHash is null || user.PasswordResetExpiresAt is null ||
+                user.PasswordResetExpiresAt <= DateTimeOffset.UtcNow ||
+                !PasswordSecurity.MatchesToken(request.Token, user.PasswordResetHash))
+                throw new ApiException(400, "Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.");
+            user.PasswordHash = hasher.HashPassword(user, request.NewPassword);
+            user.PasswordResetHash = null;
+            user.PasswordResetExpiresAt = null;
+            await PasswordSecurity.RevokeSessionsAsync(db, user.Id, ct);
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return Results.Ok(new { success = true });
         }).RequireRateLimiting("auth");
 
         routes.MapGet("/me", async (HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
@@ -116,5 +164,14 @@ public static class AuthEndpoints
         }).RequireAuthorization();
     }
 
-    public static UserDto ToDto(AppUser user) => new(user.Id, user.Name, user.Email, user.Role.ToString(), user.Status.ToString());
+    public static UserDto ToDto(AppUser user) => new(
+        user.Id,
+        user.Name,
+        user.Email,
+        user.Role.ToString(),
+        user.Status.ToString(),
+        user.SubscriptionTier.ToString(),
+        user.SubscriptionExpiresAt,
+        user.MaxRooms
+    );
 }

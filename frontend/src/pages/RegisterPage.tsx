@@ -22,7 +22,7 @@ export default function RegisterPage() {
       accountCreated = true;
       const user = await api.auth.login(values.email, values.password);
       setUser(user);
-      navigate('/account-status', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       if (accountCreated) {
         navigate('/login', { replace: true, state: { notice: t("Tài khoản đã được tạo. Hãy đăng nhập bằng email và mật khẩu vừa đăng ký.") } });

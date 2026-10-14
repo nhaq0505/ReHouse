@@ -5,6 +5,7 @@ import { Spin } from 'antd';
 import { useAuth } from './auth';
 import AppShell from './components/AppShell';
 
+const PasswordPage = lazy(() => import('./pages/PasswordPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const AccountStatusPage = lazy(() => import('./pages/AccountStatusPage'));
@@ -46,6 +47,8 @@ export default function App() {
   useLanguage();
   return <Suspense fallback={<AppFallback />}><Routes>
     <Route path="/login" element={<LoginPage />} />
+    <Route path="/reset-password" element={<PasswordPage reset />} />
+    <Route path="/change-password" element={<PasswordPage />} />
     <Route path="/register" element={<RegisterPage />} />
     <Route path="/account-status" element={<AccountStatusPage />} />
     <Route path="/t/:token" element={<TenantPage />} />

@@ -38,7 +38,8 @@ public sealed class InvoiceService(AppDbContext db)
             if (row.Reading.MonthlyRentRate is null || row.Reading.ElectricityRate is null ||
                 row.Reading.WaterRate is null || row.Reading.WaterPerPerson is null ||
                 row.Reading.ServiceRate is null || row.Reading.BillingStartDate is null ||
-                row.Reading.BillingEndDate is null) continue;
+                row.Reading.BillingEndDate is null ||
+                (row.Reading.WaterPerPerson == true && row.Reading.OccupantsCount is null)) continue;
 
             db.Invoices.Add(CreateMonthlyInvoice(ownerId, row.Room, row.Building, row.Occupancy, row.Reading, InvoiceLifecycleState.Issued));
             created++;
@@ -77,13 +78,14 @@ public sealed class InvoiceService(AppDbContext db)
     {
         if (reading.MonthlyRentRate is null || reading.ElectricityRate is null || reading.WaterRate is null ||
             reading.WaterPerPerson is null || reading.ServiceRate is null || reading.BillingStartDate is null ||
-            reading.BillingEndDate is null || reading.BillableDays is null || reading.MonthDays is null)
+            reading.BillingEndDate is null || reading.BillableDays is null || reading.MonthDays is null ||
+            (reading.WaterPerPerson == true && reading.OccupantsCount is null))
             throw new ApiException(409, "Bảng phí đã chốt không đầy đủ. Không thể tạo hóa đơn tự động.");
 
         var rent = ApiSupport.RoundVnd(reading.MonthlyRentRate.Value);
         var electricity = ApiSupport.RoundVnd(reading.Consumption * reading.ElectricityRate.Value);
         var water = ApiSupport.RoundVnd(reading.WaterPerPerson.Value
-            ? reading.WaterRate.Value * occupancy.People
+            ? reading.WaterRate.Value * reading.OccupantsCount!.Value
             : reading.WaterRate.Value);
         var service = ApiSupport.RoundVnd(reading.ServiceRate.Value);
         var total = ValidateTotal(rent, electricity, water, service);
@@ -141,7 +143,7 @@ public sealed class InvoiceService(AppDbContext db)
         return total;
     }
 
-    public static InvoiceDto ToDto(Invoice invoice, bool hasPendingPayment = false, bool canCorrectMeter = false, string? meterCorrectionBlockedReason = null) => new(
+    public static InvoiceDto ToDto(Invoice invoice, bool hasPendingPayment = false, bool canCorrectMeter = false, string? meterCorrectionBlockedReason = null, string? tenantToken = null) => new(
         invoice.Id,
         invoice.RoomId,
         invoice.RoomName,
@@ -163,7 +165,7 @@ public sealed class InvoiceService(AppDbContext db)
         invoice.IssuedAt, invoice.Kind, invoice.OccupancyId, invoice.Kind == "Deposit" ? Math.Max(0, invoice.Paid - invoice.DepositSettlements.Sum(x => x.Amount)) : 0,
         invoice.DepositSettlements, invoice.Description, invoice.IsFinalMeterReading, invoice.LifecycleState.ToString(), invoice.Version, invoice.BuildingId,
         invoice.MonthlyRentRate, invoice.ElectricityRate, invoice.WaterRate, invoice.WaterPerPerson, invoice.ServiceRate,
-        invoice.BillingStartDate, invoice.BillingEndDate, invoice.BillableDays, invoice.MonthDays, hasPendingPayment, canCorrectMeter, meterCorrectionBlockedReason);
+        invoice.BillingStartDate, invoice.BillingEndDate, invoice.BillableDays, invoice.MonthDays, hasPendingPayment, canCorrectMeter, meterCorrectionBlockedReason, tenantToken);
 
     public static void RecalculateStatus(Invoice invoice)
     {

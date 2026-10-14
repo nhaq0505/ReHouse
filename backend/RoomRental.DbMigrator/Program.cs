@@ -190,9 +190,55 @@ static async Task<HashSet<string>> ReadPostgresTablesAsync(AppDbContext context)
     return result;
 }
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "EF1002:Risk of vulnerability to SQL injection.",
+    Justification = "Raw SQL selects from trusted, fixed entity columns with hardcoded fallback expressions.")]
 static async Task<int> CopySetAsync<TEntity>(AppDbContext source, AppDbContext target) where TEntity : class
 {
-    var sourceRows = await source.Set<TEntity>().AsNoTracking().ToListAsync();
+    // Read pre-upgrade SQLite backups without changing the read-only source.
+    IQueryable<TEntity> query = source.Set<TEntity>();
+    if (typeof(TEntity) == typeof(AppUser) || typeof(TEntity) == typeof(MonthlyReading) || typeof(TEntity) == typeof(PayOsAttempt))
+    {
+        var tableName = typeof(TEntity) == typeof(AppUser) ? "Users"
+                      : typeof(TEntity) == typeof(MonthlyReading) ? "Readings"
+                      : "PayOsAttempts";
+        var columns = new HashSet<string>(StringComparer.Ordinal);
+        using var command = source.Database.GetDbConnection().CreateCommand();
+        command.CommandText = $"PRAGMA table_info('{tableName}')";
+        using (var reader = await command.ExecuteReaderAsync())
+            while (await reader.ReadAsync()) columns.Add(reader.GetString(1));
+
+        if (typeof(TEntity) == typeof(AppUser))
+        {
+            var selectParts = new List<string> { "*" };
+            if (!columns.Contains("PasswordResetHash"))
+            {
+                selectParts.Add("NULL AS PasswordResetHash");
+                selectParts.Add("NULL AS PasswordResetExpiresAt");
+            }
+            if (!columns.Contains("SubscriptionTier"))
+                selectParts.Add("'Free' AS SubscriptionTier");
+            if (!columns.Contains("SubscriptionExpiresAt"))
+                selectParts.Add("NULL AS SubscriptionExpiresAt");
+            if (selectParts.Count > 1)
+                query = source.Set<TEntity>().FromSqlRaw($"SELECT {string.Join(", ", selectParts)} FROM Users");
+        }
+        else if (typeof(TEntity) == typeof(MonthlyReading))
+        {
+            if (!columns.Contains("OccupantsCount"))
+                query = source.Set<TEntity>().FromSqlRaw("SELECT *, NULL AS OccupantsCount FROM Readings");
+        }
+        else if (typeof(TEntity) == typeof(PayOsAttempt))
+        {
+            var selectParts = new List<string> { "*" };
+            if (!columns.Contains("Kind"))
+                selectParts.Add("'Invoice' AS Kind");
+            if (!columns.Contains("SubscriptionDays"))
+                selectParts.Add("NULL AS SubscriptionDays");
+            if (selectParts.Count > 1)
+                query = source.Set<TEntity>().FromSqlRaw($"SELECT {string.Join(", ", selectParts)} FROM PayOsAttempts");
+        }
+    }
+    var sourceRows = await query.AsNoTracking().ToListAsync();
     NormalizeDateTimes(sourceRows);
     target.Set<TEntity>().AddRange(sourceRows);
     await target.SaveChangesAsync();

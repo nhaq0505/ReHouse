@@ -40,3 +40,8 @@ Không khởi động lại image legacy giữa bước reset và triển khai i
 - Reset SQL: áp trên bản sao schema legacy trong container riêng, còn0 bảng sau reset — PASS.
 - Local đã backup `/tmp/roomie-ef-backups/local-before-migrations.dump`, dừng API cũ, chạy reset SQL và khởi động API mới5080. Health OK; PostgreSQL có1initial migration,1admin+1owner demo và0invoice. Không chạy integration suite vào DB này.
 - VPS backup DB + DataProtection trước chuyển đổi: `/var/backups/rehouse/rehouse-20261015T043912Z-rnmMSm`. Đã xác nhận bootstrap admin được cấu hình (không ghi secrets). Chưa reset VPS hoặc phát hành tại checkpoint này.
+
+### Tiếp tục 16/10/2026
+
+- Run38682614280 dừng ở snapshot check: SDK container mới thiếu package EF Design do `--no-build` dùng assets của container trước. Bổ sung `dotnet restore backend/RoomRental.Api --force` trước EF check; chạy nguyên bước trong SDK container mới PASS cảhai snapshot. Build và service tests ở run cũ đều PASS; chưa deploy nên VPS vẫn chạy image cũ.
+- VPS đã chuẩn bị hook reset dùng một lần trong deploy helper, sau backup và trước app swap, cùng ops lock. Hook chỉ nhận revision đã chỉ định; SQL chỉ chạy một lần, sau đó marker được chuyển thành applied. Bản helper gốc ở `/root/rehouse-deploy-before-ef-reset-20261016`; sẽ khôi phục sau cutover. Không đổi SSH, SMTP, DataProtection hay runtime secrets.

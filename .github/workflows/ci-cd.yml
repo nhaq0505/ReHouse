@@ -71,6 +71,7 @@ jobs:
           --workdir /workspace
           mcr.microsoft.com/dotnet/sdk:10.0
           sh -ec 'dotnet tool restore &&
+          dotnet restore backend/RoomRental.Api --force &&
           dotnet ef migrations has-pending-model-changes --project backend/RoomRental.Api --context SqliteAppDbContext --configuration Release --no-build &&
           dotnet ef migrations has-pending-model-changes --project backend/RoomRental.Api --context PostgresAppDbContext --configuration Release --no-build'
 

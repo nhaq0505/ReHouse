@@ -45,3 +45,12 @@ Không khởi động lại image legacy giữa bước reset và triển khai i
 
 - Run38682614280 dừng ở snapshot check: SDK container mới thiếu package EF Design do `--no-build` dùng assets của container trước. Bổ sung `dotnet restore backend/RoomRental.Api --force` trước EF check; chạy nguyên bước trong SDK container mới PASS cảhai snapshot. Build và service tests ở run cũ đều PASS; chưa deploy nên VPS vẫn chạy image cũ.
 - VPS đã chuẩn bị hook reset dùng một lần trong deploy helper, sau backup và trước app swap, cùng ops lock. Hook chỉ nhận revision đã chỉ định; SQL chỉ chạy một lần, sau đó marker được chuyển thành applied. Bản helper gốc ở `/root/rehouse-deploy-before-ef-reset-20261016`; sẽ khôi phục sau cutover. Không đổi SSH, SMTP, DataProtection hay runtime secrets.
+
+### Hoàn tất local và VPS — 16/10/2026
+
+- Source migrations: `9df0677`; sửa restore CI: `c6b9f43`. [Run38782104449](https://github.com/nhaq0505/ReHouse/actions/runs/38782104449) SUCCESS cả verify, publish, deploy. Image live có revision `c6b9f432904ded5fe1cb9b3b1dfcab707a0359d1`.
+- VPS backup ngay trước reset: `/var/backups/rehouse/rehouse-20261015T180513Z-kXOpKF` (tên thư mục dùng UTC của server). Reset chạy sau backup trong ops lock, trước app swap; đã tạo `20261015043550_InitialCreate` trong `__EFMigrationsHistory`.
+- Kiểm tra chỉ đọc sau triển khai: 1admin được bootstrap,0room,0invoice,không còn SchemaUpgrades. Health public200/databaseOK,home200 cócanonical,robots200 vẫn chặn tất cả. Không chạy integration suite trên production.
+- Hook reset đã gỡ: khôi phục helper gốc, bash syntax PASS; xóa marker revision. SQL đã chạy được giữ ở `/var/lib/rehouse/ef-reset-applied-20261016.sql` để audit. Không còn reset được gài cho deployment tương lai.
+- Giữ nguyên runtime.env, SMTP, tên miền, SSH và volume DataProtection. Dữ liệu tài khoản/nghiệp vụ cũ trên local và VPS đã bỏ theo yêu cầu; VPS chỉ có admin bootstrap, local có admin + owner demo. Cấu hình payOS theo owner cũ đã bị xóa cùng dữ liệu và cần thiết lập lại cho owner mới.
+- Container/API QA riêng đã dừng và xóa; API local5080 vẫn healthOK. Backup local trước reset: `/tmp/roomie-ef-backups/local-before-migrations.dump`.

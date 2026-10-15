@@ -740,3 +740,10 @@ Chi tiết file, API, kiểm tra và lưu ý: [account-occupancy-dashboard-repor
 - Hai context theo provider kế thừa AppDbContext; initial migrations/snapshots SQLite và PostgreSQL, local dotnet-ef10.0.12, startup MigrateAsync thay EnsureCreated/manualDDL. Seed/bootstrap giữ nguyên. DbMigrator import cũng dùng migrations. CI kiểm tra snapshot cảhai.
 - Thao tác reset riêng có SQL transaction/allowlist/từchối DB đãmigrate; không autoerase. Xem [hướng dẫn và nhật ký](ef-core-migrations.md). Đang kiểm chứng và chuẩn bị reset/deploy; chưa kết luận hoàn tất.
 - Giữ robots Disallow mọi bot, SMTP/secrets/DataProtection; không gửi OTP hoặc payOS thật.
+
+### Mục51 — hoàn tất 16/10/2026
+
+- Local và VPS đã reset đúng DB room_rental theo yêu cầu, tạo schema bằng EF migrations. Local có admin+owner demo,0invoice,API5080healthOK. VPS có1adminbootstrap,0room/invoice,1initial migration; không còn SchemaUpgrades.
+- CI đầu38682614280 fail do SDK container snapshot check thiếu EF Design; c6b9f43 bổ sung restoreforce, kiểm chứng container sạch PASS. [Run38782104449](https://github.com/nhaq0505/ReHouse/actions/runs/38782104449) SUCCESS cả build/test,publish,deploy; live revision c6b9f432904ded5fe1cb9b3b1dfcab707a0359d1.
+- Backup local `/tmp/roomie-ef-backups/local-before-migrations.dump`; VPS trước reset `/var/backups/rehouse/rehouse-20261015T180513Z-kXOpKF`. Hook reset dùng1lần đã gỡ và helper gốc được khôi phục; không gài reset cho CI tương lai.
+- Publichealth/home/robots200,robots vẫn Disallow mọi bot. Runtimeenv/SMTP/DataProtection/SSH giữ nguyên; owner/payOS config cũ đã xóa theo yêu cầu, cần tạo lại owner và cấu hình payOS. Không test ghi production; tài nguyên QA riêng đã dọn. Chi tiết ở ef-core-migrations.md.

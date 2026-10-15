@@ -24,7 +24,8 @@ if (provider.Equals("Postgres", StringComparison.OrdinalIgnoreCase) || provider.
 {
     if (string.IsNullOrWhiteSpace(configuredConnection))
         throw new InvalidOperationException("ConnectionStrings__DefaultConnection is required when DatabaseProvider is Postgres.");
-    builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(configuredConnection));
+    builder.Services.AddDbContext<PostgresAppDbContext>(options => options.UseNpgsql(configuredConnection));
+    builder.Services.AddScoped<AppDbContext>(services => services.GetRequiredService<PostgresAppDbContext>());
 }
 else if (provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
 {
@@ -33,7 +34,8 @@ else if (provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
     var sqliteFile = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(sqliteConnection).DataSource;
     if (!string.IsNullOrWhiteSpace(sqliteFile) && sqliteFile != ":memory:")
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(sqliteFile))!);
-    builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(sqliteConnection));
+    builder.Services.AddDbContext<SqliteAppDbContext>(options => options.UseSqlite(sqliteConnection));
+    builder.Services.AddScoped<AppDbContext>(services => services.GetRequiredService<SqliteAppDbContext>());
 }
 else
 {

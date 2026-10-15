@@ -733,3 +733,10 @@ Chi tiết file, API, kiểm tra và lưu ý: [account-occupancy-dashboard-repor
 
 - Commit46f1aad đãpush; run38680393633 xanh cảverify,publish,deploy. KiểmtraHTTPS: home cóH1/canonical200,health200,robotsblockall200,sitemap200,APIroomsunauth401/noindex. KhôngtestghiDBproduction.
 - SourceSEOtrước đó cũngđãlive trongimage này, nhưng chínhsáchrobotschặntoànbộ giữnguyên; chưarequestGoogleindex hoặcgửisitemap. SEO_LOG/SEO_PLAN vàreportđãcậpnhật.
+
+## 51. Chuyển sang EF Core Migrations — 15/10/2026
+
+- User cho phép bỏ dữ liệu cũ và xác nhận reset cả local + VPS. Đã cung cấp SSH key quản trị đúng VPS116.118.3.40; kết nối root thành công. Không dùng key CI để chạy lệnh quản trị.
+- Hai context theo provider kế thừa AppDbContext; initial migrations/snapshots SQLite và PostgreSQL, local dotnet-ef10.0.12, startup MigrateAsync thay EnsureCreated/manualDDL. Seed/bootstrap giữ nguyên. DbMigrator import cũng dùng migrations. CI kiểm tra snapshot cảhai.
+- Thao tác reset riêng có SQL transaction/allowlist/từchối DB đãmigrate; không autoerase. Xem [hướng dẫn và nhật ký](ef-core-migrations.md). Đang kiểm chứng và chuẩn bị reset/deploy; chưa kết luận hoàn tất.
+- Giữ robots Disallow mọi bot, SMTP/secrets/DataProtection; không gửi OTP hoặc payOS thật.

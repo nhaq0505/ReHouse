@@ -4,8 +4,11 @@ using RoomRental.Api.Domain;
 
 namespace RoomRental.Api.Data;
 
-public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext : DbContext
 {
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    protected AppDbContext(DbContextOptions options) : base(options) { }
+
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<RegistrationVerification> RegistrationVerifications => Set<RegistrationVerification>();
     public DbSet<AuthSession> AuthSessions => Set<AuthSession>();

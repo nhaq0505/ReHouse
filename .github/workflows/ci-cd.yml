@@ -64,6 +64,16 @@ jobs:
           dotnet run --project tests/RoomRental.WebhookTests/RoomRental.WebhookTests.csproj
           --configuration Release
 
+      - name: Check migration snapshots for both providers
+        run: >-
+          docker run --rm
+          --volume "$GITHUB_WORKSPACE:/workspace"
+          --workdir /workspace
+          mcr.microsoft.com/dotnet/sdk:10.0
+          sh -ec 'dotnet tool restore &&
+          dotnet ef migrations has-pending-model-changes --project backend/RoomRental.Api --context SqliteAppDbContext --configuration Release --no-build &&
+          dotnet ef migrations has-pending-model-changes --project backend/RoomRental.Api --context PostgresAppDbContext --configuration Release --no-build'
+
       - name: Build image and run API integration suite on disposable PostgreSQL
         env:
           CI_POSTGRES_PASSWORD: ci-only-db-password

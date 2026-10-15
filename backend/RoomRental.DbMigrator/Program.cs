@@ -59,17 +59,16 @@ registrationTableProbe.CommandText = "SELECT count(*) FROM sqlite_master WHERE t
 var hasRegistrationVerifications = Convert.ToInt64(await registrationTableProbe.ExecuteScalarAsync()) != 0;
 
 var sourceOptions = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(sqliteConnection).Options;
-var targetOptions = new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connectionString).Options;
+var targetOptions = new DbContextOptionsBuilder<PostgresAppDbContext>().UseNpgsql(connectionString).Options;
 await using var source = new AppDbContext(sourceOptions);
-await using var target = new AppDbContext(targetOptions);
+await using var target = new PostgresAppDbContext(targetOptions);
 
 await target.Database.OpenConnectionAsync();
 var existingTables = await ReadPostgresTablesAsync(target);
 if (existingTables.Count != 0)
     throw new InvalidOperationException("Target database is not empty; no data was imported. Use a fresh database for this snapshot.");
 
-if (!await target.Database.EnsureCreatedAsync())
-    throw new InvalidOperationException("PostgreSQL schema initialization did not create a fresh schema.");
+await target.Database.MigrateAsync();
 
 var createdTables = await ReadPostgresTablesAsync(target);
 if (!createdTables.SetEquals(expectedTables))
@@ -177,7 +176,7 @@ static async Task ValidateSqliteBackupAsync(Microsoft.Data.Sqlite.SqliteConnecti
     var actual = new HashSet<string>(StringComparer.Ordinal);
     await using (var command = connection.CreateCommand())
     {
-        command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'SchemaUpgrades';";
+        command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('SchemaUpgrades', '__EFMigrationsHistory', '__EFMigrationsLock');";
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync()) actual.Add(reader.GetString(0));
     }
@@ -191,7 +190,7 @@ static async Task<HashSet<string>> ReadPostgresTablesAsync(AppDbContext context)
 {
     var result = new HashSet<string>(StringComparer.Ordinal);
     await using var command = context.Database.GetDbConnection().CreateCommand();
-    command.CommandText = "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = current_schema() AND tablename <> 'SchemaUpgrades';";
+    command.CommandText = "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = current_schema() AND tablename NOT IN ('SchemaUpgrades', '__EFMigrationsHistory', '__EFMigrationsLock');";
     await using var reader = await command.ExecuteReaderAsync();
     while (await reader.ReadAsync()) result.Add(reader.GetString(0));
     return result;

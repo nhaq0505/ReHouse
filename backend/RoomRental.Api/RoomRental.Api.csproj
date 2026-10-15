@@ -15,4 +15,9 @@
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="EmailTemplates/RegistrationVerification.html" LogicalName="RoomRental.Email.RegistrationVerification.html" />
+    <EmbeddedResource Include="Assets/roomie-email-logo.png" LogicalName="RoomRental.Email.Logo.png" />
+  </ItemGroup>
+
 </Project>

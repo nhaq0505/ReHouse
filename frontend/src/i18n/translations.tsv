@@ -987,3 +987,28 @@
 986|Sample Invoice P101|示例账单 P101|샘플 청구서 P101|नमूना चालान P101
 987|Vacant rooms|空置房间|공실|खाली कमरे
 988|Sign up|注册|회원가입|साइन अप करें
+989|Record electricity, calculate charges and issue invoices in one place.|抄电表、计算费用和开账单，一站完成。|전기 검침부터 요금 계산, 청구서 발행까지 한곳에서.|बिजली रीडिंग, शुल्क की गणना और बिल एक ही जगह।
+990|QR payments with automatic invoice updates.|扫码付款，账单自动更新。|QR 결제 후 청구서가 자동으로 업데이트됩니다.|QR भुगतान के साथ बिल अपने आप अपडेट होते हैं।
+991|Tenants view invoices without installing an app.|租客无需安装应用即可查看账单。|세입자는 앱 설치 없이 청구서를 확인합니다.|किरायेदार ऐप इंस्टॉल किए बिना बिल देख सकते हैं।
+992|Interface preview · Sample data|界面示意 · 示例数据|화면 예시 · 샘플 데이터|इंटरफ़ेस उदाहरण · नमूना डेटा
+993|From vacant rooms to paid invoices.|从空房管理到收款账单。|빈방 관리부터 청구서 수납까지.|खाली कमरों से लेकर चुकाए गए बिलों तक।
+994|Manage multiple properties with separate rates for each.|管理多处出租房，为各区域设置独立单价。|여러 임대 건물과 건물별 요금을 관리하세요.|हर संपत्ति के लिए अलग दरों के साथ कई संपत्तियाँ संभालें।
+995|Keep track of vacancies, tenants and deposits.|掌握空房、租客及押金情况。|빈방, 세입자, 보증금 현황을 확인하세요.|खाली कमरे, किरायेदार और जमा राशि पर नज़र रखें।
+996|Record monthly readings and check them before saving.|记录每月读数，保存前核查数据。|월별 검침 수치를 입력하고 저장 전에 확인하세요.|मासिक रीडिंग दर्ज करें और सहेजने से पहले जाँचें।
+997|Calculate rent and utilities, then share detailed invoices.|计算房租水电费，并分享明细账单。|임대료와 공과금을 계산하고 상세 청구서를 공유하세요.|किराया और बिजली-पानी का हिसाब लगाएँ और विस्तृत बिल साझा करें।
+998|Receive VietQR payments through payOS and update payment status.|通过 payOS 接收 VietQR 付款并更新付款状态。|payOS의 VietQR로 결제를 받고 결제 상태를 업데이트하세요.|payOS के ज़रिए VietQR भुगतान लें और भुगतान की स्थिति अपडेट करें।
+999|Track revenue, outstanding balances and deposits, and export to Excel.|跟踪收入、欠款和押金，并导出 Excel。|매출, 미수금, 보증금을 확인하고 Excel로 내보내세요.|आय, बकाया और जमा राशि देखें और Excel में निर्यात करें।
+1000|Open the link from your landlord on your phone.|直接在手机上打开房东发送的链接。|휴대폰에서 임대인이 보낸 링크를 여세요.|मकान मालिक का भेजा लिंक फ़ोन पर खोलें।
+1001|Review rent, utilities and each individual charge.|核对房租、水电及各项费用。|임대료, 공과금, 개별 요금을 확인하세요.|किराया, बिजली-पानी और हर शुल्क जाँचें।
+1002|Pay by QR code|扫码付款|QR 코드로 결제|QR कोड से भुगतान करें
+1003|Scan VietQR with your banking app. The invoice updates once payment is confirmed.|用银行应用扫描 VietQR，付款确认后账单将更新。|은행 앱으로 VietQR을 스캔하세요. 결제가 확인되면 청구서가 업데이트됩니다.|बैंकिंग ऐप से VietQR स्कैन करें। भुगतान की पुष्टि होने पर बिल अपडेट होगा।
+1004|A private link for each tenancy, with payments verified before recording.|每次租赁使用独立链接，付款核实后才入账。|임대 건별 전용 링크를 제공하고 결제를 확인한 뒤 기록합니다.|हर किरायेदारी का निजी लिंक, और दर्ज करने से पहले भुगतान का सत्यापन।
+1005|Payment integration keys are encrypted on the server.|支付连接密钥在服务器端加密。|결제 연동 키는 서버에서 암호화됩니다.|भुगतान एकीकरण की कुंजियाँ सर्वर पर एन्क्रिप्ट होती हैं।
+1006|Payments are recorded after checking confirmation from payOS.|核实 payOS 的确认后才记录付款。|payOS의 확인 정보를 검증한 뒤 결제를 기록합니다.|payOS की पुष्टि जाँचने के बाद भुगतान दर्ज होता है।
+1007|The previous tenancy link expires after move-out.|退租后，原租赁链接失效。|퇴실 후 이전 임대 건의 링크는 만료됩니다.|कमरा छोड़ने के बाद पिछली किरायेदारी का लिंक अमान्य हो जाता है।
+1008|Less to worry about, starting this month.|从这个月起，更省心。|이번 달부터 더 가볍게 관리하세요.|इस महीने से कम चिंता।
+1009|Enter your account details.|填写账户信息。|계정 정보를 입력하세요.|अपने खाते का विवरण दर्ज करें।
+1010|Verify with the code sent by email.|输入邮件中的验证码进行确认。|이메일로 받은 코드로 인증하세요.|ईमेल से भेजे कोड से पुष्टि करें।
+1011|Add your first property and rooms.|添加首处出租房及房间。|첫 임대 건물과 방을 추가하세요.|अपनी पहली संपत्ति और कमरे जोड़ें।
+1012|Every room, always in view.|每个房间，尽在掌握。|모든 방의 현황을 한눈에.|हर कमरा, हमेशा नज़र में।
+1013|One invoice. Every charge clear.|一张账单，每项费用都清楚。|청구서 하나로 모든 요금을 명확하게.|एक बिल। हर शुल्क साफ़।

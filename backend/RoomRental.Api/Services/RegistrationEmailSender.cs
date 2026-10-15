@@ -37,10 +37,7 @@ public sealed class SmtpRegistrationEmailSender(IConfiguration config, IHostEnvi
             message.From.Add(new MailboxAddress(config["Email:FromName"] ?? "Roomie", config["Email:FromAddress"]!));
             message.To.Add(MailboxAddress.Parse(email));
             message.Subject = "Mã xác nhận đăng ký Roomie";
-            message.Body = new TextPart("plain")
-            {
-                Text = $"Mã xác nhận đăng ký Roomie của bạn là: {code}\n\nMã có hiệu lực tối đa 10 phút. Không chia sẻ mã này với bất kỳ ai.\nNếu bạn không đăng ký Roomie, hãy bỏ qua email này."
-            };
+            message.Body = RegistrationEmailTemplate.CreateBody(code);
             using var client = new SmtpClient { Timeout = 15000 };
             var security = config["Email:Smtp:Security"] ?? "StartTls";
             await client.ConnectAsync(config["Email:Smtp:Host"]!, int.Parse(config["Email:Smtp:Port"] ?? "587"),

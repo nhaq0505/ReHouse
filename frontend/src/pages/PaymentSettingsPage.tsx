@@ -1,8 +1,8 @@
 import { errorText } from '../i18n/errors';
 import { t } from '../i18n/runtime';
-import { useEffect } from 'react';
-import { Alert, App, Button, Card, Form, Input, Skeleton, Space, Typography } from 'antd';
-import { CheckCircleFilled, CopyOutlined, CreditCardOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { useState, useEffect } from 'react';
+import { Alert, App, Button, Card, Drawer, Form, Input, Skeleton, Space, Typography } from 'antd';
+import { BookOutlined, CheckCircleFilled, CopyOutlined, CreditCardOutlined, ExportOutlined, QuestionCircleOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type PaymentSettings } from '../api';
 import { LoadError, PageTitle } from '../components/Ui';
@@ -12,6 +12,7 @@ interface PaymentForm { clientId: string; apiKey: string; checksumKey: string; }
 export default function PaymentSettingsPage() {
   const { message } = App.useApp();
   const client = useQueryClient();
+  const [guideOpen, setGuideOpen] = useState(false);
   const [form] = Form.useForm<PaymentForm>();
   const settingsQuery = useQuery({ queryKey: ['payment-settings'], queryFn: api.paymentSettings.get });
   useEffect(() => { if (settingsQuery.data) form.setFieldsValue({ clientId: settingsQuery.data.clientId ?? '' }); }, [settingsQuery.data, form]);
@@ -40,7 +41,21 @@ export default function PaymentSettingsPage() {
   };
 
   return <>
-    <PageTitle eyebrow={t("THU TIỀN TỰ ĐỘNG")} title={t("Thanh toán trực tuyến")} subtitle={t("Kết nối payOS để người thuê thanh toán hóa đơn qua liên kết riêng.")} />
+    <PageTitle
+      eyebrow={t("THU TIỀN TỰ ĐỘNG")}
+      title={t("Thanh toán trực tuyến")}
+      subtitle={t("Kết nối payOS để người thuê thanh toán hóa đơn qua liên kết riêng.")}
+      extra={
+        <Button
+          type="primary"
+          ghost
+          icon={<QuestionCircleOutlined />}
+          onClick={() => setGuideOpen(true)}
+        >
+          {t("Hướng dẫn thiết lập")}
+        </Button>
+      }
+    />
     {settingsQuery.isError ? <LoadError error={settingsQuery.error} onRetry={() => void settingsQuery.refetch()} /> : settingsQuery.isPending ? <div className="content-card"><Skeleton active paragraph={{ rows: 6 }} /></div> : <div className="settings-grid">
       <div className="settings-main-column">
         <Card className="settings-card" bordered={false}>
@@ -60,7 +75,100 @@ export default function PaymentSettingsPage() {
         </Card>
         <div className="payment-how-it-works"><div className="eyebrow">{t("CÁCH HOẠT ĐỘNG")}</div><div className="how-steps"><div><span>1</span><p><strong>{t("Người thuê mở liên kết hóa đơn")}</strong><small>{t("Không cần đăng nhập, chỉ dùng liên kết riêng của phòng.")}</small></p></div><div><span>2</span><p><strong>{t("Thanh toán qua payOS")}</strong><small>{t("Người thuê được chuyển đến trang thanh toán an toàn.")}</small></p></div><div><span>3</span><p><strong>{t("Hóa đơn tự cập nhật")}</strong><small>{t("Khoản thu được xác nhận khi webhook đã được xác minh.")}</small></p></div></div></div>
       </div>
-      <Card className="settings-side-card" bordered={false}><div className="side-shield"><SafetyCertificateOutlined /></div><Typography.Title level={4}>{t("Bảo mật giao dịch")}</Typography.Title><Typography.Paragraph>{t("Thông tin kết nối được mã hóa ở phía máy chủ. Roomie không lưu số thẻ hoặc thông tin ngân hàng của người thuê.")}</Typography.Paragraph><div className="security-checks"><span><CheckCircleFilled />  {t("Mã hóa khóa kết nối")}</span><span><CheckCircleFilled />  {t("Xác minh kết quả thanh toán")}</span><span><CheckCircleFilled />  {t("Tự đối chiếu hóa đơn")}</span></div><div className="settings-state"><span className={settingsQuery.data?.configured ? 'connected-dot' : 'disconnected-dot'} />{verified ? t("Webhook đã xác minh") : settingsQuery.data?.configured ? t("Webhook chưa sẵn sàng") : t("Chưa lưu cấu hình")}</div></Card>
+      <Card className="settings-side-card" bordered={false}>
+        <div className="side-shield"><SafetyCertificateOutlined /></div>
+        <Typography.Title level={4}>{t("Bảo mật giao dịch")}</Typography.Title>
+        <Typography.Paragraph>{t("Thông tin kết nối được mã hóa ở phía máy chủ. Roomie không lưu số thẻ hoặc thông tin ngân hàng của người thuê.")}</Typography.Paragraph>
+        <div className="security-checks">
+          <span><CheckCircleFilled />  {t("Mã hóa khóa kết nối")}</span>
+          <span><CheckCircleFilled />  {t("Xác minh kết quả thanh toán")}</span>
+          <span><CheckCircleFilled />  {t("Tự đối chiếu hóa đơn")}</span>
+        </div>
+        <div className="settings-state">
+          <span className={settingsQuery.data?.configured ? 'connected-dot' : 'disconnected-dot'} />
+          {verified ? t("Webhook đã xác minh") : settingsQuery.data?.configured ? t("Webhook chưa sẵn sàng") : t("Chưa lưu cấu hình")}
+        </div>
+        <Button
+          icon={<BookOutlined />}
+          block
+          onClick={() => setGuideOpen(true)}
+          style={{ marginTop: 16 }}
+        >
+          {t("Hướng dẫn thiết lập payOS")}
+        </Button>
+      </Card>
     </div>}
+
+    <Drawer
+      title={<Space><CreditCardOutlined style={{ color: 'var(--teal)' }} /><span>{t("Hướng dẫn thiết lập payOS")}</span></Space>}
+      open={guideOpen}
+      onClose={() => setGuideOpen(false)}
+      width={520}
+      extra={
+        <Button
+          type="link"
+          href="https://payos.vn"
+          target="_blank"
+          rel="noopener noreferrer"
+          icon={<ExportOutlined />}
+        >
+          {t("Mở payOS.vn")}
+        </Button>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Alert
+          type="info"
+          showIcon
+          message={t("payOS là cổng thanh toán tạo mã VietQR động, tiền chuyển thẳng vào tài khoản ngân hàng của bạn ngay khi người thuê quét mã.")}
+        />
+        <div style={{ padding: '14px 16px', background: '#f8faf9', borderRadius: 8, border: '1px solid #e7eeec' }}>
+          <Typography.Title level={5} style={{ margin: 0, marginBottom: 6, color: '#1677ff' }}>
+            {t("Bước 1: Đăng ký tài khoản payOS")}
+          </Typography.Title>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 10 }}>
+            {t("Truy cập payos.vn, đăng ký tài khoản (chọn loại Cá nhân hoặc Doanh nghiệp) và kích hoạt qua email.")}
+          </Typography.Paragraph>
+          <Button
+            size="small"
+            icon={<ExportOutlined />}
+            href="https://payos.vn"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t("Mở payOS.vn")}
+          </Button>
+        </div>
+        <div style={{ padding: '14px 16px', background: '#f8faf9', borderRadius: 8, border: '1px solid #e7eeec' }}>
+          <Typography.Title level={5} style={{ margin: 0, marginBottom: 6, color: '#1677ff' }}>
+            {t("Bước 2: Liên kết ngân hàng nhận tiền")}
+          </Typography.Title>
+          <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+            {t("Vào mục Tài khoản ngân hàng trên payOS, thêm số tài khoản ngân hàng bạn muốn nhận tiền phòng.")}
+          </Typography.Paragraph>
+        </div>
+        <div style={{ padding: '14px 16px', background: '#f8faf9', borderRadius: 8, border: '1px solid #e7eeec' }}>
+          <Typography.Title level={5} style={{ margin: 0, marginBottom: 6, color: '#1677ff' }}>
+            {t("Bước 3: Lấy bộ khóa kết nối")}
+          </Typography.Title>
+          <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+            {t("Vào mục Kênh thanh toán, tạo kênh mới rồi vào Cài đặt API để lấy: Client ID, API Key, Checksum Key.")}
+          </Typography.Paragraph>
+        </div>
+        <div style={{ padding: '14px 16px', background: '#f8faf9', borderRadius: 8, border: '1px solid #e7eeec' }}>
+          <Typography.Title level={5} style={{ margin: 0, marginBottom: 6, color: '#1677ff' }}>
+            {t("Bước 4: Nhập vào Roomie & Xác minh")}
+          </Typography.Title>
+          <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+            {t("Dán 3 khóa vào biểu mẫu và bấm 'Lưu và xác minh payOS'. Hệ thống sẽ tự đăng ký webhook an toàn.")}
+          </Typography.Paragraph>
+        </div>
+        <Alert
+          type="warning"
+          showIcon
+          message={t("Lưu ý quan trọng: Chỉ khi webhook đã được payOS xác minh (chấm xanh), bạn mới được cấp link cho khách thuê.")}
+        />
+      </div>
+    </Drawer>
   </>;
 }

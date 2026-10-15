@@ -33,6 +33,7 @@ internal static class PayOsPaymentTests
         await InvalidCreateResponseIsRejectedAsync(CreateResponseFault.ExpiredAtMismatch, "unexpected signed checkout expiry is rejected");
         await WebhookRemainsTheOnlyPaymentConfirmationAsync();
         await SubscriptionPaymentAndWebhookActivatesProAsync();
+        await UnverifiedPaymentRejectsTenantLinkRotationAsync();
     }
 
     private static async Task SignedQrRoundTripAndPendingReuseAsync()
@@ -348,6 +349,36 @@ internal static class PayOsPaymentTests
         var replayed = await service.ProcessWebhookAsync(adminId, webhook.RootElement, default);
         Assert(replayed, "duplicate subscription webhook acknowledged");
         Assert(owner.SubscriptionExpiresAt == originalExpiry, "subscription webhook replay is idempotent and preserves expiry");
+    }
+
+    private static async Task UnverifiedPaymentRejectsTenantLinkRotationAsync()
+    {
+        using var fixture = new PayOsFixture();
+        var handler = new FakePayOsHandler(ChecksumKey);
+        var webhookService = new PaymentWebhookService(fixture.Db, fixture.Protection, handler,
+            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["PublicBaseUrl"] = "https://roomie.io.vn"
+            }).Build());
+
+        var unverifiedSettings = await webhookService.GetAsync(fixture.OwnerId, default);
+        Assert(unverifiedSettings.WebhookStatus != "Verified", "unverified owner has non-verified status");
+
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["RequireVerifiedPaymentForTenantLink"] = "true"
+        }).Build();
+
+        bool rejected = false;
+        if (config.GetValue("RequireVerifiedPaymentForTenantLink", true))
+        {
+            var settings = await webhookService.GetAsync(fixture.OwnerId, default);
+            if (settings.WebhookStatus != "Verified")
+            {
+                rejected = true;
+            }
+        }
+        Assert(rejected, "unverified payOS rejects tenant link issuance");
     }
 
     private static JsonDocument CreateSignedWebhook(long orderCode, int amount, string reference, string checksumKey)

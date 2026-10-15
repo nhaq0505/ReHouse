@@ -8,11 +8,11 @@ import RoomieMark from '../components/RoomieMark';
 import LanguageSelector from '../i18n/LanguageSelector';
 import { t } from '../i18n/runtime';
 import { useAuth } from '../auth';
-import { formatVnd } from '../api';
+import { formatVnd, type User } from '../api';
 import './LandingPage.css';
 
 function Brand({ footer = false }: { footer?: boolean }) {
-  return <Link to="/welcome" className={`landing-brand${footer ? ' landing-brand--footer' : ''}`} aria-label="Roomie">
+  return <Link to="/" className={`landing-brand${footer ? ' landing-brand--footer' : ''}`} aria-label="Roomie">
     <span className="brand-mark"><RoomieMark /></span><strong>Roomie</strong>
   </Link>;
 }
@@ -85,8 +85,7 @@ function BillingIllustration() {
   </figure>;
 }
 
-export default function LandingPage() {
-  const { user } = useAuth();
+export function LandingContent({ user = null }: { user?: User | null }) {
   const workspace = user?.role === 'Admin' ? '/admin/owners' : '/dashboard';
   const destination = user ? workspace : '/register';
   const actionLabel = user ? t("Bảng điều khiển") : t("Đăng ký làm chủ trọ");
@@ -149,6 +148,11 @@ export default function LandingPage() {
         <ol className="setup-steps"><li><strong>{t("1. Đăng ký thông tin")}</strong><span>{t("Điền thông tin tài khoản.")}</span></li><li><strong>{t("2. Xác thực OTP email")}</strong><span>{t("Xác nhận bằng mã gửi qua email.")}</span></li><li><strong>{t("3. Thiết lập phòng & đón khách")}</strong><span>{t("Thêm dãy trọ và phòng đầu tiên.")}</span></li></ol>
       </section>
     </main>
-    <footer className="landing-footer"><div className="footer-inner"><div className="footer-brand"><Brand footer /><p>{t("Đơn giản hóa việc quản lý nhà trọ mỗi ngày.")}</p></div><div className="footer-links"><strong>{t("Tính năng")}</strong><a href="#hero">{t("Trang chủ")}</a><a href="#features">{t("Tính năng")}</a><a href="#how-it-works">{t("Cách hoạt động")}</a></div><div className="footer-links"><strong>{t("Chủ trọ")}</strong><Link to="/login">{t("Đăng nhập")}</Link><Link to="/register">{t("Đăng ký làm chủ trọ")}</Link><Link to="/welcome">{t("Trang chủ")}</Link></div></div><div className="footer-bottom"><span>© 2026 Roomie</span><span>{t("Đơn giản hóa việc quản lý mỗi ngày")}</span></div></footer>
+    <footer className="landing-footer"><div className="footer-inner"><div className="footer-brand"><Brand footer /><p>{t("Đơn giản hóa việc quản lý nhà trọ mỗi ngày.")}</p></div><div className="footer-links"><strong>{t("Tính năng")}</strong><a href="#hero">{t("Trang chủ")}</a><a href="#features">{t("Tính năng")}</a><a href="#how-it-works">{t("Cách hoạt động")}</a></div><div className="footer-links"><strong>{t("Chủ trọ")}</strong><Link to="/login">{t("Đăng nhập")}</Link><Link to="/register">{t("Đăng ký làm chủ trọ")}</Link><Link to="/">{t("Trang chủ")}</Link></div></div><div className="footer-bottom"><span>© 2026 Roomie</span><span>{t("Đơn giản hóa việc quản lý mỗi ngày")}</span></div></footer>
   </div>;
+}
+
+export default function LandingPage() {
+  const { user } = useAuth();
+  return <LandingContent user={user} />;
 }

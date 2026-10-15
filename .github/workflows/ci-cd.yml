@@ -90,6 +90,7 @@ jobs:
             --env EmailVerification__Enabled=false \
             --env EnableInvoiceSweep=false \
             --env EnablePaymentReconciliation=false \
+            --env Seo__AllowIndexing=true \
             --env HTTPS_PROXY=http://127.0.0.1:9 \
             --env HTTP_PROXY=http://127.0.0.1:9 \
             --env ALL_PROXY=http://127.0.0.1:9 \
@@ -112,6 +113,9 @@ jobs:
           API_BASE_URL=http://127.0.0.1:5080 \
           API_ORIGIN=http://127.0.0.1:5080 \
             python3 -m unittest discover -s tests -p 'test_api_integration.py' -v
+
+          SEO_BASE_URL=http://127.0.0.1:5080 \
+            python3 -m unittest discover -s tests -p 'test_seo_http.py' -v
 
   publish:
     name: Publish immutable image

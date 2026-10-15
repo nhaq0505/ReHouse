@@ -688,3 +688,33 @@ Chi tiết file, API, kiểm tra và lưu ý: [account-occupancy-dashboard-repor
 - **i18n & Build:** Bổ sung các khóa mới vào `source.json` và `translations.tsv` (4 ngôn ngữ: en, zh, ko, hi). Chạy `i18n:check` PASS 989 keys × 4 catalogs. `npm run build` PASS (chunk `LandingPage-Bo2ucVIc.js` 14.99 kB / gzip 3.84 kB).
 - **Responsive DOM Verification:** Kiểm tra tự động bằng Chrome headless qua CDP tại 320px, 375px, 768px, 1440px: cả 4 kích thước đều đạt `hasHorizontalScroll = false` và `overflowingElements = 0` (không tràn ngang).
 
+
+## 48. SEO tuần 1–2 — 15/10/2026 (local, chưa phát hành)
+
+- Người dùng chốt SEO cho chủ trọ Việt Nam trên `roomie.io.vn`, 8 tuần/4 bài, chỉ Search Console. Yêu cầu mỗi đợt SEO phải có file ghi toàn bộ quá trình. **Đọc [kế hoạch SEO](SEO_PLAN.md) và cập nhật [nhật ký SEO](SEO_LOG.md) sau mọi đợt SEO tiếp theo**, phân biệt local/QA/commit/deploy/index.
+- Source đã có prerender landing dùng chung React, CSS SSR/theme dùng chung; public index tách app shell riêng. Canonical `/`,301 `/welcome` và `/index.html` giữ query; title/description/OG/Twitter/PNG1200×630/Organization/WebSite; robots/sitemap sinh từ registry public (hiện chỉ `/`).
+- Backend noindex trang riêng/API/demo/ngôn ngữ khácvi và lỗi HTTP,404 thật cho URL lạ; giữ link khách/callback/auth hiện có. Development mặc định noindex, Production chỉ hostroomie.io.vn; `Seo__AllowIndexing`/Compose`SEO_ALLOW_INDEXING` cho phép tắt toàn bộ index.
+- QA: frontend/backend build PASS; i18n1014×4 PASS;13/13SEOHTTP và20/20API trên SQLite tạm PASS; UI chuyển metadata và login/root→dashboard PASS, console sạch; HTML tĩnh375/1440 không tràn. Chi tiết, lệnh và giới hạn ở nhật ký. CI bổ sung suite SEO nhưng chưa chạy GitHub.
+- Chưa commit/push/deploy; website public robots/sitemap vẫn404 khi kiểm tra trước phát hành. Search Console chưa đăng nhập/xác minh/gửi sitemap; chưa có baseline hoặc xác nhận Google index. Không chạy test trên DB thật, không gửi OTP hoặc tạo thanh toán thật. Nội dung tuần3–6 chưa làm.
+
+### Tiếp mục48 — Search Console trên Edge
+
+- User đã đăng nhập Search Console trong Edge. Đã thêm Domain property`roomie.io.vn`; Google cấp TXT và đang chờ DNS verify, chưa thành công/chưa gửi sitemap. Tab Google được giữ.
+- Trang P.A Việt Nam mở tại`https://access.pavietnam.vn/dang-nhap`, cần user đăng nhập; chưa đổi DNS. Nhật ký SEO đã cập nhật. Source vẫn local, chưa phát hành.
+
+### Tiếp mục48 — DNS/Google xác minh thành công (15/10/2026)
+
+- Sau user đăng nhậpP.A: đã thêm1TXTGoogle host@,TTL3600 quaUI; tải lại thấy10records,9records cũ giữ nguyên. Authoritative ns1.pavietnam.vn vàGoogleDNS8.8.8.8 đã trả TXT mới.
+- Search Console báo **Đã xác minh quyền sở hữu**, Domain property`roomie.io.vn`. Tab Tổng quan trongEdge được giữ cho user; báo cáo đang xử lý dữ liệu, chưa có baseline/index kết luận. GiữTXT để duy trì quyền sở hữu.
+- `https://roomie.io.vn/sitemap.xml` vẫn404; chưa gửiGoogle/chưa yêu cầu index. SourceSEO vẫn local, chưa commit/push/deploy. Nhật ký và checklist đã cập nhật, ảnh xác nhận `/tmp/roomie-gsc-verified.jpg`.
+
+## 49. Chặn mọi bot qua robots.txt — 15/10/2026
+
+- User xác nhận “robots.txt đóng hết tất cả”, gồm cảGooglebot; tạm dừng mởcrawl/gửi sitemap/yêu cầuindex cho đến khi user mở lại.
+- `frontend/public/robots.txt` chứa `User-agent: *` và `Disallow: /`. Prerender local không còn ghi đè thànhAllow, suiteSEOHTTP13/13PASS và buildPASS.
+- Commit`65d4907` chỉ gồm file robots2dòng, đã pushmain để pipeline hiện có phát hành; đang chờCI/deploy và kiểm tra public. Các thay đổi SEO trước đó/nhật ký vẫn local. Chi tiết ởSEO_LOG.
+
+### Mục49 — đã live
+
+- Pipeline38672131045 success cảverify,publish,deploy cho commit65d4907. Chỉfile`frontend/public/robots.txt` được phát hành. HTTPSapex vàwww/robots.txt đều200,trả chính xác `User-agent: *` / `Disallow: /`; chặncrawlđãlive.
+- Giữchặn cảGooglebot theo yêu cầu mới, không gửi sitemap/requestindex hoặc tự mở lại. Các thay đổiSEOkhác vàlog vẫnlocal.

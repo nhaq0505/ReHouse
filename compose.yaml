@@ -28,6 +28,7 @@ services:
       PublicBaseUrl: ${PUBLIC_BASE_URL:-http://localhost:8080}
       WebhookBaseUrl: ${WEBHOOK_BASE_URL:-${PUBLIC_BASE_URL:-http://localhost:8080}}
       TrustedProxies: ${TRUSTED_PROXIES:-}
+      Seo__AllowIndexing: ${SEO_ALLOW_INDEXING:-true}
       BootstrapAdmin__Email: ${BOOTSTRAP_ADMIN_EMAIL:-admin@example.com}
       BootstrapAdmin__Password: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in .env}
       Email__FromAddress: ${SMTP_FROM_ADDRESS:-}

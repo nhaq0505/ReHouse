@@ -1,5 +1,26 @@
 # Local API integration tests
 
+## SEO HTTP checks
+
+Build frontend first (`npm --prefix frontend run build`) and backend (`dotnet build backend/RoomRental.Api`). Start a separate API using the disposable database command below, with these additional arguments/configuration:
+
+```sh
+# Add to the disposable API environment, never to a shared Development database:
+Seo__AllowIndexing=true
+# Add to dotnet run's arguments (replace with the absolute project path):
+--webroot "/absolute/project/path/frontend/dist"
+```
+
+Then run against that local server:
+
+```sh
+SEO_BASE_URL=http://localhost:5094 /usr/bin/python3 -m unittest discover -s tests -p 'test_seo_http.py' -v
+```
+
+Linux CI can use `python3` instead of `/usr/bin/python3`. These 13 read-only tests check pre-rendered HTML and CSS, canonical/OG/JSON-LD, noindex on private/demo/language routes, preserved redirects, real 404s, auth errors, HEAD, sitemap, the user-requested robots block for all crawlers, and PNG dimensions. Requests use the synthetic Host `roomie.io.vn` against localhost to exercise production index controls; `Seo__AllowIndexing=true` is necessary because Development defaults to noindex. CI runs the same checks inside the disposable application image. `npm run dev`/`preview` do not exercise the .NET routing and HTTP headers.
+
+## Business API checks
+
 The suite creates synthetic owners, rooms, invoices and receipts. **Use only a new disposable database.**
 Never use Development PostgreSQL `room_rental` at `127.0.0.1:15432`, production,
 or SQLite files/snapshots under `.local-data`.

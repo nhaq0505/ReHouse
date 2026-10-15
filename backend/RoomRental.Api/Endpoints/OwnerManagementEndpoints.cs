@@ -404,9 +404,17 @@ public static class OwnerManagementEndpoints
             HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
             await MoveoutEndpoints.CompleteMoveoutAsync(id, request, context, db, cancellationToken));
 
-        routes.MapPost("/rooms/{id:guid}/rotate-link", async (Guid id, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
+        routes.MapPost("/rooms/{id:guid}/rotate-link", async (Guid id, HttpContext context, AppDbContext db,
+            TenantTokenService tokenService, PaymentWebhookService webhookService, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
+            if (configuration.GetValue("RequireVerifiedPaymentForTenantLink", true))
+            {
+                var settings = await webhookService.GetAsync(ownerId, cancellationToken);
+                if (settings.WebhookStatus != "Verified")
+                    throw new ApiException(StatusCodes.Status400BadRequest, "Chưa lưu cấu hình payOS đã được xác minh. Vui lòng thiết lập thanh toán trước khi cấp link cho khách.");
+            }
+
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
             _ = await FindRoomAsync(db, ownerId, id, cancellationToken);
             var occupancy = await db.Occupancies.SingleOrDefaultAsync(row => row.RoomId == id && row.IsActive, cancellationToken)

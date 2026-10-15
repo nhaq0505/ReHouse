@@ -143,6 +143,7 @@ app.Use(async (context, next) =>
     if (context.Request.Path.StartsWithSegments("/api")) context.Response.Headers.CacheControl = "no-store";
     await next();
 });
+app.UseMiddleware<SeoMiddleware>();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseRouting();
@@ -184,7 +185,10 @@ app.MapFallback("{*path:nonfile}", async context =>
         return;
     }
 
-    var index = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"), "index.html");
+    var isHome = path == "/";
+    var isApp = SeoMiddleware.IsAppPath(path);
+    if (!isHome && !isApp) context.Response.StatusCode = StatusCodes.Status404NotFound;
+    var index = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"), isHome ? "index.html" : "app.html");
     if (!File.Exists(index))
     {
         context.Response.StatusCode = StatusCodes.Status404NotFound;

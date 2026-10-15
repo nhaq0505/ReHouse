@@ -1012,5 +1012,21 @@
   "Xác nhận bằng mã gửi qua email.": "ईमेल से भेजे कोड से पुष्टि करें।",
   "Thêm dãy trọ và phòng đầu tiên.": "अपनी पहली संपत्ति और कमरे जोड़ें।",
   "Mỗi căn phòng, luôn trong tầm mắt.": "हर कमरा, हमेशा नज़र में।",
-  "Một hóa đơn. Rõ từng khoản.": "एक बिल। हर शुल्क साफ़।"
+  "Một hóa đơn. Rõ từng khoản.": "एक बिल। हर शुल्क साफ़।",
+  "Chưa xác minh cấu hình payOS": "payOS कॉन्फ़िगरेशन सत्यापित नहीं है",
+  "Cần lưu và xác minh cấu hình payOS trước khi cấp link cho khách thuê.": "किरायेदार को लिंक जारी करने से पहले payOS कॉन्फ़िगरेशन सहेजें और सत्यापित करें।",
+  "Cấu hình ngay": "अभी कॉन्फ़िगर करें",
+  "Hướng dẫn thiết lập": "सेटअप गाइड",
+  "Hướng dẫn thiết lập payOS": "payOS सेटअप गाइड",
+  "Mở payOS.vn": "payOS.vn खोलें",
+  "payOS là cổng thanh toán tạo mã VietQR động, tiền chuyển thẳng vào tài khoản ngân hàng của bạn ngay khi người thuê quét mã.": "payOS एक भुगतान गेटवे है जो डायनामिक VietQR कोड बनाता है, जिससे किरायेदार के स्कैन करते ही सीधे आपके बैंक खाते में पैसे आ जाते हैं।",
+  "Bước 1: Đăng ký tài khoản payOS": "चरण 1: payOS खाता पंजीकृत करें",
+  "Truy cập payos.vn, đăng ký tài khoản (chọn loại Cá nhân hoặc Doanh nghiệp) và kích hoạt qua email.": "payos.vn पर जाएं, खाता पंजीकृत करें (व्यक्तिगत या व्यावसायिक चुनें) और ईमेल से सक्रिय करें।",
+  "Bước 2: Liên kết ngân hàng nhận tiền": "चरण 2: प्राप्तकर्ता बैंक खाता लिंक करें",
+  "Vào mục Tài khoản ngân hàng trên payOS, thêm số tài khoản ngân hàng bạn muốn nhận tiền phòng.": "payOS पर बैंक खाते पर जाएं, वह बैंक खाता संख्या जोड़ें जिसमें आप कमरे का किराया प्राप्त करना चाहते हैं।",
+  "Bước 3: Lấy bộ khóa kết nối": "चरण 3: एकीकरण कुंजियाँ प्राप्त करें",
+  "Vào mục Kênh thanh toán, tạo kênh mới rồi vào Cài đặt API để lấy: Client ID, API Key, Checksum Key.": "भुगतान चैनल पर जाएं, नया चैनल बनाएं, फिर API सेटिंग्स खोलकर लें: Client ID, API Key, Checksum Key।",
+  "Bước 4: Nhập vào Roomie & Xác minh": "चरण 4: Roomie में दर्ज करें और सत्यापित करें",
+  "Dán 3 khóa vào biểu mẫu và bấm 'Lưu và xác minh payOS'. Hệ thống sẽ tự đăng ký webhook an toàn.": "फ़ॉर्म में 3 कुंजियाँ चिपकाएँ और 'payOS सहेजें और सत्यापित करें' पर क्लिक करें। सिस्टम स्वचालित रूप से सुरक्षित वेबहुक पंजीकृत करेगा।",
+  "Lưu ý quan trọng: Chỉ khi webhook đã được payOS xác minh (chấm xanh), bạn mới được cấp link cho khách thuê.": "महत्वपूर्ण सूचना: केवल तभी जब payOS द्वारा वेबहुक सत्यापित हो (हरा बिंदु), आप किरायेदारों को लिंक जारी कर सकते हैं।"
 }

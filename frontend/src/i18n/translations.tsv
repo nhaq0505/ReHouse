@@ -1012,3 +1012,19 @@
 1011|Add your first property and rooms.|添加首处出租房及房间。|첫 임대 건물과 방을 추가하세요.|अपनी पहली संपत्ति और कमरे जोड़ें।
 1012|Every room, always in view.|每个房间，尽在掌握。|모든 방의 현황을 한눈에.|हर कमरा, हमेशा नज़र में।
 1013|One invoice. Every charge clear.|一张账单，每项费用都清楚。|청구서 하나로 모든 요금을 명확하게.|एक बिल। हर शुल्क साफ़।
+1014|payOS configuration not verified|payOS 配置尚未验证|payOS 설정이 확인되지 않음|payOS कॉन्फ़िगरेशन सत्यापित नहीं है
+1015|Save and verify your payOS configuration before issuing the tenant link.|向租客提供链接前，请先保存并验证 payOS 配置。|임차인에게 링크를 발급하기 전에 payOS 설정을 저장하고 확인하세요.|किरायेदार को लिंक जारी करने से पहले payOS कॉन्फ़िगरेशन सहेजें और सत्यापित करें।
+1016|Configure now|立即配置|지금 설정|अभी कॉन्फ़िगर करें
+1017|Setup guide|设置指南|설정 가이드|सेटअप गाइड
+1018|payOS setup guide|payOS 设置指南|payOS 설정 가이드|payOS सेटअप गाइड
+1019|Open payOS.vn|打开 payOS.vn|payOS.vn 열기|payOS.vn खोलें
+1020|payOS is a payment gateway generating dynamic VietQR codes, transferring money directly into your bank account as soon as tenants scan.|payOS 是动态 VietQR 支付网关，租客扫码后款项即时直达您的银行账户。|payOS는 동적 VietQR 코드를 생성하는 결제 게이트웨이로, 임차인이 스캔하는 즉시 은행 계좌로 직접 입금됩니다.|payOS एक भुगतान गेटवे है जो डायनामिक VietQR कोड बनाता है, जिससे किरायेदार के स्कैन करते ही सीधे आपके बैंक खाते में पैसे आ जाते हैं।
+1021|Step 1: Register payOS account|第 1 步：注册 payOS 账户|1단계: payOS 계정 등록|चरण 1: payOS खाता पंजीकृत करें
+1022|Visit payos.vn, register an account (choose Individual or Business) and activate via email.|访问 payos.vn，注册账户（选择个人或企业类型）并通过电子邮件激活。|payos.vn에 접속하여 계정을 등록하고(개인 또는 기업 선택) 이메일로 활성화하세요.|payos.vn पर जाएं, खाता पंजीकृत करें (व्यक्तिगत या व्यावसायिक चुनें) और ईमेल से सक्रिय करें।
+1023|Step 2: Link recipient bank account|第 2 步：绑定收款银行账户|2단계: 수취 은행 계좌 연결|चरण 2: प्राप्तकर्ता बैंक खाता लिंक करें
+1024|Go to Bank Accounts on payOS, add the bank account number where you want to receive rent.|进入 payOS 的银行账户栏目，添加您用于接收房租的银行账号。|payOS의 은행 계좌 메뉴로 이동하여 월세를 받을 은행 계좌 번호를 추가하세요.|payOS पर बैंक खाते पर जाएं, वह बैंक खाता संख्या जोड़ें जिसमें आप कमरे का किराया प्राप्त करना चाहते हैं।
+1025|Step 3: Get API integration keys|第 3 步：获取对接密钥|3단계: 연동 키 발급|चरण 3: एकीकरण कुंजियाँ प्राप्त करें
+1026|Go to Payment Channels, create a new channel, then open API Settings to copy: Client ID, API Key, Checksum Key.|进入支付渠道栏目，创建新渠道，然后打开 API 设置以获取：Client ID、API Key、Checksum Key。|결제 채널 메뉴로 이동하여 새 채널을 생성한 뒤 API 설정에서 Client ID, API Key, Checksum Key를 복사하세요.|भुगतान चैनल पर जाएं, नया चैनल बनाएं, फिर API सेटिंग्स खोलकर लें: Client ID, API Key, Checksum Key।
+1027|Step 4: Enter into Roomie & Verify|第 4 步：填入 Roomie 并验证|4단계: Roomie에 입력 및 확인|चरण 4: Roomie में दर्ज करें और सत्यापित करें
+1028|Paste the 3 keys into the form and click 'Save and verify payOS'. The system will automatically register the secure webhook.|将 3 个密钥粘贴到表单中，点击'保存并验证 payOS'。系统将自动安全注册 Webhook。|양식에 3개의 키를 붙여넣고 'payOS 저장 및 확인'을 클릭하세요. 시스템이 안전하게 웹훅을 자동 등록합니다.|फ़ॉर्म में 3 कुंजियाँ चिपकाएँ और 'payOS सहेजें और सत्यापित करें' पर क्लिक करें। सिस्टम स्वचालित रूप से सुरक्षित वेबहुक पंजीकृत करेगा।
+1029|Important note: Only when the webhook is verified by payOS (green dot) can you issue links to tenants.|重要提示：仅当 Webhook 经 payOS 验证（绿点）后，方可向租客提供链接。|중요 알림: 웹훅이 payOS에서 확인(녹색 점)된 경우에만 임차인에게 링크를 발급할 수 있습니다.|महत्वपूर्ण सूचना: केवल तभी जब payOS द्वारा वेबहुक सत्यापित हो (हरा बिंदु), आप किरायेदारों को लिंक जारी कर सकते हैं।

@@ -51,8 +51,10 @@ function RoomsContent() {
   const buildingsQuery = useQuery({ queryKey: ['buildings', 'room-options'], queryFn: () => api.buildings.list(true) });
   const roomsQuery = useQuery({ queryKey: ['rooms', 'archive-view'], queryFn: () => api.rooms.list(undefined, true) });
   const subQuery = useQuery({ queryKey: ['subscription'], queryFn: api.subscription.getStatus });
+  const paymentSettingsQuery = useQuery({ queryKey: ['payment-settings'], queryFn: api.paymentSettings.get });
+  const isPaymentVerified = paymentSettingsQuery.data?.webhookStatus === 'Verified';
 
-  const refreshData = async () => { await Promise.all([client.invalidateQueries({ queryKey: ['rooms'] }), client.invalidateQueries({ queryKey: ['dashboard'] }), client.invalidateQueries({ queryKey: ['buildings'] }), client.invalidateQueries({ queryKey: ['invoices'] }), client.invalidateQueries({ queryKey: ['subscription'] })]); };
+  const refreshData = async () => { await Promise.all([client.invalidateQueries({ queryKey: ['rooms'] }), client.invalidateQueries({ queryKey: ['dashboard'] }), client.invalidateQueries({ queryKey: ['buildings'] }), client.invalidateQueries({ queryKey: ['invoices'] }), client.invalidateQueries({ queryKey: ['subscription'] }), client.invalidateQueries({ queryKey: ['payment-settings'] })]); };
   const createMutation = useMutation({ mutationFn: api.rooms.create, onSuccess: async () => { await refreshData(); message.success(t("Đã thêm phòng.")); setMode(null); roomForm.resetFields(); }, onError: (e: Error) => message.error(e.message) });
   const supplementalMutation = useMutation({ mutationFn: ({ roomId, body }: { roomId: string; body: Parameters<typeof api.invoices.createSupplemental>[1] }) => api.invoices.createSupplemental(roomId, body), onSuccess: async () => { await refreshData(); message.success(t("Đã tạo hóa đơn bổ sung trên link khách.")); setSupplemental(null); supplementalForm.resetFields(); }, onError: (e: Error) => message.error(e.message) });
   const updateMutation = useMutation({ mutationFn: ({ id, values }: { id: string; values: Parameters<typeof api.rooms.update>[1] }) => api.rooms.update(id, values), onSuccess: async () => { await refreshData(); message.success(t("Đã cập nhật thông tin phòng.")); setMode(null); }, onError: (e: Error) => message.error(e.message) });
@@ -133,8 +135,32 @@ function RoomsContent() {
 
   };
 
-  const renewLink = (room: Room) => modal.confirm({ title: t("Thu hồi link của {0}?", [room.name]), content: t("Tạo liên kết riêng để người thuê xem hóa đơn và thanh toán. Nếu đã cấp link trước đó, link cũ sẽ hết hiệu lực."), className: 'room-editor', centered: true, autoFocusButton: 'cancel', okText: t("Thu hồi & tạo link mới"), cancelText: t("Hủy"), okButtonProps: { danger: true }, onOk: () => rotateMutation.mutateAsync(room.id) });
-  const issueLink = (room: Room) => { setLinkLanguage(getLanguage()); if (room.occupancy?.token && room.occupancy.url) setLinkInfo({ token: room.occupancy.token, url: room.occupancy.url, room }); else renewLink(room); };
+  const promptPaymentConfiguration = () => {
+    modal.confirm({
+      title: t("Chưa xác minh cấu hình payOS"),
+      content: t("Cần lưu và xác minh cấu hình payOS trước khi cấp link cho khách thuê."),
+      okText: t("Cấu hình ngay"),
+      cancelText: t("Để sau"),
+      onOk: () => navigate('/settings/payment'),
+    });
+  };
+
+  const renewLink = (room: Room) => {
+    if (!isPaymentVerified) {
+      promptPaymentConfiguration();
+      return;
+    }
+    modal.confirm({ title: t("Thu hồi link của {0}?", [room.name]), content: t("Tạo liên kết riêng để người thuê xem hóa đơn và thanh toán. Nếu đã cấp link trước đó, link cũ sẽ hết hiệu lực."), className: 'room-editor', centered: true, autoFocusButton: 'cancel', okText: t("Thu hồi & tạo link mới"), cancelText: t("Hủy"), okButtonProps: { danger: true }, onOk: () => rotateMutation.mutateAsync(room.id) });
+  };
+  const issueLink = (room: Room) => {
+    if (!isPaymentVerified) {
+      promptPaymentConfiguration();
+      return;
+    }
+    setLinkLanguage(getLanguage());
+    if (room.occupancy?.token && room.occupancy.url) setLinkInfo({ token: room.occupancy.token, url: room.occupancy.url, room });
+    else renewLink(room);
+  };
   useEffect(() => { if (searchParams.get('create') === '1' && buildingsQuery.isSuccess && buildingsQuery.data.length > 0) { openCreate(); const next = new URLSearchParams(searchParams); next.delete('create'); setSearchParams(next, { replace: true }); } else if (searchParams.get('links') === '1') { setStatusFilter('occupied'); const next = new URLSearchParams(searchParams); next.delete('links'); setSearchParams(next, { replace: true }); } }, [searchParams, buildingsQuery.isSuccess]);
 
   const roomStatus = (room: Room) => room.isArchived ? <Tag className="archived-state-tag">{t("Đã lưu trữ")}</Tag> : <Tag className={`room-state ${room.occupancy ? 'room-state-occupied' : 'room-state-vacant'}`}>{room.occupancy ? t("Đang thuê") : t("Còn trống")}</Tag>;

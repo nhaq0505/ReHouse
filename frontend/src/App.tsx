@@ -1,6 +1,8 @@
 import { useLanguage } from './i18n/LanguageSelector';
+import { SeoMetadata } from './seo/SeoMetadata';
+import LandingPage from './pages/LandingPage';
 import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Spin } from 'antd';
 import { useAuth } from './auth';
 import AppShell from './components/AppShell';
@@ -20,7 +22,7 @@ const AdminOwnersPage = lazy(() => import('./pages/AdminOwnersPage'));
 const TenantPage = lazy(() => import('./pages/TenantPage'));
 const TenantCheckoutPage = lazy(() => import('./pages/TenantCheckoutPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
-const LandingPage = lazy(() => import('./pages/LandingPage'));
+
 
 function Gate({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
   const { user, ready } = useAuth();
@@ -34,8 +36,7 @@ function Gate({ children, admin = false }: { children: React.ReactNode; admin?: 
 
 function HomeRedirect() {
   const { user, ready } = useAuth();
-  if (!ready) return <div className="screen-center"><Spin size="large" /></div>;
-  if (!user) return <LandingPage />;
+  if (!ready || !user) return <LandingPage />;
   if (user.status && user.status !== 'Approved') return <Navigate to="/account-status" replace />;
   return <Navigate to={user.role === 'Admin' ? '/admin/owners' : '/dashboard'} replace />;
 }
@@ -46,13 +47,14 @@ function AppFallback() {
 
 export default function App() {
   useLanguage();
-  return <Suspense fallback={<AppFallback />}><Routes>
+  const location = useLocation();
+  return <><SeoMetadata /><Suspense fallback={<AppFallback />}><Routes>
     <Route path="/login" element={<LoginPage />} />
     <Route path="/reset-password" element={<PasswordPage reset />} />
     <Route path="/change-password" element={<PasswordPage />} />
     <Route path="/register" element={<RegisterPage />} />
     <Route path="/account-status" element={<AccountStatusPage />} />
-    <Route path="/welcome" element={<LandingPage />} />
+    <Route path="/welcome" element={<Navigate to={`/${location.search}${location.hash}`} replace />} />
     <Route path="/t/:token" element={<TenantPage />} />
     <Route path="/t/:token/invoices/:invoiceId/checkout" element={<TenantCheckoutPage />} />
     <Route path="/tenant/:token" element={<TenantPage />} />
@@ -67,5 +69,5 @@ export default function App() {
     <Route path="/settings/payment" element={<Gate><AppShell><PaymentSettingsPage /></AppShell></Gate>} />
     <Route path="/admin/owners" element={<Gate admin><AppShell><AdminOwnersPage /></AppShell></Gate>} />
     <Route path="*" element={<NotFoundPage />} />
-  </Routes></Suspense>;
+  </Routes></Suspense></>;
 }

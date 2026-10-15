@@ -2,6 +2,8 @@
 
 **Agent tiếp tục dự án: đọc [kế hoạch và tài liệu bàn giao](docs/PROJECT_HANDOFF.md) trước.**
 
+SEO: xem [kế hoạch 8 tuần](docs/SEO_PLAN.md). **Sau mỗi đợt thay đổi SEO, cập nhật [nhật ký SEO](docs/SEO_LOG.md)** với công việc thực tế, kiểm thử, trạng thái phát hành và kết quả quan sát được; không ghi dự kiến thành đã hoàn thành.
+
 MVP ASP.NET Core .NET 10 + React/TypeScript cho nhiều chủ trọ. Admin duyệt chủ trọ; quản lý dãy/phòng/lượt thuê; nhập chỉ số điện thủ công; tính tiền và phát hành hóa đơn; link khách riêng; thu tiền thủ công và tích hợp payOS theo từng chủ trọ. Camera/AI nằm ở giai đoạn sau.
 
 ## Chạy thử trên máy
@@ -53,7 +55,7 @@ Pilot VPS hiện truy cập qua [HTTPS tại demo.yourdomain.com](https://demo.y
 
 ## payOS
 
-Chủ trọ vào phần cấu hình thanh toán và nhập Client ID, API Key, Checksum Key của kênh payOS riêng. Backend mã hóa thông tin, không trả khóa bí mật về giao diện. Thiếu cấu hình thì không tạo link thanh toán giả.
+Chủ trọ vào phần cấu hình thanh toán và nhập Client ID, API Key, Checksum Key của kênh payOS riêng. Backend mã hóa thông tin, không trả khóa bí mật về giao diện. Thiếu cấu hình thì không tạo link thanh toán giả. Xem [hướng dẫn thiết lập payOS cho chủ trọ](docs/payos-setup.md) để biết chi tiết các bước từ đăng ký tài khoản payos.vn đến liên kết ngân hàng và kích hoạt cấp link cho khách.
 
 Khi bấm **Lưu và xác minh payOS**, backend lưu bộ khóa rồi tự gọi API `confirm-webhook` của payOS để đăng ký URL của chủ trọ:
 

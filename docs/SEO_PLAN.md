@@ -21,9 +21,9 @@ Chốt ngày 15/10/2026, giờ Việt Nam. Tên miền chuẩn: https://roomie.i
 - [x] Robots, sitemap chỉ URL công khai, JSON-LD Organization/WebSite từ dữ kiện thật (local).
 - [x] Noindex tài khoản, nghiệp vụ, link khách, API, tên miền demo và biến thể ngôn ngữ khác tiếng Việt; HTTP 404 thật cho URL lạ (local).
 - [x] Build, kiểm tra HTTP trên backend phục vụ bản build, trình duyệt và i18n (local); HTML tĩnh 375px/1440px không tràn ngang.
-- [ ] Phát hành và kiểm tra lại công khai.
+- [x] Phát hành và kiểm tra lại công khai qua sourcecommit `46f1aad`, run `38680393633` thành công; vẫn chặn crawl mọi bot.
 - [x] Xác minh Domain property Search Console qua DNS (15/10/2026); Google xác nhận quyền sở hữu.
-- [ ] Gửi sitemap sau phát hành và lưu số liệu nền khi Google xử lý xong; sitemap public hiện404, báo cáo đang chờ dữ liệu.
+- [ ] Tạm dừng gửi sitemap/yêu cầu index theo yêu cầu chặn mọi bot. Sitemap public hiệnHTTP200 sau phát hành; chưa gửiGoogle. Chưa đọc lại báo cáo để có số liệu nền.
 
 ## Tuần 3–6: nội dung (chưa thực hiện)
 

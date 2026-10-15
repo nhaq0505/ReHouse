@@ -1,10 +1,12 @@
 # Kế hoạch và bàn giao dự án Quản Lý Phòng
 
-Cập nhật: **14/10/2026 — Asia/Ho_Chi_Minh**.
+Cập nhật: **15/10/2026 — Asia/Ho_Chi_Minh**.
 
 Đây là tài liệu đọc đầu tiên khi agent mới tiếp tục dự án. Tài liệu ghi lại yêu cầu đã chốt, kế hoạch, trạng thái thực tế và cách tiếp tục; mã nguồn và kết quả kiểm tra mới hơn là căn cứ khi có khác biệt. Sau mỗi đợt làm việc, cập nhật tài liệu này để tránh mất ngữ cảnh.
 
 ## 1. Trạng thái hiện tại
+
+**Mới nhất15/10 — CI/payOS đã sửa và live:** sourcecommit`46f1aad`, [run38680393633](https://github.com/nhaq0505/ReHouse/actions/runs/38680393633) success verify/publish/deploy. CI bypasspayOS chỉtrongDevelopmentfixture; Production bắtbuộc. APIphòng/hóađơn khôngtrảtoken/link khi chưa xácminh, HTTPfixture thật thaytestlặpif. Trangchủ/health/sitemap200, APIunauth401. **robots vẫnDisallowmọibot theo user; khônggửisitemap/requestindex**. Chi tiếtmục50 và[report](ci-payos-link-fix.md).
 
 **Thương hiệu hiện tại: Roomie** (yêu cầu đổi tên14/10, mục42). Các nhắc Rehouse/Nhà Mình trong lịch sử là tên trước đây; định danh vận hành/mã hóa vẫn giữ tương thích.
 
@@ -726,3 +728,8 @@ Chi tiết file, API, kiểm tra và lưu ý: [account-occupancy-dashboard-repor
 - Thaytest tựlặpif bằngHTTPfixtureTestServer route thật, auth/payOSfake, DBin-memory, policy=true. Frontendtypesnullable/APIcontract/hướngdẫnpayOS cậpnhật.
 - Local:206assertionservice/HTTP PASS; SQLite72testsOK(skipped2); PostgreSQL17 riêng API20/20+SEO13/13PASS; ProductionbypassfalsebịchặntrướckhitạoDB; FEbuild vài18n1030×4PASS. KhôngchạmDBthật/OTP/payOSthật, dịchtạmđãdừng. Chi tiết ở[ci-payos-link-fix.md](ci-payos-link-fix.md).
 - Đangchuẩnbịpush vàtheodõiCI/CD, chưakếtluậndeploy. GiữrobotsDisallowmọibot, khônggửisitemap/requestindex.
+
+### Mục50 — xác nhận đã triển khai
+
+- Commit46f1aad đãpush; run38680393633 xanh cảverify,publish,deploy. KiểmtraHTTPS: home cóH1/canonical200,health200,robotsblockall200,sitemap200,APIroomsunauth401/noindex. KhôngtestghiDBproduction.
+- SourceSEOtrước đó cũngđãlive trongimage này, nhưng chínhsáchrobotschặntoànbộ giữnguyên; chưarequestGoogleindex hoặcgửisitemap. SEO_LOG/SEO_PLAN vàreportđãcậpnhật.

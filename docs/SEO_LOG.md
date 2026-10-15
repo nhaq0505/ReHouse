@@ -71,6 +71,13 @@ File ghi toàn bộ quá trình SEO. Mỗi đợt bổ sung một mục; sửa k
 - Hostdemo`roomiedemo.duckdns.org` không phân giảiDNS ở lượt kiểm tra này; không kết luận kết quảHTTPchohostđó. Đây không phải lỗiHTTPS của tên miền chính.
 - Tiếp tục giữTXTGoogle/quyềnSearchConsole; không gửi sitemap hoặc yêu cầuindex. Mở lạicrawl chỉ khi người dùng yêu cầu. Các chỉnh sửa generator/test/docs để bảo toàn chính sách này vẫnlocal.
 
+## 15/10/2026 11:18 — Nền tảng SEO đã live cùng bản sửa CI/payOS, vẫn chặn crawl
+
+- Người dùng yêu cầu sửa vàpush lỗiCI sau commit2e28b8d. Sourcefix46f1aad đãpushmain; [run38680393633](https://github.com/nhaq0505/ReHouse/actions/runs/38680393633) success build/test,publishimage vàdeployVPS.
+- Image mới chứa cả phầnSEOprerender đãpush ở2e28b8d trướcđó nhưng chưađượcdeploy vì testfail. HTTPsaupháthành: trangchủ200/cóH1+canonical,sitemap200,health200; APIroomsunauth401 cónoindex.
+- `https://roomie.io.vn/robots.txt` vẫn200 với chínhxác `User-agent: *` / `Disallow: /`. Không mởcrawl; không gửisitemap hoặc yêu cầuGoogleindex. XácminhSearchConsole/TXT trướcđó đượcgiữ.
+- Chỉkiểmtra publicread-only, khôngtestghiDBproduction hoặc tạoOTP/thanh toánthật. KếtquảlocalCIchi tiết ở`docs/ci-payos-link-fix.md`.
+
 ## Mẫu cho các đợt tiếp theo
 
 ```text

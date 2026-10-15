@@ -25,3 +25,9 @@
 ## Chính sách crawl
 
 Giữ `robots.txt` là `User-agent: *` / `Disallow: /` theo yêu cầu người dùng. Không gửi sitemap hoặc yêu cầu Google index trong đợt này.
+
+## Kết quả phát hành
+
+- Đã push sourcecommit `46f1aadba0260d41cf98e578ba0efe0e7c4193f3` lênmain. [Run38680393633](https://github.com/nhaq0505/ReHouse/actions/runs/38680393633) **success** cả Build/test,Publish vàDeployVPS.
+- Kiểm traHTTPS sau deploy: trangchủ200 (cóH1/canonical),health200,robots200 vớiDisallowmọibot,sitemap200; APIrooms chưa đăngnhập trả401/noindex. Không đăngnhập/tạodữliệutest trênproduction.
+- Nhật ký được cập nhật bằng commit chỉtài liệu, không thay đổi mã đã kiểm thử/triển khai.

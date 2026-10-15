@@ -125,7 +125,7 @@ public static class BillingEndpoints
                 reading.Consumption, reading.RecordedAt, InvoiceService.ToDto(invoice), invoice.LifecycleState.ToString()));
         });
 
-        routes.MapGet("/invoices", async (string? period, string? kind, string? lifecycleState, string? status, string? search, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
+        routes.MapGet("/invoices", async (string? period, string? kind, string? lifecycleState, string? status, string? search, HttpContext context, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
             var query = db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().Where(row => row.OwnerId == ownerId);
@@ -164,9 +164,10 @@ public static class BillingEndpoints
                 .Where(x => occupancyIds.Contains(x.Id))
                 .ToDictionaryAsync(x => x.Id, cancellationToken);
 
+            var canShareTenantLink = await tokenService.CanShareAsync(ownerId, webhookService, cancellationToken);
             return Results.Ok(rows.Select(row =>
             {
-                var token = occupancies.TryGetValue(row.OccupancyId, out var occ) ? tokenService.Unprotect(occ) : null;
+                var token = canShareTenantLink && occupancies.TryGetValue(row.OccupancyId, out var occ) ? tokenService.Unprotect(occ) : null;
                 return InvoiceService.ToDto(row, pending.Contains(row.Id), tenantToken: token);
             }).ToList());
         });
@@ -213,7 +214,7 @@ public static class BillingEndpoints
             return Results.Ok(new { created = result.Created, skipped = result.Skipped, period });
         });
 
-        routes.MapGet("/invoices/{id:guid}", async (Guid id, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
+        routes.MapGet("/invoices/{id:guid}", async (Guid id, HttpContext context, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
             var invoice = await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().SingleOrDefaultAsync(row => row.Id == id && row.OwnerId == ownerId, cancellationToken)
@@ -221,7 +222,8 @@ public static class BillingEndpoints
             var pending = await db.PayOsAttempts.AsNoTracking().AnyAsync(x => x.OwnerId == ownerId && x.InvoiceId == id && x.Status == PaymentAttemptStatus.Pending, cancellationToken);
             var meterPolicy = await MeterCorrectionPolicyAsync(db, invoice, cancellationToken);
             var occupancy = await db.Occupancies.AsNoTracking().SingleOrDefaultAsync(x => x.Id == invoice.OccupancyId, cancellationToken);
-            var token = occupancy is null ? null : tokenService.Unprotect(occupancy);
+            var token = occupancy is not null && await tokenService.CanShareAsync(invoice.OwnerId, webhookService, cancellationToken)
+                ? tokenService.Unprotect(occupancy) : null;
             return Results.Ok(InvoiceService.ToDto(invoice, pending, meterPolicy.Allowed, meterPolicy.Reason, tenantToken: token));
         });
 

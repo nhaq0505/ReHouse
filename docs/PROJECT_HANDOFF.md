@@ -718,3 +718,11 @@ Chi tiết file, API, kiểm tra và lưu ý: [account-occupancy-dashboard-repor
 
 - Pipeline38672131045 success cảverify,publish,deploy cho commit65d4907. Chỉfile`frontend/public/robots.txt` được phát hành. HTTPSapex vàwww/robots.txt đều200,trả chính xác `User-agent: *` / `Disallow: /`; chặncrawlđãlive.
 - Giữchặn cảGooglebot theo yêu cầu mới, không gửi sitemap/requestindex hoặc tự mở lại. Các thay đổiSEOkhác vàlog vẫnlocal.
+
+## 50. Sửa CI và chặn cấp link payOS đầy đủ — 15/10/2026
+
+- User yêu cầu sửa và push sau review run38676273367 của2e28b8d: hai integrationtest rotate-link fail400 vì fixture chưa xác minhpayOS, khiến publish/deployskip.
+- Tích hợp3file sửa đang có: CI chỉbypass trongDevelopment, Productioncấmbypass, README lệnhtest. Điều kiệnchung còn ẩn token/url trongroom/occupancy create/update/list/detail vàinvoicelist/detail để không láchquaAPI khác. Linkđãchia sẻ vẫnxemhóađơn, khôngđổiDBschema.
+- Thaytest tựlặpif bằngHTTPfixtureTestServer route thật, auth/payOSfake, DBin-memory, policy=true. Frontendtypesnullable/APIcontract/hướngdẫnpayOS cậpnhật.
+- Local:206assertionservice/HTTP PASS; SQLite72testsOK(skipped2); PostgreSQL17 riêng API20/20+SEO13/13PASS; ProductionbypassfalsebịchặntrướckhitạoDB; FEbuild vài18n1030×4PASS. KhôngchạmDBthật/OTP/payOSthật, dịchtạmđãdừng. Chi tiết ở[ci-payos-link-fix.md](ci-payos-link-fix.md).
+- Đangchuẩnbịpush vàtheodõiCI/CD, chưakếtluậndeploy. GiữrobotsDisallowmọibot, khônggửisitemap/requestindex.

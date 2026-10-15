@@ -25,7 +25,9 @@ Backend: ASP.NET Core .NET 10 on port 5080. Frontend: React/TypeScript/Vite on p
 - Room includes id, buildingId, buildingName, name, fee settings, previousReading and nullable occupancy `{id,tenantName,phone,people,startDate,token,url}`.
 - `POST /api/rooms/{id}/occupancy` `{tenantName,phone,people,startDate,depositAmount}` (depositAmount optional, default 0; whole VND 0..2147483647).
 - `POST /api/rooms/{id}/end-occupancy` ends active occupancy and revokes its guest token; debts remain attached to ended occupancy.
-- `POST /api/rooms/{id}/rotate-link` → `{token,url}`.
+- `POST /api/rooms/{id}/rotate-link` → `{token,url}`. Requires the owner's current payOS credentials and webhook origin to have `WebhookStatus=Verified`; otherwise returns HTTP400 without rotating/revoking the existing token.
+- Until payOS is verified, all room list/detail/create/update/occupancy responses return `occupancy.token=null` and `occupancy.url=null`; invoice list/detail return `tenantToken=null`. This hides sharing links without blocking room/tenant/billing management. Saved but failed/unverified settings, changed keys or changed webhook origin keep links hidden. Previously shared guest links continue to show invoices; they are not revoked by a settings change.
+- `RequireVerifiedPaymentForTenantLink=false` is reserved for disposable Development test fixtures. Production refuses to start with this bypass.
 
 ## Readings and invoices
 

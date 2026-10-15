@@ -72,14 +72,14 @@ public static class PaymentEndpoints
             return Results.Ok(await payOsService.ReconcileAsync(ownerId, orderCode, cancellationToken));
         });
 
-        app.MapGet("/api/tenant/{token}", async (string token, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
+        app.MapGet("/api/tenant/{token}", async (string token, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
         {
             var occupancy = await FindTenantAsync(db, token, cancellationToken);
             var roomBuilding = await (from room in db.Rooms.AsNoTracking()
                                       join building in db.Buildings.AsNoTracking() on room.BuildingId equals building.Id
                                       where room.Id == occupancy.RoomId
                                       select new { Room = room, Building = building }).SingleAsync(cancellationToken);
-            var roomDto = await OwnerManagementEndpoints.ToRoomDtoAsync(db, tokenService, roomBuilding.Room, roomBuilding.Building,
+            var roomDto = await OwnerManagementEndpoints.ToRoomDtoAsync(db, tokenService, webhookService, roomBuilding.Room, roomBuilding.Building,
                 occupancy, OwnerManagementEndpoints.CurrentVietnamPeriod(), cancellationToken);
             var invoices = await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().Where(invoice => invoice.OccupancyId == occupancy.Id && invoice.LifecycleState == InvoiceLifecycleState.Issued)
                 .OrderByDescending(invoice => invoice.Period).ToListAsync(cancellationToken);

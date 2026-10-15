@@ -64,6 +64,8 @@ Sau khi đã có bộ khóa từ payOS, chủ trọ tiến hành kích hoạt t�
 > [!IMPORTANT]
 > **Quy định cấp link cho khách thuê**:
 > Hệ thống bắt buộc chủ trọ phải lưu cấu hình và xác minh webhook payOS thành công (trạng thái **Webhook đã được payOS xác minh**) thì mới được phép **Cấp link cho khách**.
+> Khi chưa xác minh, API danh sách/chi tiết phòng, tạo/sửa phòng và người thuê, danh sách/chi tiết hóa đơn đều ẩn token/link để không thể lấy link qua đường khác. Các link đã gửi trước đó vẫn cho khách xem hóa đơn; thay đổi cấu hình không tự thu hồi link cũ.
+>
 > Nếu chưa lưu hoặc webhook chưa được xác minh, nút **"Cấp link cho khách"** tại trang **Phòng & người thuê** sẽ chặn thao tác và hiển thị hộp thoại hướng dẫn chủ trọ đến trang **Cài đặt thanh toán** để hoàn tất thiết lập. Đồng thời, API phía backend cũng chặn các yêu cầu tạo/cấp lại link khách nếu kênh thanh toán chưa sẵn sàng.
 
 ---

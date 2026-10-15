@@ -15,6 +15,12 @@ public sealed class TenantTokenService(IDataProtectionProvider protectionProvide
         return (token, Hash(token), _protector.Protect(token));
     }
 
+    public async Task<bool> CanShareAsync(Guid ownerId, PaymentWebhookService webhookService, CancellationToken cancellationToken)
+    {
+        if (!configuration.GetValue("RequireVerifiedPaymentForTenantLink", true)) return true;
+        return (await webhookService.GetAsync(ownerId, cancellationToken)).WebhookStatus == "Verified";
+    }
+
     public string? Unprotect(Occupancy occupancy)
     {
         if (string.IsNullOrWhiteSpace(occupancy.ProtectedTenantToken)) return null;

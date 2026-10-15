@@ -88,6 +88,7 @@ jobs:
             --env WebhookBaseUrl=http://localhost:5080 \
             --env SeedDemo=true \
             --env EmailVerification__Enabled=false \
+            --env RequireVerifiedPaymentForTenantLink=false \
             --env EnableInvoiceSweep=false \
             --env EnablePaymentReconciliation=false \
             --env Seo__AllowIndexing=true \

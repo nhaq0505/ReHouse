@@ -140,7 +140,7 @@ public static class OwnerManagementEndpoints
             return Results.Ok(new { restored = true, restoredRoomIds });
         });
 
-        routes.MapGet("/rooms", async (string? period, bool? includeArchived, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
+        routes.MapGet("/rooms", async (string? period, bool? includeArchived, HttpContext context, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
             var readingPeriod = period is null ? CurrentVietnamPeriod() : ApiSupport.NormalizePeriod(period);
@@ -180,6 +180,8 @@ public static class OwnerManagementEndpoints
                     .ToListAsync(cancellationToken);
             var depositByOccupancy = deposits.ToDictionary(x => x.OccupancyId);
 
+            // Read verification once per owner, not once for every room.
+            var canShareTenantLink = await tokenService.CanShareAsync(ownerId, webhookService, cancellationToken);
             var result = new List<object>(rows.Count);
             foreach (var row in rows)
             {
@@ -187,7 +189,7 @@ public static class OwnerManagementEndpoints
                 var roomReadings = readingsByRoom.GetValueOrDefault(row.Room.Id) ?? [];
                 var maxFinal = maxFinalByRoom.GetValueOrDefault(row.Room.Id, 0m);
                 var deposit = occupancy is not null ? depositByOccupancy.GetValueOrDefault(occupancy.Id) : null;
-                var dto = BuildRoomDto(tokenService, row.Room, row.Building, occupancy, readingPeriod, roomReadings, maxFinal, deposit, meterMaxima.GetValueOrDefault(row.Room.Id, row.Room.InitialReading));
+                var dto = BuildRoomDto(tokenService, row.Room, row.Building, occupancy, readingPeriod, roomReadings, maxFinal, deposit, canShareTenantLink, meterMaxima.GetValueOrDefault(row.Room.Id, row.Room.InitialReading));
                 result.Add(new { dto.Id, dto.BuildingId, dto.BuildingName, dto.Name, dto.Rent, dto.ElectricityRate, dto.WaterFee,
                     dto.WaterPerPerson, dto.ServiceFee, dto.InitialReading, dto.PreviousReading, dto.Occupancy,
                     isArchived = row.Room.ArchivedAt is not null, archivedAt = row.Room.ArchivedAt,
@@ -196,7 +198,7 @@ public static class OwnerManagementEndpoints
             return Results.Ok(result);
         });
 
-        routes.MapPost("/rooms", async (RoomCreateRequest request, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
+        routes.MapPost("/rooms", async (RoomCreateRequest request, HttpContext context, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
@@ -228,22 +230,22 @@ public static class OwnerManagementEndpoints
             db.Rooms.Add(room);
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return Results.Created($"/api/rooms/{room.Id}", await ToRoomDtoAsync(db, tokenService, room, building, null, CurrentVietnamPeriod(), cancellationToken));
+            return Results.Created($"/api/rooms/{room.Id}", await ToRoomDtoAsync(db, tokenService, webhookService, room, building, null, CurrentVietnamPeriod(), cancellationToken));
         });
 
-        routes.MapGet("/rooms/{id:guid}", async (Guid id, string? period, bool? includeArchived, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
+        routes.MapGet("/rooms/{id:guid}", async (Guid id, string? period, bool? includeArchived, HttpContext context, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
         {
             var row = await FindRoomAsync(db, ApiSupport.OwnerId(context), id, cancellationToken, includeArchived == true);
             var occupancy = await db.Occupancies.AsNoTracking().SingleOrDefaultAsync(item => item.RoomId == id && item.IsActive, cancellationToken);
             var readingPeriod = period is null ? CurrentVietnamPeriod() : ApiSupport.NormalizePeriod(period);
-            var dto = await ToRoomDtoAsync(db, tokenService, row.Room, row.Building, occupancy, readingPeriod, cancellationToken);
+            var dto = await ToRoomDtoAsync(db, tokenService, webhookService, row.Room, row.Building, occupancy, readingPeriod, cancellationToken);
             return Results.Ok(new { dto.Id, dto.BuildingId, dto.BuildingName, dto.Name, dto.Rent, dto.ElectricityRate, dto.WaterFee,
                 dto.WaterPerPerson, dto.ServiceFee, dto.InitialReading, dto.PreviousReading, dto.Occupancy,
                 isArchived = row.Room.ArchivedAt is not null, archivedAt = row.Room.ArchivedAt,
                 archiveBatchId = row.Room.ArchiveBatchId, buildingArchived = row.Building.ArchivedAt is not null });
         });
 
-        routes.MapMethods("/rooms/{id:guid}", ["PATCH"], async (Guid id, RoomUpdateRequest request, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
+        routes.MapMethods("/rooms/{id:guid}", ["PATCH"], async (Guid id, RoomUpdateRequest request, HttpContext context, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
         {
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
             var (room, building) = await FindRoomAsync(db, ApiSupport.OwnerId(context), id, cancellationToken);
@@ -257,7 +259,7 @@ public static class OwnerManagementEndpoints
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             var occupancy = await db.Occupancies.AsNoTracking().SingleOrDefaultAsync(item => item.RoomId == id && item.IsActive, cancellationToken);
-            return Results.Ok(await ToRoomDtoAsync(db, tokenService, room, building, occupancy, CurrentVietnamPeriod(), cancellationToken));
+            return Results.Ok(await ToRoomDtoAsync(db, tokenService, webhookService, room, building, occupancy, CurrentVietnamPeriod(), cancellationToken));
         });
 
         routes.MapDelete("/rooms/{id:guid}", async (Guid id, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
@@ -320,7 +322,7 @@ public static class OwnerManagementEndpoints
         });
 
         routes.MapMethods("/rooms/{id:guid}/occupancy", ["PATCH"], async (Guid id, OccupancyUpdateRequest request,
-            HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken ct) =>
+            HttpContext context, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken ct) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
@@ -358,10 +360,10 @@ public static class OwnerManagementEndpoints
             }
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
-            return Results.Ok(await ToRoomDtoAsync(db, tokenService, room, building, occupancy, CurrentVietnamPeriod(), ct));
+            return Results.Ok(await ToRoomDtoAsync(db, tokenService, webhookService, room, building, occupancy, CurrentVietnamPeriod(), ct));
         });
 
-        routes.MapPost("/rooms/{id:guid}/occupancy", async (Guid id, OccupancyRequest request, HttpContext context, AppDbContext db, TenantTokenService tokenService, CancellationToken cancellationToken) =>
+        routes.MapPost("/rooms/{id:guid}/occupancy", async (Guid id, OccupancyRequest request, HttpContext context, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
@@ -397,7 +399,7 @@ public static class OwnerManagementEndpoints
                     Period = currentPeriod, Kind = "Deposit", Total = request.DepositAmount, DueDate = today });
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return Results.Ok(await ToRoomDtoAsync(db, tokenService, room, building, occupancy, currentPeriod, cancellationToken));
+            return Results.Ok(await ToRoomDtoAsync(db, tokenService, webhookService, room, building, occupancy, currentPeriod, cancellationToken));
         });
 
         routes.MapPost("/rooms/{id:guid}/end-occupancy", async (Guid id, CompleteMoveoutRequest request,
@@ -405,15 +407,11 @@ public static class OwnerManagementEndpoints
             await MoveoutEndpoints.CompleteMoveoutAsync(id, request, context, db, cancellationToken));
 
         routes.MapPost("/rooms/{id:guid}/rotate-link", async (Guid id, HttpContext context, AppDbContext db,
-            TenantTokenService tokenService, PaymentWebhookService webhookService, IConfiguration configuration, CancellationToken cancellationToken) =>
+            TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
-            if (configuration.GetValue("RequireVerifiedPaymentForTenantLink", true))
-            {
-                var settings = await webhookService.GetAsync(ownerId, cancellationToken);
-                if (settings.WebhookStatus != "Verified")
-                    throw new ApiException(StatusCodes.Status400BadRequest, "Chưa lưu cấu hình payOS đã được xác minh. Vui lòng thiết lập thanh toán trước khi cấp link cho khách.");
-            }
+            if (!await tokenService.CanShareAsync(ownerId, webhookService, cancellationToken))
+                throw new ApiException(StatusCodes.Status400BadRequest, "Chưa lưu cấu hình payOS đã được xác minh. Vui lòng thiết lập thanh toán trước khi cấp link cho khách.");
 
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
             _ = await FindRoomAsync(db, ownerId, id, cancellationToken);
@@ -487,7 +485,7 @@ public static class OwnerManagementEndpoints
         return null;
     }
 
-    internal static async Task<RoomDto> ToRoomDtoAsync(AppDbContext db, TenantTokenService tokenService, Room room, Building building, Occupancy? occupancy, string period, CancellationToken cancellationToken)
+    internal static async Task<RoomDto> ToRoomDtoAsync(AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, Room room, Building building, Occupancy? occupancy, string period, CancellationToken cancellationToken)
     {
         var readings = await db.Readings.AsNoTracking().Where(row => row.RoomId == room.Id && (row.Period == period ||
                 row.Id == db.Readings.Where(prior => prior.RoomId == room.Id && string.Compare(prior.Period, period) < 0)
@@ -502,11 +500,12 @@ public static class OwnerManagementEndpoints
             ? null
             : await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking()
                 .SingleOrDefaultAsync(x => x.OccupancyId == occupancy.Id && x.Kind == "Deposit", cancellationToken);
-        return BuildRoomDto(tokenService, room, building, occupancy, period, readings, maxFinal, deposit, maxReading);
+        var canShareTenantLink = occupancy is not null && await tokenService.CanShareAsync(building.OwnerId, webhookService, cancellationToken);
+        return BuildRoomDto(tokenService, room, building, occupancy, period, readings, maxFinal, deposit, canShareTenantLink, maxReading);
     }
 
     internal static RoomDto BuildRoomDto(TenantTokenService tokenService, Room room, Building building, Occupancy? occupancy, string period,
-        IReadOnlyList<MonthlyReading> readings, decimal maxFinalReading, Invoice? deposit, decimal? maxPhysicalReading = null)
+        IReadOnlyList<MonthlyReading> readings, decimal maxFinalReading, Invoice? deposit, bool canShareTenantLink, decimal? maxPhysicalReading = null)
     {
         // The physical room can have one reading per occupancy in the same month.
         // Prefer the active occupancy's reading for the room's current-reading field;
@@ -526,7 +525,7 @@ public static class OwnerManagementEndpoints
         OccupancyDto? occupancyDto = null;
         if (occupancy is not null)
         {
-            var token = tokenService.Unprotect(occupancy);
+            var token = canShareTenantLink ? tokenService.Unprotect(occupancy) : null;
             occupancyDto = new OccupancyDto(occupancy.Id, occupancy.TenantName, occupancy.Phone, occupancy.People, occupancy.StartDate,
                 token, token is null ? null : tokenService.Url(token), deposit?.Id, deposit?.Total ?? 0, deposit?.Paid ?? 0, deposit is null ? 0 : Math.Max(0, deposit.Paid - deposit.DepositSettlements.Sum(x => x.Amount)));
         }

@@ -59,6 +59,8 @@ builder.Services.AddScoped<RegistrationVerificationService>();
 // Disabling verification is reserved for isolated Development integration fixtures.
 if (!builder.Configuration.GetValue("EmailVerification:Enabled", true) && !builder.Environment.IsDevelopment())
     throw new InvalidOperationException("Email verification cannot be disabled outside Development.");
+if (!builder.Configuration.GetValue("RequireVerifiedPaymentForTenantLink", true) && !builder.Environment.IsDevelopment())
+    throw new InvalidOperationException("RequireVerifiedPaymentForTenantLink cannot be disabled outside Development.");
 builder.Services.AddSingleton(TimeProvider.System);
 if (!bool.TryParse(builder.Configuration["EnableInvoiceSweep"], out var enableInvoiceSweep) || enableInvoiceSweep)
     builder.Services.AddHostedService<InvoiceSweepService>();

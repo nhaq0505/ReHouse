@@ -39,8 +39,8 @@ export interface Occupancy {
   phone?: string | null;
   people: number;
   startDate: string;
-  token?: string;
-  url?: string;
+  token?: string | null;
+  url?: string | null;
 }
 
 export interface Room {
@@ -130,7 +130,7 @@ export interface Invoice {
   hasPendingPayment?: boolean;
   canCorrectMeter?: boolean;
   meterCorrectionBlockedReason?: string | null;
-  tenantToken?: string;
+  tenantToken?: string | null;
 }
 
 export interface ReadingSaveResult {

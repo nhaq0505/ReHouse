@@ -19,6 +19,12 @@ SEO_BASE_URL=http://localhost:5094 /usr/bin/python3 -m unittest discover -s test
 
 Linux CI can use `python3` instead of `/usr/bin/python3`. These 13 read-only tests check pre-rendered HTML and CSS, canonical/OG/JSON-LD, noindex on private/demo/language routes, preserved redirects, real 404s, auth errors, HEAD, sitemap, the user-requested robots block for all crawlers, and PNG dimensions. Requests use the synthetic Host `roomie.io.vn` against localhost to exercise production index controls; `Seo__AllowIndexing=true` is necessary because Development defaults to noindex. CI runs the same checks inside the disposable application image. `npm run dev`/`preview` do not exercise the .NET routing and HTTP headers.
 
+## Tenant link verification policy
+
+The ordinary business API fixtures set `RequireVerifiedPaymentForTenantLink=false` because they test rotation/history independently of provider setup. Only Development permits this; Production fails at startup if the bypass is set. Do not set it on a shared or live app.
+
+`dotnet run --project tests/RoomRental.WebhookTests` also runs `TenantLinkHttpTests` with the policy enabled. ASP.NET TestServer maps the actual owner/payment/billing route handlers, synthetic authenticated owners, an in-memory SQLite DB and an in-process payOS handler. It covers missing/failed/verified settings; hidden tokens in room/occupancy edits and invoice list/detail; successful rotation and revoked old tokens; webhook-origin/key changes; owner isolation and continued viewing through previously shared links. No real provider/SMTP/payment is used. The previous test that merely repeated an `if` outside the endpoint has been removed.
+
 ## Business API checks
 
 The suite creates synthetic owners, rooms, invoices and receipts. **Use only a new disposable database.**
@@ -35,7 +41,7 @@ ALL_PROXY=http://127.0.0.1:9 NO_PROXY=localhost,127.0.0.1 \
 ASPNETCORE_ENVIRONMENT=Development DatabaseProvider=SQLite \
 ConnectionStrings__DefaultConnection="Data Source=$REHOUSE_QA_DIR/qa.db" \
 DataProtection__KeysPath="$REHOUSE_QA_DIR/keys" SeedDemo=true EmailVerification__Enabled=false \
-EnableInvoiceSweep=false EnablePaymentReconciliation=false AuthRequestsPerMinute=1000 \
+RequireVerifiedPaymentForTenantLink=false EnableInvoiceSweep=false EnablePaymentReconciliation=false AuthRequestsPerMinute=1000 \
 WebhookBaseUrl=http://localhost:5094 PublicBaseUrl=http://localhost:5094 \
 dotnet run --no-launch-profile --project backend/RoomRental.Api --urls http://localhost:5094
 ```

@@ -115,6 +115,7 @@ public static class AuthEndpoints
         routes.MapPost("/change-password", async (ChangePasswordRequest request, HttpContext context,
             AppDbContext db, IPasswordHasher<AppUser> hasher, CancellationToken ct) =>
         {
+            await AccountLoginLimiter.ReserveAsync(db, "password-change:" + ApiSupport.UserId(context), app.Environment.IsDevelopment() ? 1000 : 10, ct);
             PasswordSecurity.ValidateNewPassword(request.NewPassword, request.ConfirmPassword ?? request.NewPassword);
             if (request.ConfirmPassword is not null && request.NewPassword != request.ConfirmPassword)
                 throw new ApiException(400, "Xác nhận mật khẩu không khớp.");
@@ -171,6 +172,7 @@ public static class AuthEndpoints
             IPasswordHasher<AppUser> hasher, AdminMfaService mfa, CancellationToken ct) =>
         {
             ApiSupport.RequireAdmin(context);
+            await AccountLoginLimiter.ReserveAsync(db, "mfa-setup:" + ApiSupport.UserId(context), app.Environment.IsDevelopment() ? 1000 : 10, ct);
             var user = await db.Users.SingleAsync(x => x.Id == ApiSupport.UserId(context), ct);
             PasswordSecurity.VerifyCurrentPassword(user, request.CurrentPassword, hasher);
             if (user.MfaEnabled) throw new ApiException(409, "Xác thực hai bước đã được bật.");
@@ -182,6 +184,7 @@ public static class AuthEndpoints
             AdminMfaService mfa, CancellationToken ct) =>
         {
             ApiSupport.RequireAdmin(context);
+            await AccountLoginLimiter.ReserveAsync(db, "mfa-confirm:" + ApiSupport.UserId(context), app.Environment.IsDevelopment() ? 1000 : 10, ct);
             await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
             var user = await db.Users.SingleAsync(x => x.Id == ApiSupport.UserId(context), ct);
             var recoveryCodes = mfa.Confirm(user, request.Code);

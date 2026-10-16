@@ -47,6 +47,7 @@ public static class AdminEndpoints
         routes.MapPost("/owners/{id:guid}/reset-password", async (Guid id, AdminResetPasswordRequest request,
             HttpContext context, AppDbContext db, Microsoft.AspNetCore.Identity.IPasswordHasher<AppUser> hasher, CancellationToken ct) =>
         {
+            await AccountLoginLimiter.ReserveAsync(db, "admin-recovery:" + ApiSupport.UserId(context), app.Environment.IsDevelopment() ? 1000 : 10, ct);
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
             var admin = await db.Users.SingleAsync(x => x.Id == ApiSupport.UserId(context), ct);
             PasswordSecurity.VerifyCurrentPassword(admin, request.CurrentPassword, hasher);

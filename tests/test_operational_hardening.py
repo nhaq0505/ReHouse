@@ -30,12 +30,17 @@ class OperationalHardeningTests(unittest.TestCase):
         path=os.environ.get('TEST_SQLITE_DB')
         if not path: self.skipTest('MFA enrollment mutation requires the disposable SQLite fixture')
         try:
+            admin_id=self.admin.ok('GET','/api/auth/me')['id']
             setup=self.admin.ok('POST','/api/auth/mfa/setup',{'currentPassword':ADMIN_PASSWORD})
             key=base64.b32decode(setup['secret'])
             def code(step):
                 value=hmac.new(key,struct.pack('>Q',step),hashlib.sha1).digest(); offset=value[-1]&15
                 return str((struct.unpack('>I',value[offset:offset+4])[0]&0x7fffffff)%1000000).zfill(6)
             step=int(time.time())//30
+            self.assertEqual(self.admin.request('POST','/api/auth/mfa/confirm',{'code':'invalid'})[0],400)
+            with sqlite3.connect(path) as db:
+                row=db.execute('SELECT Attempts FROM LoginThrottles WHERE Key=?',(hashlib.sha256(('mfa-confirm:'+admin_id).encode()).hexdigest().upper(),)).fetchone()
+                self.assertEqual(row[0],1,'Invalid MFA attempts must consume the account budget')
             result=self.admin.ok('POST','/api/auth/mfa/confirm',{'code':code(step)})
             self.assertEqual(len(result['recoveryCodes']),8)
             self.assertEqual(self.admin.request('GET','/api/auth/me')[0],401)

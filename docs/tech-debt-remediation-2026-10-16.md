@@ -2,9 +2,10 @@
 
 Yêu cầu: xử lý các mục đã rà soát, ghi lại thay đổi và kiểm chứng. Không reset dữ liệu, không test ghi trên database vận hành, không gửi OTP/payOS thật. robots.txt vẫn chặn tất cả bot.
 
-## Trạng thái phát hành
+## Release status - complete
 
-Đang kiểm chứng và chuẩn bị phát hành app; chưa coi các thay đổi app là live chỉ từ kết quả build. Những thay đổi host dưới đây đã áp dụng và kiểm tra riêng. Kết quả CI/deploy cuối cùng sẽ được bổ sung ở cuối file.
+App commit `4f3d1bce01ef3a7482d85978b7fea0870a7c32a6` is live. [CI run38845852582](https://github.com/nhaq0505/ReHouse/actions/runs/38845852582) passed verify, image promotion and deployment. The main release [run38843210171](https://github.com/nhaq0505/ReHouse/actions/runs/38843210171) also passed. Runtime inspection confirms roomie_app, no bootstrap credentials and no migrate-only flag. Two PostgreSQL migrations are applied; earlier empty-data checkpoint was preserved during migration; subsequent normal business activity is retained. Historical checkpoint wording in the table is superseded by this status.
+
 
 ## Thay đổi
 
@@ -39,3 +40,29 @@ PayOsService chia theo Checkout, Subscriptions, Webhook, Cancellation, Reconcili
 ## Giới hạn thực tế
 
 Không có cam kết ứng dụng hết mọi lỗ hổng. Chưa có HA/PITR, immutable backup, pentest, hay audit OS/provider toàn diện. Không mua thêm dịch vụ hoặc tự đổi chính sách SEO. Thiết bị TOTP và việc cất recovery codes cần chủ tài khoản tự thực hiện. Bằng chứng email cảnh báo thật Delivered/restore drill định kỳ là việc vận hành tiếp theo, không được đánh dấu PASS chỉ vì unit test.
+
+## Final validation
+
+- SQLite HTTP76/76; PostgreSQL HTTP59run,51pass,8explicit SQLite-only skips; OTP10/10; browser7/7; backup safety/retention/alert mocks7/7. Service suites:207SQLite and209PostgreSQL PASS assertions in the recorded runs. The latest CI also passed the complete configured gates.
+- Both provider snapshots match the model. SQLite upgrade from the initial migration preserves an existing row. Production performs schema changes only in the migration job, and actual runtime uses DML permissions. Real role provisioner ran twice on an isolated network-none PostgreSQL container; both runtime/migration cluster flags are false, runtime DML works, CREATE and migration-history writes are denied.
+- Live home/health200; CSP/HSTS present, HSTS is set once using Caddy deferred replacement. robots remains User-agent:* / Disallow:/, disclosure pages remain noindex. Caddy validated before reload. [Caddy header semantics](https://caddyserver.com/docs/caddyfile/directives/header), [TOTP RFC6238](https://datatracker.ietf.org/doc/html/rfc6238).
+- Independently restored checkpoint snapshot `rehouse-20261016T031149Z-bw09fc`: four files verified by download/decrypt. Downloaded separately, SHA256 passed, DataProtection XML valid, pg_restore using migration ownership passed in a fresh PostgreSQL17 container with no network/published ports; runtime role can read both migrations,1admin,0invoices. No restore against production. All temporary decrypted copies/restore container were removed.
+- Local PostgreSQL upgraded additively; invoice count/total/paid unchanged0/0/0. Private pre-migration DB/key archive remains outside Git; Development API5080 runs with real payment jobs disabled and outbound HTTP proxy guard retained.
+- One watchdog alert was sent at initial activation before a last-success marker existed. This was a false positive, not a failed/missing snapshot. The timer now waits one hour after activation; successful backup writes the marker. SMTP accepted the alert, but provider Delivered was not established (read access unavailable); do not equate acceptance or mock tests with Inbox delivery. No extra live OTP/payOS or test email was sent in this review.
+- Production admin operations are gated until the account owner enrolls their own authenticator. Enroll at the next login and keep the eight one-use recovery codes offline. Recovery material and the full internal operational journal remain local/private.
+
+Architecture limits remain explicit: single instance, no HA/PITR/immutable retention, and no full OS/provider penetration audit or representative production load claim. These are deployment capability choices, not features silently installed or billed during this request.
+
+## Pagination and session follow-up
+
+The final review added regression for an older tenant invoice beyond page1. Checkout now selects the requested invoice ID inside the token occupancy; foreign IDs expose no invoice. Secondary period/occupancy consumers traverse bounded100-row pages instead of silently truncating at100; deposit targets are occupancy-scoped. The standalone frontend API test retains102rows across two pages. Auth state uses a request generation so a delayed failed /me cannot overwrite an explicit login or logout; explicit login clears earlier transient errors.
+
+Current local follow-up checks: SQLite76/76, PostgreSQL59run/51pass/8explicit skips, OTP10/10 from the preceding unchanged OTP implementation, browser7/7 including rendered dashboard after delayed lookup and direct old-invoice checkout, API page-boundary test PASS. Test browser mocks match the paginated contract. A CI fixture initially accepted PostgreSQL's temporary init server; run38845308613 stopped before publish/deploy. TCP readiness now waits for the final server; run38845575264 passed all jobs. This was an isolated fixture startup race, not a production database failure.
+
+After a successful backup, the alert cooldown marker is cleared so a new failure can notify promptly. The initial false-positive alert remains recorded above; no repeated test email was sent. Source/operator files are verified against host checksums rather than assuming app deployment updates host scripts.
+
+## Final handoff
+
+CI38845852582 succeeded in all three jobs; live container revision4f3d1bce01ef3a7482d85978b7fea0870a7c32a6 confirmed. Final snapshot rehouse-20261016T083836Z-5YVMHS uploaded/downloaded with four matching files and SHA256. A private verification record holds current financial aggregates; public documentation does not publish current customer amounts. Earlier zero-invoice snapshots in this journal are historical checkpoints, not current data counts. No live database reset or mutating integration tests occurred.
+
+Admin enrollment remains a human action: log in, add the key to an authenticator and save the eight recovery codes. The operator alert delivery limitation and one corrected initial false positive remain explicitly recorded. Private account/audit journals are excluded locally from accidental git add; the public handoff/runbooks contain no OAuth tokens, decryption keys or private folder identifiers.

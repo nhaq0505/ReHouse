@@ -1,10 +1,14 @@
 # Kế hoạch và bàn giao dự án Quản Lý Phòng
 
-Cập nhật: **15/10/2026 — Asia/Ho_Chi_Minh**.
+Cập nhật: **16/10/2026 — Asia/Ho_Chi_Minh**.
 
 Đây là tài liệu đọc đầu tiên khi agent mới tiếp tục dự án. Tài liệu ghi lại yêu cầu đã chốt, kế hoạch, trạng thái thực tế và cách tiếp tục; mã nguồn và kết quả kiểm tra mới hơn là căn cứ khi có khác biệt. Sau mỗi đợt làm việc, cập nhật tài liệu này để tránh mất ngữ cảnh.
 
 ## 1. Trạng thái hiện tại
+
+**Mới nhất16/10 — hardening đã deploy:** app `4f3d1bc`, CI38845852582 xanh verify/publish/deploy. SSH dùng roomie-ops + key/sudo, root/password đã tắt, firewall input chỉ mở22/80/443. App dùng role DML roomie_app, migration job/owner riêng, không còn bootstrap secret trong runtime. Đã bổ sung MFA admin, account budgets, policy password, retention, phân trang, deadline/cảnh báo backup và kiểm thử; xem mục56 và [nhật ký xử lý](tech-debt-remediation-2026-10-16.md). Backup sau deploy đã tải xuống/giải mã/restore tạm PASS. Admin cần tự enroll authenticator và cất recovery codes; SMTP acceptance không đồng nghĩa email đã Delivered. Các checkpoint cũ phía dưới là lịch sử, không mô tả quyền SSH/DB hiện tại.
+
+**Mới nhất16/10 — migrations và backup Drive đã vận hành:** EF Core Migrations live, reset local/VPS theo chấp thuận riêng đã xong, không còn reset tự động. Google Drive crypt + OAuthInproduction đã hoạt động, daily03:00–03:20VN/pre-deploy, retention7ngày/4tuần/3tháng và local10bản. Tải xuống/giải mã/restorePG17 tạm, DataProtection/checksum và forced OAuthrefresh systemd đều PASS. User duyệt công khai3trang thôngtin backup; các file backup/khóa vẫn riêng tư. Đọc mục51–53, [migrations](ef-core-migrations.md), [backup/phục hồi](backup-operations.md) và [bảo mật còn lại](tech-debt-remediation-2026-10-16.md). SSHroot/password và DBsuperuser vẫn là ưu tiên cần sửa. Source/tài liệu đợt backup còn local, chưa commit/push; không nhầm với cấu hình host đã live. Các checkpoint cũ phía dưới giữ để đối chiếu lịch sử.
 
 **Mới nhất15/10 — CI/payOS đã sửa và live:** sourcecommit`46f1aad`, [run38680393633](https://github.com/nhaq0505/ReHouse/actions/runs/38680393633) success verify/publish/deploy. CI bypasspayOS chỉtrongDevelopmentfixture; Production bắtbuộc. APIphòng/hóađơn khôngtrảtoken/link khi chưa xácminh, HTTPfixture thật thaytestlặpif. Trangchủ/health/sitemap200, APIunauth401. **robots vẫnDisallowmọibot theo user; khônggửisitemap/requestindex**. Chi tiếtmục50 và[report](ci-payos-link-fix.md).
 
@@ -73,7 +77,7 @@ Người dùng đã yêu cầu triển khai bằng agent Luna reasoning max. Đ�
 | 9 | Docker, bảo mật, kiểm tra SQLite/PostgreSQL | Kiểm tra cục bộ hoàn thành; HTTPS public pilot và auth/Origin smoke đã xác minh |
 | 10 | Rà soát và sửa FE theo phản hồi | Hoàn thành; bổ sung pilot evondevKit /rooms, xem mục 12 |
 | 11 | UAT trên dữ liệu sử dụng thực, payOS thật | Chưa thực hiện |
-| 12 | Migration, triển khai, sao lưu và khôi phục vận hành | VPS public HTTPS đang chạy, backup/rollback đã cài; populated/empty restore đã thử trên database tạm, không chạm database live. Chưa có migrations đầy đủ, off-host backup hoặc HA; schema vẫn dùng EnsureCreated |
+| 12 | Migration, triển khai, sao lưu và khôi phục vận hành | EF Core Migrations live; Google Drive crypt/daily/pre-deploy và restore thử đã PASS. Rollback image không rollback schema; chưa có migration job/identity riêng, HA/PITR hoặc alert đầy đủ. Xem mục51–53 |
 | 13 | Camera và AI nhận diện qua API | Hoãn theo yêu cầu người dùng; chưa triển khai |
 | 14 | Báo cáo thu tiền/công nợ/cọc, Excel và lưu trữ mềm dãy/phòng | Đã triển khai local; SQLite 38/38, PostgreSQL 32 pass + 2 SQLite-only skip; chưa deploy |
 | 15 | Tối ưu truy vấn backend, tài khoản, bundle và backup off-host | Đã push main9921eef; xem mục35 về kiểm tra và sự cố outbound QA |
@@ -221,7 +225,7 @@ Docker: sao chép `.env.example` thành `.env`, thay mật khẩu/URL phù hợp
 
 1. **Hoàn tất review local hiện tại:** cấu hình Gmail SMTP theo `email-otp-setup.md`, người dùng tự nhập mật khẩu ứng dụng vào file local bị Git bỏ qua, rồi UAT email thật; root đang làm source audit cuối; xem lại thay đổi và trạng thái trước khi kết thúc. Chưa push/deploy. Sau đó UAT cùng người dùng: chủ trọ mới đăng ký/chờ duyệt, tạo dãy/phòng, thêm khách, chốt điện, xem báo cáo/xuất Excel, lưu trữ/khôi phục, mở link khách và kết thúc lượt thuê.
 2. **Kiểm chứng payOS thật:** HTTPS callback origin đã có, nhưng VPS chưa có khóa payOS/owner settings và chưa thực hiện giao dịch thật. Chỉ thêm khóa do chủ trọ cung cấp và thử checkout/webhook/đối soát khi có sự đồng ý rõ ràng; kiểm tra webhook lặp, sai số tiền, mất callback và giao dịch hủy/hết hạn. Không tạo giao dịch thật chỉ để smoke test hạ tầng.
-3. **Hoàn thiện vận hành công khai:** code backup off-host opt-in đã có, còn cài đặt remote/khóa và restore drill trên host theo yêu cầu riêng; bổ sung EF/versioned migrations, sao lưu off-host và restore drill định kỳ, giám sát lỗi/job, rà soát/luân chuyển tài khoản quản trị. Caddy HTTPS, redirect và proxy trust đã được cấu hình. PostgreSQL vẫn là container một máy, không phải HA.
+3. **Hoàn thiện vận hành công khai:** migrations versioned, backup Drive mã hóa và một restore drill đã xong; tiếp theo siết SSH, giảm quyền DB/tách migration deployment identity, hoàn thiện alert/giám sát và restore drill định kỳ. Caddy HTTPS, redirect và proxy trust đã cấu hình. PostgreSQL vẫn là container một máy, không phải HA. Xem mục51–53 và security review.
 4. **Tối ưu FE tiếp theo nếu cần:** giảm bundle thư viện dùng chung, bổ sung kiểm thử UI cho luồng có rủi ro thực tế. Không thay stack hoặc viết lại giao diện chỉ để tối ưu cảnh báo build.
 5. **Camera/AI khi người dùng yêu cầu:** tạo luồng chụp công tơ, backend gọi API AI (Gemini là hướng đã ghi trong ghi chú), trả chỉ số đề xuất; kiểm tra độ rõ/ngưỡng/chỉ số trước; người dùng xác nhận hoặc chủ trọ xử lý trường hợp bất thường. Chọn/xác minh model và hợp đồng API tại thời điểm triển khai. AI không được tự xác nhận thanh toán; thuật toán tính tiền vẫn nằm ở backend.
 6. **Nghiệp vụ mở rộng theo yêu cầu riêng:** quyết toán giữa tháng, chia kỳ theo lượt thuê, điều chỉnh hóa đơn đã phát hành, tiền cọc/hợp đồng, chỉ số nước, công tơ chung, hoàn tiền, hạn thanh toán tùy chỉnh.
@@ -738,7 +742,7 @@ Chi tiết file, API, kiểm tra và lưu ý: [account-occupancy-dashboard-repor
 
 - User cho phép bỏ dữ liệu cũ và xác nhận reset cả local + VPS. Đã cung cấp SSH key quản trị đúng VPS116.118.3.40; kết nối root thành công. Không dùng key CI để chạy lệnh quản trị.
 - Hai context theo provider kế thừa AppDbContext; initial migrations/snapshots SQLite và PostgreSQL, local dotnet-ef10.0.12, startup MigrateAsync thay EnsureCreated/manualDDL. Seed/bootstrap giữ nguyên. DbMigrator import cũng dùng migrations. CI kiểm tra snapshot cảhai.
-- Thao tác reset riêng có SQL transaction/allowlist/từchối DB đãmigrate; không autoerase. Xem [hướng dẫn và nhật ký](ef-core-migrations.md). Đang kiểm chứng và chuẩn bị reset/deploy; chưa kết luận hoàn tất.
+- Thao tác reset riêng có SQL transaction/allowlist/từchối DB đãmigrate; không autoerase. Xem [hướng dẫn và nhật ký](ef-core-migrations.md). Đây là checkpoint trước cutover; kết quả hoàn tất được ghi ngay bên dưới.
 - Giữ robots Disallow mọi bot, SMTP/secrets/DataProtection; không gửi OTP hoặc payOS thật.
 
 ### Mục51 — hoàn tất 16/10/2026
@@ -747,3 +751,54 @@ Chi tiết file, API, kiểm tra và lưu ý: [account-occupancy-dashboard-repor
 - CI đầu38682614280 fail do SDK container snapshot check thiếu EF Design; c6b9f43 bổ sung restoreforce, kiểm chứng container sạch PASS. [Run38782104449](https://github.com/nhaq0505/ReHouse/actions/runs/38782104449) SUCCESS cả build/test,publish,deploy; live revision c6b9f432904ded5fe1cb9b3b1dfcab707a0359d1.
 - Backup local `/tmp/roomie-ef-backups/local-before-migrations.dump`; VPS trước reset `/var/backups/rehouse/rehouse-20261015T180513Z-kXOpKF`. Hook reset dùng1lần đã gỡ và helper gốc được khôi phục; không gài reset cho CI tương lai.
 - Publichealth/home/robots200,robots vẫn Disallow mọi bot. Runtimeenv/SMTP/DataProtection/SSH giữ nguyên; owner/payOS config cũ đã xóa theo yêu cầu, cần tạo lại owner và cấu hình payOS. Không test ghi production; tài nguyên QA riêng đã dọn. Chi tiết ở ef-core-migrations.md.
+
+## 52. Security/tech debt review — 16/10/2026
+
+- User hỏi rủi ro còn lại; đã rà soát read-only source/VPS/HTTP/dependency advisories, không đổi cấu hình hoặc dữ liệu. [Báo cáo](tech-debt-remediation-2026-10-16.md) hiện local, chưa commit/push.
+- Ưu tiên: SSH root/password vẫn bật trên22public, host chưa có input filter/fail2ban; DB app role thực tế là superuser; backup helper live chưa có off-host code như source, chưa xác minh off-site restore.
+- Tiếp theo: MFA admin/account throttling, thống nhất password policy, bỏ bootstrap secret khỏi runtime sau khi có recovery, CSP/HSTS, che tenant token ở mọi nhánh log conflict. Tech debt: migration startup + rollback image không rollback schema, source/live helpers lệch phiên bản, payment/endpoint modules lớn.
+- Audit frontend production dependencies và API direct/transitive packages không có advisory được báo ở thời điểm kiểm tra. Không kết luận không có lỗ hổng; chưa audit OS/images/provider firewall hoặc pentest. Robots block-all giữ nguyên.
+
+## 53. Backup Google Drive mã hóa — hoàn tất 16/10/2026
+
+- User có Drive5TB, cung cấp folder[private-folder-id] **Roomie Backups**, xác nhận tài khoản [account-owner]. Đã cấp quyền qua Edge và duyệt công khai3trang thông tin `/backup-info/*` + OAuthProduction.
+- Google Cloud project riêng **Roomie Backup** `[private-cloud-project]`, Desktop client **Roomie VPS Backup**, DriveAPI enabled; AudienceInproduction. Không sửa appTVOnline. OAuthscopefullDrive đã giải thích/chấp thuận; folderID không phải ranh giới bảo mật token.
+- VPS rclone crypt + root0600config, helper/service/timer/Caddy đã cập nhật khớp source, backup.env root0600 gọi syncscript. Daily03:00–03:20VN và pre-deploy đều backupPostgres+DataProtection+manifest/checksum rồi uploadcrypt/checkdownload trước retention7daily/4weekly/3monthly; local10bản. Syncfail giữlocalvàchặnappswap.
+- Backup thật đã tải xuống/giải mã, SHA256khớp, restorePG17local riêng networknonePASS (1admin/0invoice/initialmigration), DataProtectionXMLvalid. Systemdthật buộcrefreshtokenPASS Resultsuccess/Exit0,4matchingfiles/0differences; container và file giải mãtạmđãdọn. Khôngrestoreproduction/OTP/payOSthật.
+- Recoverypassword+salt tại `/Users/nguyenhoanhquan/Documents/Roomie Backup Recovery/recovery.json`0600,thưmục0700; usercầncấtpasswordmanager/offlineriêng. Khôngđưa filekhóa/OAuthtokenvàogit/chat/Drivebackup. Đọc [nhật ký và phục hồi](backup-operations.md).
+- Chỉ công khaiHTMLthôngtin đãduyệt,200/noindex,robotsblockallgiữnguyên; health200. SSHroot/passwordvàDBsuperuserchưasửa. Source/tài liệu thayđổilocal, chưacommit/push; không cần deploy lại imageapp cho đợt hostconfig này.
+
+## 54. Đồng bộ tài liệu vận hành — 16/10/2026
+
+- Đối chiếu và cập nhật README, deployment, implementation notes, scaling runbook và tests/README theo trạng thái migrations/backup hiện tại. Bỏ các mô tả hiện trạng cũ về EnsureCreated và backup chỉ trên VPS; các checkpoint lịch sử được giữ và ghi rõ để đối chiếu.
+- Nhật ký backup ghi cấu hình, OAuth Production, lịch chạy, retention, bằng chứng tải xuống/giải mã/restore và cách phục hồi; báo cáo bảo mật đánh dấu phần backup đã xử lý, giữ rõ SSH và quyền DB còn tồn đọng.
+- Chỉ ghi vị trí lưu bí mật và quy trình sử dụng; không chép token, client secret hoặc khóa giải mã vào tài liệu. Cấu hình host đã live; các thay đổi source/tài liệu đợt này vẫn local, chưa commit/push.
+- Đợt đồng bộ này chỉ sửa tài liệu; kiểm tra diff và liên kết nội bộ, không chạy lại test hay thay đổi VPS/database.
+
+## 55. Rà soát tech debt bổ sung — 16/10/2026
+
+- User yêu cầu rà soát tiếp; đã đọc source backend/frontend, CI, các suite test, backup/deploy và kiểm tra VPS read-only. [Báo cáo cập nhật](tech-debt-remediation-2026-10-16.md) có TD-01–TD-10, bằng chứng và tiêu chí hoàn tất, phân biệt phát hiện mới với việc còn mở.
+- Xác nhận lại live: SSH root/password vẫn bật; PostgreSQL room_rental vẫn superuser/createdb/createrole. Backup service Result=success/Exit0, timer active, nhưng timeout tổng infinity và OnFailure trống. Không sửa cấu hình host/DB.
+- Phát hiện mới: workflow không chọn45 Python HTTP test đã có (billing17/reports6/account12/OTP10), transaction OTP giữ qua SMTP, chưa cleanup registration hết hạn, backup chưa deadline tổng/cảnh báo và một số danh sách chưa phân trang. Nợ frontend về test/error recovery và tái lập hạ tầng/build được ghi riêng P3.
+- Ưu tiên tiếp: SSH/DB privileges và redaction log tenant; regression fixtures/CI và backup deadline/alert; sau đó migration job, SMTP transaction/retention. Backup off-host/restore đã hoàn tất, không ghi lại thành việc chưa làm.
+- Chỉ phân tích tĩnh/query cấu hình; không chạy test ghi trên DB thật, gửi OTP/payOS hoặc deploy. Tài liệu/source vẫn local, chưa commit/push.
+
+## 56. Tech debt remediation - released16/10/2026
+
+- User authorized handling the full reviewed debt list. Main code592b61f and account-budget follow-upb9a49e5 were pushed; CI38843210171 and38843629888 passed verify/publish/deploy. Live revision is b9a49e5e31ec34d6983177cb790281d508119895. Documentation-only changes do not change the app image revision.
+- SSH operator roomie-ops/key/sudo tested before/after disabling root/password; nft host input policy drop allows22/80/443, established/loopback/ICMP without flushing Docker rules. Rollback timer canceled only after a new successful SSH connection and HTTPS health.
+- PostgreSQL bootstrap superuser renamed roomie_dba (OID10 cannot be demoted); a new room_rental owns migrations, roomie_app has DML only. Both app/migration role superuser/createdb/createrole flags false, runtime cannot CREATE schema or modify EF history. Root-only admin credentials separated, bootstrap credentials removed from app env. Additive migration2 applied in deploy job before app swap; no resets or Down migrations.
+- Admin TOTP + one-use recovery codes, persistent hashed-account budgets (login/MFA/change/recovery), new-password policy12-256 and tenant path redaction. Production gates admin business routes until owner enrollment. No agent enrollment, credential exposure or live OTP/payOS call.
+- OTP commits reservation before SMTP and compensates unchanged reservation on failure; no transaction held over email. Independent retention job every10minutes batches200, keeps expired rows7days, with indexes. Invoice/admin/tenant server pages and full-filter totals; mobile table now honors controlled pagination. API timeout, auth503 retry/error boundary and synthetic browser regressions. Large modules split by operation.
+- CI runs isolated SQLite75/75, PostgreSQL58/50pass/8explicit skips, OTP10/10, browser5/5, backup tests7/7 and real role provisioning fixture; image tested is the artifact promoted, base/action digests pinned. Recorded service suites207SQLite/209PostgreSQL assertions. Dependency reports at this checkpoint: frontend npm audit0, API NuGet0reported; no OS/provider-wide audit claim.
+- Backup15-minute deadline for direct/timer/pre-deploy, systemd16minutes, rclone subprocess300seconds/network bounds, SMTP TLS failure hook + hourly27-hour watchdog. A false-positive initial alert occurred before the last-success marker existed; timer changed to OnActiveSec1h and current successful backup creates marker. SMTP acceptance confirmed; provider Delivered lookup unavailable; no repeated live test email.
+- Latest Drive snapshot rehouse-20261016T031149Z-bw09fc: downloaded/decrypted4files, SHA256/keyXML passed, restored under migration ownership in network-none PostgreSQL17, runtime reads2migrations/1admin/0invoices. Temporary decrypted files/restore containers removed. Production not restored, invoice aggregates unchanged0/0/0. Local migration preserved0/0/0; Development API5080/outbound guard/payment jobs disabled retained. Private pre-migration local DB+default ASP.NET key ring archive at /tmp/roomie-hardening-before-local-migration.
+- Public operating instructions: [remediation/release](tech-debt-remediation-2026-10-16.md), [backup](backup-operations.md). Full account/folder audit stays in local-only docs/google-drive-backup.md and docs/security-tech-debt-review-2026-10-16.md; recovery keys remain outside repo. Host rollback config at /root/roomie-hardening-20261016, root-only. Single-instance/HA/PITR/immutable storage and broad load/OS/provider audit limits are documented, not silently provisioned.
+
+### Follow-up to56: scoped pagination and session ordering
+
+Older checkout uses invoiceId scoped to the tenant occupancy; secondary invoice screens fetch bounded pages for their period/occupancy and retain data after100rows. Added older-invoice HTTP regression,102-row frontend API test and delayed-/me login race regression. Follow-up local checks: SQLite76/76, PostgreSQL59run/8known skips, browser7/7. CI38845308613 failed only because the role fixture saw the temporary PostgreSQL init server; final TCP readiness fixed, CI38845575264 succeeded. Final app candidate4f3d1bc is going through CI38845852582; release completion below will confirm live state.
+
+### Final completion56
+
+CI38845852582 passed verify/publish/deploy, live revision4f3d1bce01ef3a7482d85978b7fea0870a7c32a6 verified. SQLite76/76, PostgreSQL59run/8explicit skips, browser7/7, OTP10/10, backup tests7/7 and frontend102-row paging check PASS. Final Drive snapshot rehouse-20261016T083836Z-5YVMHS verified with four matching files/SHA256; restore verification is stored privately. Financial values above belong to earlier checkpoints: new non-fixture owner/business activity appeared later and has been retained. No resets or mutating production integration tests. Admin enrollment count0 at final check: owner must configure authenticator and keep recovery codes. Documentation/test-fixture-only follow-up commits do not change the live app image revision.

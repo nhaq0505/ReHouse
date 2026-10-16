@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 const owner = {id:'fixture-owner',name:'Smoke Owner',email:'smoke@example.invalid',role:'Owner',status:'Approved'};
+const emptyInvoices={items:[],total:0,draftCount:0,totals:{billed:0,paid:0,outstanding:0}};
 const dashboard = {totalRooms:0,occupiedRooms:0,totalBilled:0,totalPaid:0,totalOutstanding:0,pendingReadings:0,monthlyBilled:0,monthlyPaid:0,monthlyOutstanding:0,collectionRate:0,period:'2026-10'};
 test('login enters the owner area and sends credentials only once', async ({page}) => {
   let authenticated=false, logins=0;
@@ -7,7 +8,7 @@ test('login enters the owner area and sends credentials only once', async ({page
     const path=new URL(route.request().url()).pathname;
     if(path==='/api/auth/login') {authenticated=true; logins++; return route.fulfill({json:owner});}
     if(path==='/api/auth/me') return route.fulfill({status:authenticated?200:401,json:authenticated?owner:{message:'Please sign in.'}});
-    return route.fulfill({json:path==='/api/dashboard'?dashboard:[]});
+    return route.fulfill({json:path==='/api/dashboard'?dashboard:path==='/api/invoices'?emptyInvoices:[]});
   });
   await page.goto('/login');
   await page.getByLabel('Email',{exact:true}).fill(owner.email);
@@ -17,7 +18,7 @@ test('login enters the owner area and sends credentials only once', async ({page
 });
 test('temporary session lookup failure offers retry instead of login redirect',async({page})=>{
   let failed=true;
-  await page.route('**/api/**',route=>route.fulfill({status:failed?503:200,json:failed?{message:'Temporary failure'}:(route.request().url().endsWith('/me')?owner:dashboard)}));
+  await page.route('**/api/**',route=>route.fulfill({status:failed?503:200,json:failed?{message:'Temporary failure'}:(route.request().url().endsWith('/me')?owner:new URL(route.request().url()).pathname==='/api/invoices'?emptyInvoices:dashboard)}));
   await page.goto('/dashboard'); await expect(page.getByRole('button',{name:'Thử lại'})).toBeVisible();
   await expect(page).toHaveURL(/dashboard/); failed=false;
   await page.getByRole('button',{name:'Thử lại'}).click();
@@ -64,13 +65,15 @@ test('a delayed failed session lookup cannot overwrite a successful login',async
     const path=new URL(route.request().url()).pathname;
     if(path==='/api/auth/me'){await pending;return route.fulfill({status:503,json:{message:'Temporary failure'}});}
     if(path==='/api/auth/login')return route.fulfill({json:owner});
-    return route.fulfill({json:dashboard});
+    return route.fulfill({json:path==='/api/invoices'?emptyInvoices:dashboard});
   });
   await page.goto('/login');
   await page.getByLabel('Email',{exact:true}).fill(owner.email);
   await page.getByLabel('Mật khẩu',{exact:true}).fill('SmokeOwner123!');
   await page.locator('button[type=submit]').click();await expect(page).toHaveURL(/dashboard/);
+  await expect(page.getByRole('heading',{level:2})).toBeVisible();
   const response=page.waitForResponse('**/api/auth/me');release();await response;
+  await expect(page.getByRole('heading',{level:2})).toBeVisible();
   await expect(page.getByRole('button',{name:'Thử lại'})).toHaveCount(0);
   await expect(page).toHaveURL(/dashboard/);
 });

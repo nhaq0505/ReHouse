@@ -172,3 +172,16 @@ are excluded. `monthlyPaid` is paid balance on those invoices, not cash received
 this calendar month. Use the receipt report for cash-flow reporting. Frontend primary KPIs
 use the monthly fields; all-time values appear in a separate block. Recent invoices use
 the period returned by the dashboard API.
+
+## Operational hardening / pagination contract -16October2026
+
+- New passwords for registration/change/reset use12-256characters with uppercase, lowercase, digit and symbol; existing credentials are not silently rotated. Production login has both IP and persistent normalized-account budgets. Authenticated MFA setup/confirm, password change and admin recovery also consume account budgets even on failure. Budgets reset in a short window; no permanent attacker-triggered account lockout.
+- POST `/api/auth/login` accepts optional `code` (six-digit TOTP or one-use32hex recovery code) and requires it when enrolled. User responses add `mfaEnabled`/`mfaRequired`; Production denies admin business routes until enrollment, while auth routes remain available.
+- POST `/api/auth/mfa/setup` requires authenticated Admin and `currentPassword`; returns a Base32 secret/otpauth URI, pending for10minutes. POST `/api/auth/mfa/confirm` accepts `code`, returns eight recovery codes once, revokes all sessions and signs out. Store codes offline; codes and accepted TOTP steps cannot be replayed. There is no public endpoint bypassing/removing MFA.
+- GET `/api/invoices?page=1&pageSize=10` returns `{items,total,totals:{billed,paid,outstanding},draftCount,page,pageSize}`. Existing filters remain; optional GUID `occupancyId` narrows within the authenticated owner. Totals cover the full filtered set. No `page` retains an array but bounds results to100. Page size1-100, page1-100000; invalid values return400. Stable order includes Id.
+- GET `/api/admin/owners?page=1&pageSize=10` returns `{items,total,pendingCount,page,pageSize}`; optional status filters the page while pendingCount remains global. No page retains the bounded legacy array.
+- GET `/api/tenant/{token}?page=1&pageSize=10` adds total/totals/page/pageSize to room/occupancy/invoices. Optional `invoiceId` selects one issued invoice within that token's occupancy, independently of history page position; mismatched IDs return an empty invoice list. Checkout uses this direct selection, never searches only page1.
+- Secondary owner screens needing all invoices for a period/occupancy fetch bounded100-row pages to completion. Deposit targets are occupancy-scoped. Main invoice/admin/tenant lists remain paginated; compact/mobile tables forward the same server state.
+- OTP persists a send reservation before SMTP without an open transaction, then compensates only an unchanged reservation on delivery failure. Existing cooldown/hour budget/code replacement/consume guards remain. Delivery and DB cannot form an atomic external transaction; ambiguous SMTP delivery can require resend.
+
+Release/testing evidence: [tech debt remediation](tech-debt-remediation-2026-10-16.md).

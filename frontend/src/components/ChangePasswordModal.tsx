@@ -27,7 +27,7 @@ export default function ChangePasswordModal({ open, onClose }: { open: boolean; 
       <Form.Item name="currentPassword" label={t("Mật khẩu hiện tại")} rules={[{ required: true }]}>
         <Input.Password autoComplete="current-password" maxLength={256} />
       </Form.Item>
-      <Form.Item name="newPassword" label={t("Mật khẩu mới")} extra={t("Từ 12 đến 256 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt.")} rules={[{ required: true, min: 12, max: 256, message: t("Mật khẩu mới cần 12–256 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt.") }]}>
+      <Form.Item name="newPassword" label={t("Mật khẩu mới")} extra={t("Từ 9 đến 256 ký tự, không bắt buộc chữ hoa, số hay ký tự đặc biệt.")} rules={[{ required: true, whitespace: true, min: 9, max: 256, message: t("Mật khẩu mới cần từ 9 đến 256 ký tự.") }]}>
         <Input.Password autoComplete="new-password" maxLength={256} />
       </Form.Item>
       <Form.Item name="confirmPassword" label={t("Xác nhận mật khẩu mới")} dependencies={['newPassword']}

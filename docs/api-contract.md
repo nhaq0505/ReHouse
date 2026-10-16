@@ -138,7 +138,7 @@ reinterpreted using today's occupants.
 
 `POST /api/auth/change-password` (signed-in Owner/Admin, including Pending Owner):
 `{ currentPassword, newPassword }` → `{ success: true }`.
-New password: 8–256 characters; optional `confirmPassword` must match if supplied.
+New password: 9–256 characters; no character-composition requirements; optional `confirmPassword` must match if supplied.
 The password must differ from the current one.
 Invalid input/current password returns 400. Hashes with ASP.NET PasswordHasher, clears
 outstanding reset codes and revokes all other open sessions, retaining the current `sid` and cookie.
@@ -155,7 +155,7 @@ must privately deliver it after verifying the owner's identity; there is no emai
 
 `POST /api/auth/reset-password` (public, rate limited):
 `{ email, token, newPassword, confirmPassword }` → `{ success: true }`.
-Reset retains the stronger 12–256 character policy (upper/lower/digit/special), with required matching confirmation; invalid/expired/replayed code or wrong email returns the same 400
+Reset uses the same 9–256 character policy without composition requirements, with required matching confirmation; invalid/expired/replayed code or wrong email returns the same 400
 message. Successful reset atomically consumes the code and revokes sessions; does not
 sign in automatically or change account approval/suspension. Concurrent consumption has
 at most one success; the loser returns 400 or 409. An expired admin-issued code requires
@@ -175,9 +175,10 @@ the period returned by the dashboard API.
 
 ## Operational hardening / pagination contract -16October2026
 
-- New passwords for registration/change/reset use12-256characters with uppercase, lowercase, digit and symbol; existing credentials are not silently rotated. Production login has both IP and persistent normalized-account budgets. Authenticated MFA setup/confirm, password change and admin recovery also consume account budgets even on failure. Budgets reset in a short window; no permanent attacker-triggered account lockout.
-- POST `/api/auth/login` accepts optional `code` (six-digit TOTP or one-use32hex recovery code) and requires it when enrolled. User responses add `mfaEnabled`/`mfaRequired`; Production denies admin business routes until enrollment, while auth routes remain available.
-- POST `/api/auth/mfa/setup` requires authenticated Admin and `currentPassword`; returns a Base32 secret/otpauth URI, pending for10minutes. POST `/api/auth/mfa/confirm` accepts `code`, returns eight recovery codes once, revokes all sessions and signs out. Store codes offline; codes and accepted TOTP steps cannot be replayed. There is no public endpoint bypassing/removing MFA.
+- New passwords for registration/change/reset/bootstrap use 9–256 characters without uppercase/lowercase/digit/symbol requirements; whitespace-only passwords are rejected; existing credentials are not silently rotated. Production login has both IP and persistent normalized-account budgets. Authenticated password change and admin recovery also consume account budgets even on failure. Budgets reset in a short window; no permanent attacker-triggered account lockout.
+- POST `/api/auth/login` authenticates using email/password only. Optional legacy `code` is accepted but ignored. Login and `/api/auth/me` always return `mfaEnabled: false` and `mfaRequired: false`, regardless of stored legacy flags. Admin business routes do not require MFA enrollment.
+- MFA setup/confirm endpoints have been removed (404); `/mfa-setup` no longer renders an enrollment page. Existing database columns and applied migrations remain unchanged for compatibility. Registration email OTP and password reset tokens remain active.
+
 - GET `/api/invoices?page=1&pageSize=10` returns `{items,total,totals:{billed,paid,outstanding},draftCount,page,pageSize}`. Existing filters remain; optional GUID `occupancyId` narrows within the authenticated owner. Totals cover the full filtered set. No `page` retains an array but bounds results to100. Page size1-100, page1-100000; invalid values return400. Stable order includes Id.
 - GET `/api/admin/owners?page=1&pageSize=10` returns `{items,total,pendingCount,page,pageSize}`; optional status filters the page while pendingCount remains global. No page retains the bounded legacy array.
 - GET `/api/tenant/{token}?page=1&pageSize=10` adds total/totals/page/pageSize to room/occupancy/invoices. Optional `invoiceId` selects one issued invoice within that token's occupancy, independently of history page position; mismatched IDs return an empty invoice list. Checkout uses this direct selection, never searches only page1.

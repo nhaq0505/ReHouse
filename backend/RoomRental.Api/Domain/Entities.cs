@@ -16,6 +16,7 @@ public sealed class AppUser
     public required string Email { get; set; }
     public string? Phone { get; set; }
     public required string PasswordHash { get; set; }
+    // Legacy MFA storage retained to preserve the deployed schema; authentication ignores it.
     public string? ProtectedMfaSecret { get; set; }
     public string? PendingMfaSecret { get; set; }
     public DateTimeOffset? PendingMfaExpiresAt { get; set; }

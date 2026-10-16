@@ -11,12 +11,13 @@ public static class PasswordSecurity
 {
     public static void ValidateNewPassword(string? password, string? confirmation)
     {
-        if (string.IsNullOrWhiteSpace(password) || password.Length is < 12 or > 256 ||
-            !password.Any(char.IsUpper) || !password.Any(char.IsLower) ||
-            !password.Any(char.IsDigit) || !password.Any(x => !char.IsLetterOrDigit(x) && !char.IsWhiteSpace(x)))
-            throw new ApiException(400, "Mật khẩu mới cần 12–256 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt.");
+        if (!IsValidNewPassword(password))
+            throw new ApiException(400, "Mật khẩu mới cần từ 9 đến 256 ký tự.");
         if (password != confirmation) throw new ApiException(400, "Xác nhận mật khẩu không khớp.");
     }
+
+    public static bool IsValidNewPassword(string? password) =>
+        !string.IsNullOrWhiteSpace(password) && password.Length is >= 9 and <= 256;
 
     public static void VerifyCurrentPassword(AppUser user, string? password, IPasswordHasher<AppUser> hasher)
     {

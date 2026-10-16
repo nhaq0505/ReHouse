@@ -43,10 +43,17 @@ internal static class AccountOccupancyTests
         PasswordSecurity.ValidateNewPassword("NewPassword123!", "NewPassword123!");
         Check(PasswordSecurity.MatchesToken("fixture-token", PasswordSecurity.HashToken("fixture-token")), "Recovery token hash round trip");
         Check(!PasswordSecurity.MatchesToken("wrong-token", PasswordSecurity.HashToken("fixture-token")), "Wrong recovery token rejected");
-        foreach (var weak in new[] { "short", "lowercaseonly123!", "UPPERCASEONLY123!", "NoDigitsPassword!", "NoSymbolsPassword123" })
+        foreach (var weak in new[] { "", "short", "abcdefgh", new string(' ', 9), new string('x', 257) })
         {
             try { PasswordSecurity.ValidateNewPassword(weak, weak); throw new Exception("Weak password accepted"); }
             catch (ApiException error) { Check(error.StatusCode == 400, "Weak password rejected"); }
         }
+        foreach (var valid in new[] { "abcdefghi", "123456789", "UPPERCASEONLY", new string('x', 256) })
+        {
+            PasswordSecurity.ValidateNewPassword(valid, valid);
+            Check(PasswordSecurity.IsValidNewPassword(valid), "Length-only password accepted");
+        }
+        try { PasswordSecurity.ValidateNewPassword("abcdefghi", "different"); throw new Exception("Mismatched confirmation accepted"); }
+        catch (ApiException error) { Check(error.StatusCode == 400, "Password confirmation still required"); }
     }
 }

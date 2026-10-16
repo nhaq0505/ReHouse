@@ -11,6 +11,7 @@ test('login enters the owner area and sends credentials only once', async ({page
     return route.fulfill({json:path==='/api/dashboard'?dashboard:path==='/api/invoices'?emptyInvoices:[]});
   });
   await page.goto('/login');
+  await expect(page.locator('input[autocomplete=one-time-code]')).toHaveCount(0);
   await page.getByLabel('Email',{exact:true}).fill(owner.email);
   await page.getByLabel('Mật khẩu',{exact:true}).fill('SmokeOwner123!');
   await page.locator('button[type=submit]').click();
@@ -28,10 +29,18 @@ test('expired session redirects to login',async({page})=>{
   await page.route('**/api/**',route=>route.fulfill({status:401,json:{message:'Please sign in.'}}));
   await page.goto('/dashboard'); await expect(page).toHaveURL(/login/);
 });
-test('admin without MFA is gated into authenticator enrollment',async({page})=>{
-  await page.route('**/api/auth/me',route=>route.fulfill({json:{...owner,role:'Admin',mfaRequired:true}}));
-  await page.goto('/admin/owners'); await expect(page).toHaveURL(/mfa-setup/);
-  await expect(page.getByRole('heading',{name:'Xác thực hai bước'})).toBeVisible();
+test('admin enters owners directly even with stale MFA flags',async({page})=>{
+  await page.route('**/api/**',route=>route.fulfill({json:new URL(route.request().url()).pathname==='/api/auth/me'
+    ? {...owner,role:'Admin',mfaRequired:true,mfaEnabled:true}
+    : {items:[],total:0,pendingCount:0,page:1,pageSize:10}}));
+  await page.goto('/admin/owners'); await expect(page).toHaveURL(/admin\/owners/);
+  await expect(page.getByRole('heading',{level:2})).toBeVisible();
+});
+test('removed MFA setup URL displays not found',async({page})=>{
+  await page.route('**/api/auth/me',route=>route.fulfill({status:401,json:{message:'Please sign in.'}}));
+  await page.goto('/mfa-setup');
+  await expect(page.getByRole('heading',{name:'Xác thực hai bước'})).toHaveCount(0);
+  await expect(page.getByText('Không tìm thấy trang',{exact:true})).toBeVisible();
 });
 test('invoice pagination uses server totals and requests the next page',async({page})=>{
   const pages:number[]=[];
@@ -76,4 +85,28 @@ test('a delayed failed session lookup cannot overwrite a successful login',async
   await expect(page.getByRole('heading',{level:2})).toBeVisible();
   await expect(page.getByRole('button',{name:'Thử lại'})).toHaveCount(0);
   await expect(page).toHaveURL(/dashboard/);
+});
+
+test('password reset rejects eight characters and accepts nine lowercase characters',async({page})=>{
+  let resets=0;
+  await page.route('**/api/**',async route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path==='/api/auth/reset-password') {
+      resets++; expect(route.request().postDataJSON().newPassword).toBe('abcdefghi');
+      return route.fulfill({json:{success:true}});
+    }
+    return route.fulfill({status:401,json:{message:'Please sign in.'}});
+  });
+  await page.goto('/reset-password');
+  await page.getByLabel('Email',{exact:true}).fill('fixture@example.invalid');
+  await page.getByLabel('Mã đặt lại mật khẩu',{exact:true}).fill('a'.repeat(64));
+  await page.getByLabel('Mật khẩu mới',{exact:true}).fill('abcdefgh');
+  await page.getByLabel('Xác nhận mật khẩu mới',{exact:true}).fill('abcdefgh');
+  await page.getByRole('button',{name:'Lưu mật khẩu',exact:true}).click();
+  await expect(page.getByText('Mật khẩu mới cần từ 9 đến 256 ký tự.',{exact:true})).toBeVisible();
+  expect(resets).toBe(0);
+  await page.getByLabel('Mật khẩu mới',{exact:true}).fill('abcdefghi');
+  await page.getByLabel('Xác nhận mật khẩu mới',{exact:true}).fill('abcdefghi');
+  await page.getByRole('button',{name:'Lưu mật khẩu',exact:true}).click();
+  await expect(page).toHaveURL(/login/); expect(resets).toBe(1);
 });

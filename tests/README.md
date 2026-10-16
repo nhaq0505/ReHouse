@@ -341,3 +341,13 @@ tests (two OTP fixture classes skipped), with outbound proxy blocking and localh
 ## Operational hardening16/10/2026
 
 run_disposable.py owns temporary SQLite/PostgreSQL/OTP APIs. PostgreSQL requires TEST_HTTP_POSTGRES_CONTAINER and a loopback TEST_HTTP_POSTGRES_CONNECTION naming roomie_qa_*; it creates/drops its own random database in that explicit disposable container. Never use the app database/container. CI passes --image to test the exact image promoted to GHCR. Skip counts are gated: SQLite0, PostgreSQL8 known SQLite-only cases, OTP0. check_db_roles.py creates a separate network-none PostgreSQL container and executes the real provisioner twice, verifying runtime DML/denied DDL and migration-history writes. test_backup_*.py covers retention, failed verification before rotation, finite subprocess and TLS alert content/cooldown without sending email. frontend/e2e has five synthetic browser smoke cases. See [release record](../docs/tech-debt-remediation-2026-10-16.md).
+
+
+## Password-only login regression — 16/10/2026
+
+MFA has been removed at the user's request. `test_operational_hardening` now tests login/me compatibility flags, correct/incorrect passwords, ignored legacy `code`, admin access, logout and removed MFA endpoints. Legacy enabled/disabled row mutation is restricted to the runner-owned SQLite `roomie-ci-*/fixture.db` and restores the original values. PostgreSQL retains the explicit SQLite-only skip. Service checks cover DTO flags and authenticated admin middleware access for both legacy states; Playwright covers the removed input/route and ignores stale MFA response flags.
+
+
+## Password length policy — 16/10/2026
+
+New passwords require9–256characters; no composition rules. Boundary service tests reject empty/whitespace-only/8/257 and accept9lowercase/9digits/uppercase/256. Disposable HTTP tests cover registration, OTP verification/login, password change/session revocation and admin reset with simple nine-character passwords. Playwright reset checks eight-character rejection and nine-character acceptance without composition rules.

@@ -58,7 +58,7 @@ public static class AuthEndpoints
             RegistrationVerificationService verification, CancellationToken ct) =>
             Results.Ok(await verification.ResendAsync(request.ChallengeToken, ct))).RequireRateLimiting("auth");
 
-        routes.MapPost("/login", async (LoginRequest request, HttpContext context, AppDbContext db, IPasswordHasher<AppUser> hasher, AdminMfaService mfa, CancellationToken cancellationToken) =>
+        routes.MapPost("/login", async (LoginRequest request, HttpContext context, AppDbContext db, IPasswordHasher<AppUser> hasher, CancellationToken cancellationToken) =>
         {
             var normalizedEmail = request.Email?.Trim().ToLowerInvariant() ?? "";
             if (normalizedEmail.Length > 320 || request.Password?.Length > 256) throw new ApiException(400, "Thông tin đăng nhập không hợp lệ.");
@@ -79,7 +79,6 @@ public static class AuthEndpoints
 
             if (user.PasswordResetHash is not null)
                 throw new ApiException(403, "Tài khoản cần đặt lại mật khẩu bằng mã do quản trị viên cấp.");
-            if (user.MfaEnabled) mfa.Verify(user, request.Code);
             var now = DateTimeOffset.UtcNow;
             var session = new AuthSession
             {
@@ -109,7 +108,7 @@ public static class AuthEndpoints
                 AllowRefresh = true,
                 ExpiresUtc = session.ExpiresAt
             });
-            return Results.Ok(ToDto(user, app.Environment.IsProduction()));
+            return Results.Ok(ToDto(user));
         }).RequireRateLimiting("auth");
 
         routes.MapPost("/change-password", async (ChangePasswordRequest request, HttpContext context,
@@ -165,35 +164,8 @@ public static class AuthEndpoints
             var userId = ApiSupport.UserId(context);
             var user = await db.Users.AsNoTracking().SingleOrDefaultAsync(row => row.Id == userId, cancellationToken)
                 ?? throw new ApiException(StatusCodes.Status401Unauthorized, "Please sign in.");
-            return Results.Ok(ToDto(user, app.Environment.IsProduction()));
+            return Results.Ok(ToDto(user));
         }).RequireAuthorization();
-
-        routes.MapPost("/mfa/setup", async (MfaSetupRequest request, HttpContext context, AppDbContext db,
-            IPasswordHasher<AppUser> hasher, AdminMfaService mfa, CancellationToken ct) =>
-        {
-            ApiSupport.RequireAdmin(context);
-            await AccountLoginLimiter.ReserveAsync(db, "mfa-setup:" + ApiSupport.UserId(context), app.Environment.IsDevelopment() ? 1000 : 10, ct);
-            var user = await db.Users.SingleAsync(x => x.Id == ApiSupport.UserId(context), ct);
-            PasswordSecurity.VerifyCurrentPassword(user, request.CurrentPassword, hasher);
-            if (user.MfaEnabled) throw new ApiException(409, "Xác thực hai bước đã được bật.");
-            var secret = mfa.Begin(user);
-            await db.SaveChangesAsync(ct);
-            return Results.Ok(new { secret, uri = $"otpauth://totp/Roomie:{Uri.EscapeDataString(user.Email)}?secret={secret}&issuer=Roomie&digits=6&period=30" });
-        }).RequireAuthorization().RequireRateLimiting("auth");
-        routes.MapPost("/mfa/confirm", async (MfaConfirmRequest request, HttpContext context, AppDbContext db,
-            AdminMfaService mfa, CancellationToken ct) =>
-        {
-            ApiSupport.RequireAdmin(context);
-            await AccountLoginLimiter.ReserveAsync(db, "mfa-confirm:" + ApiSupport.UserId(context), app.Environment.IsDevelopment() ? 1000 : 10, ct);
-            await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
-            var user = await db.Users.SingleAsync(x => x.Id == ApiSupport.UserId(context), ct);
-            var recoveryCodes = mfa.Confirm(user, request.Code);
-            await PasswordSecurity.RevokeSessionsAsync(db, user.Id, ct);
-            await db.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
-            await context.SignOutAsync();
-            return Results.Ok(new { recoveryCodes });
-        }).RequireAuthorization().RequireRateLimiting("auth");
 
         routes.MapPost("/logout", async (HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
         {
@@ -212,7 +184,8 @@ public static class AuthEndpoints
         }).RequireAuthorization();
     }
 
-    public static UserDto ToDto(AppUser user, bool requireMfa = false) => new(
+    // Keep legacy response flags false even when old MFA data remains in storage.
+    public static UserDto ToDto(AppUser user) => new(
         user.Id,
         user.Name,
         user.Email,
@@ -220,6 +193,6 @@ public static class AuthEndpoints
         user.Status.ToString(),
         user.SubscriptionTier.ToString(),
         user.SubscriptionExpiresAt,
-        user.MaxRooms, user.MfaEnabled, requireMfa && user.Role == UserRole.Admin && !user.MfaEnabled
+        user.MaxRooms, false, false
     );
 }

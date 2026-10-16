@@ -200,14 +200,14 @@ class RoomApiIntegrationTests(unittest.TestCase):
         second = ApiSession()
         second.ok("POST", "/api/auth/login", {"email": self.owner_user["email"], "password": OWNER_PASSWORD})
         sid_cookie = [(c.name, c.value) for c in self.owner.cookies]
-        body = {"currentPassword": OWNER_PASSWORD, "newPassword": "ChangedOwner123!"}
+        body = {"currentPassword": OWNER_PASSWORD, "newPassword": "abcdefghi"}
         self.assertEqual(ApiSession().request("POST", "/api/auth/change-password", body)[0], 401)
         self.assertEqual(self.owner.request("POST", "/api/auth/change-password", body, origin="https://evil.invalid")[0], 403)
         status, error, _ = self.owner.request("POST", "/api/auth/change-password", {**body, "currentPassword": "wrong"})
         self.assertEqual(status, 400)
         self.assertIn("Mật khẩu hiện tại", error["message"])
         self.assertEqual(second.request("GET", "/api/auth/me")[0], 200)
-        for password in ("short", "abcdefgh", "lowercaseonlylong", "x" * 257):
+        for password in ("short", "abcdefgh", " " * 9, "x" * 257):
             self.assertEqual(self.owner.request("POST", "/api/auth/change-password", {**body, "newPassword": password})[0], 400)
         self.owner.ok("POST", "/api/auth/change-password", body)
         self.assertEqual(self.owner.ok("GET", "/api/auth/me")["id"], self.owner_user["id"])

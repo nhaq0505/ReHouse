@@ -7,7 +7,7 @@ using RoomRental.Api.Domain;
 
 namespace RoomRental.Api.Services;
 
-public sealed class RequestSecurityMiddleware(RequestDelegate next, IHostEnvironment environment)
+public sealed class RequestSecurityMiddleware(RequestDelegate next)
 {
     private static readonly HashSet<string> MutatingMethods = ["POST", "PUT", "PATCH", "DELETE"];
 
@@ -26,14 +26,7 @@ public sealed class RequestSecurityMiddleware(RequestDelegate next, IHostEnviron
                                          join user in db.Users.AsNoTracking() on session.UserId equals user.Id
                                          where session.Id == sessionId && session.UserId == userId &&
                                                session.RevokedAt == null && session.ExpiresAt > now
-                                         select new { user.Role, user.Status, user.MfaEnabled }).SingleOrDefaultAsync(context.RequestAborted);
-                if (environment.IsProduction() && sessionUser is { Role: UserRole.Admin, MfaEnabled: false } &&
-                    !context.Request.Path.StartsWithSegments("/api/auth"))
-                {
-                    context.Response.StatusCode = 403;
-                    await context.Response.WriteAsJsonAsync(new { message = "Vui lòng thiết lập xác thực hai bước cho quản trị viên." });
-                    return;
-                }
+                                         select new { user.Role, user.Status }).SingleOrDefaultAsync(context.RequestAborted);
                 persistedStatus = sessionUser?.Status;
                 valid = sessionUser is not null && sessionUser.Status is not (OwnerStatus.Rejected or OwnerStatus.Suspended) &&
                         ((sessionUser.Role == UserRole.Admin && sessionUser.Status == OwnerStatus.Approved && context.User.IsInRole("Admin")) ||

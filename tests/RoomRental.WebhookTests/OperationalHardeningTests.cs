@@ -1,4 +1,5 @@
-using System.Text;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using RoomRental.Api.Data;
@@ -9,13 +10,30 @@ internal static class OperationalHardeningTests
 {
     public static async Task RunAsync()
     {
-        var key = Encoding.ASCII.GetBytes("12345678901234567890");
-        foreach (var vector in new[] {(59L,"94287082"),(1111111109L,"07081804"),(1111111111L,"14050471"),(1234567890L,"89005924"),(2000000000L,"69279037"),(20000000000L,"65353130")})
-            if (AdminMfaService.Code(key,vector.Item1/30,8) != vector.Item2) throw new Exception("RFC6238 vector failed");
+        foreach (var enabled in new[] { false, true })
+        {
+            var dto = RoomRental.Api.Endpoints.AuthEndpoints.ToDto(new AppUser { Name = "Fixture", Email = "fixture@example.invalid", PasswordHash = "fixture", MfaEnabled = enabled, Role = UserRole.Admin });
+            if (dto.MfaEnabled || dto.MfaRequired) throw new Exception("Legacy MFA flags must always be false");
+        }
         using var c = new SqliteConnection("Data Source=:memory:"); c.Open();
         using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(c).Options);
         db.Database.EnsureCreated();
         var now = DateTimeOffset.UtcNow;
+        foreach (var enabled in new[] { false, true })
+        {
+            var admin = new AppUser { Name = "Fixture", Email = $"admin-{enabled}@example.invalid", PasswordHash = "fixture", Role = UserRole.Admin, MfaEnabled = enabled };
+            var session = new AuthSession { Id = Guid.NewGuid().ToString("N"), UserId = admin.Id, ExpiresAt = now.AddHours(1) };
+            db.Users.Add(admin); db.AuthSessions.Add(session); await db.SaveChangesAsync();
+            var context = new DefaultHttpContext();
+            context.Request.Method = "GET"; context.Request.Path = "/api/admin/owners";
+            context.User = new ClaimsPrincipal(new ClaimsIdentity(new[] {
+                new Claim(ClaimTypes.NameIdentifier, admin.Id.ToString()), new Claim(ClaimTypes.Role, "Admin"), new Claim("sid", session.Id)
+            }, "fixture"));
+            var reached = false;
+            await new RequestSecurityMiddleware(_ => { reached = true; return Task.CompletedTask; }).InvokeAsync(context, db);
+            if (!reached) throw new Exception("Admin business routes still gated by legacy MFA state");
+        }
+
         db.RegistrationVerifications.AddRange(new RegistrationVerification {Email="expired@example.invalid",ChallengeHash="expired",ExpiresAt=now.AddDays(-8),PasswordHash="sensitive"},
             new RegistrationVerification {Email="active@example.invalid",ChallengeHash="active",ExpiresAt=now.AddMinutes(20)},
             new RegistrationVerification {Email="cooldown@example.invalid",ChallengeHash="cooldown",ExpiresAt=now.AddMinutes(-40),WindowStartedAt=now});
@@ -26,6 +44,6 @@ internal static class OperationalHardeningTests
         try { await AccountLoginLimiter.ReserveAsync(db,"account@example.invalid",10,default); throw new Exception("Account limit missing"); }
         catch(ApiException e) when(e.StatusCode==429) { }
         if (ApiSupport.SafePath("/api/tenant/secret/invoices") .Contains("secret")) throw new Exception("Token leaked");
-        Console.WriteLine("PASS: RFC6238 six vectors; independent retention; persisted account throttling; tenant log redaction");
+        Console.WriteLine("PASS: MFA compatibility flags; independent retention; persisted account throttling; tenant log redaction");
     }
 }

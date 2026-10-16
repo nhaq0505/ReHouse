@@ -801,7 +801,7 @@
 800|Enter your email and the reset code from your administrator. The code is single-use and valid for 30 minutes.|请输入邮箱及管理员提供的重置码。重置码仅可使用一次，30分钟内有效。|이메일과 관리자가 발급한 재설정 코드를 입력하세요. 코드는 30분 내 한 번만 사용할 수 있습니다.|ईमेल और व्यवस्थापक का रीसेट कोड दर्ज करें। कोड 30 मिनट में केवल एक बार इस्तेमाल हो सकता है।
 801|Changing your password ends all sign-in sessions.|修改密码后，所有登录会话将结束。|비밀번호를 변경하면 모든 로그인 세션이 종료됩니다.|पासवर्ड बदलने पर सभी लॉगिन सत्र समाप्त होंगे।
 802|Enter the 64-character code from your administrator.|请输入管理员提供的64位重置码。|관리자가 발급한 64자 코드를 입력하세요.|व्यवस्थापक का 64-अक्षर वाला कोड दर्ज करें।
-803|12–256 characters, with uppercase and lowercase letters, a number and a special character.|12–256个字符，包含大写字母、小写字母、数字及特殊字符。|12~256자이며 대문자, 소문자, 숫자, 특수문자를 포함해야 합니다.|12–256 अक्षर, बड़े और छोटे अक्षर, अंक और विशेष चिह्न के साथ।
+803|9–256 characters; uppercase letters, numbers and special characters are optional.|9–256个字符，无需大写字母、数字或特殊字符。|9~256자이며 대문자, 숫자, 특수문자는 필수가 아닙니다.|9–256 अक्षर; बड़े अक्षर, अंक और विशेष चिह्न आवश्यक नहीं हैं।
 804|Include uppercase and lowercase letters, a number and a special character.|请包含大写字母、小写字母、数字及特殊字符。|대문자, 소문자, 숫자, 특수문자를 포함하세요.|बड़े और छोटे अक्षर, अंक और विशेष चिह्न शामिल करें।
 805|Confirm new password|确认新密码|새 비밀번호 확인|नए पासवर्ड की पुष्टि करें
 806|Passwords do not match.|两次密码不一致。|비밀번호가 일치하지 않습니다.|पासवर्ड मेल नहीं खाते।
@@ -815,7 +815,7 @@
 814|Outstanding on this month’s invoices|本月账单未收金额|이번 달 청구서 미수금|इस महीने के बिलों की बकाया राशि
 815|All-time totals|累计统计|전체 기간 통계|सभी समय के कुल आँकड़े
 816|Total due: {0} · Collected: {1} · Outstanding: {2}|应收：{0} · 已收：{1} · 未收：{2}|청구액: {0} · 수금액: {1} · 미수금: {2}|कुल देय: {0} · वसूली: {1} · बकाया: {2}
-817|New passwords require 12–256 characters with uppercase and lowercase letters, a number and a special character.|新密码需12–256个字符，并包含大写字母、小写字母、数字及特殊字符。|새 비밀번호는 12~256자이며 대문자, 소문자, 숫자, 특수문자를 포함해야 합니다.|नए पासवर्ड में 12–256 अक्षर, बड़े और छोटे अक्षर, अंक और विशेष चिह्न होने चाहिए।
+817|New passwords require 9–256 characters.|新密码需9–256个字符。|새 비밀번호는 9~256자여야 합니다.|नया पासवर्ड 9–256 अक्षरों का होना चाहिए।
 818|The current password is incorrect.|当前密码不正确。|현재 비밀번호가 올바르지 않습니다.|वर्तमान पासवर्ड गलत है।
 819|The new password must differ from the current password.|新密码必须与当前密码不同。|새 비밀번호는 현재 비밀번호와 달라야 합니다.|नया पासवर्ड वर्तमान पासवर्ड से अलग होना चाहिए।
 820|Reset your password using the code from your administrator before signing in.|登录前请使用管理员提供的重置码重置密码。|로그인 전에 관리자가 발급한 코드로 비밀번호를 재설정하세요.|लॉगिन से पहले व्यवस्थापक के कोड से पासवर्ड रीसेट करें।

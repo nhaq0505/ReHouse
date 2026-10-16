@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RoomRental.Api.Domain;
@@ -43,8 +42,8 @@ public static class DatabaseInitializer
         if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(password)) return;
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
             throw new InvalidOperationException("Set both BootstrapAdmin__Email and BootstrapAdmin__Password to bootstrap the initial administrator.");
-        if (!IsStrongPassword(password))
-            throw new InvalidOperationException("BootstrapAdmin__Password must be at least 12 characters and include uppercase, lowercase, a number, and a symbol.");
+        if (!PasswordSecurity.IsValidNewPassword(password))
+            throw new InvalidOperationException("BootstrapAdmin__Password must contain 9 to 256 characters.");
         if (await db.Users.AnyAsync(user => user.Email == email)) return;
 
         var admin = new AppUser
@@ -110,11 +109,6 @@ public static class DatabaseInitializer
         await db.SaveChangesAsync();
         return user;
     }
-
-    private static bool IsStrongPassword(string password) =>
-        password.Length >= 12 && password.Length <= 256 &&
-        Regex.IsMatch(password, "[A-Z]") && Regex.IsMatch(password, "[a-z]") &&
-        Regex.IsMatch(password, "[0-9]") && Regex.IsMatch(password, "[^A-Za-z0-9]");
 
     private static bool ReadFlag(string? value) => bool.TryParse(value, out var enabled) && enabled;
 }

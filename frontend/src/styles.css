@@ -412,6 +412,8 @@ a { color: var(--teal-dark); }
 .auth-decoration-two { top: 24%; right: 13%; width: 105px; height: 105px; border: 1px solid rgba(51, 181, 151, .09); border-radius: 50%; }
 .auth-page-register .auth-aside { background: #17383d; }
 .back-link { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 18px; color: #74868a; font-size: 13px; }
+.auth-page .back-link { min-height: 44px; color: var(--teal-dark); }
+.auth-page .back-link:hover { text-decoration: underline; }
 .onboarding-steps { display: flex; flex-direction: column; gap: 16px; margin-top: 28px; }
 .onboarding-steps > div { display: flex; align-items: center; gap: 12px; }
 .onboarding-steps > div > span { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid rgba(117,216,194,.3); border-radius: 10px; color: #7ad8c3; font-family: Manrope, sans-serif; font-size: 12px; font-weight: 700; }

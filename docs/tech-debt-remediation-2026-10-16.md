@@ -1,5 +1,8 @@
 # Xử lý tech debt — 16/10/2026
 
+> Current source update: MFA was removed at the user's explicit request on 16/10/2026. Login uses email/password; no admin enrollment is required. The user also reduced the password policy to 9–256 characters without composition requirements. The MFA and 12-character policy entries below describe the earlier release, not the current source. Database columns/migrations remain intact. User authorized the combined update to be pushed to main; CI/CD determines its deployment status.
+
+
 Yêu cầu: xử lý các mục đã rà soát, ghi lại thay đổi và kiểm chứng. Không reset dữ liệu, không test ghi trên database vận hành, không gửi OTP/payOS thật. robots.txt vẫn chặn tất cả bot.
 
 ## Release status - complete
@@ -35,11 +38,11 @@ PayOsService chia theo Checkout, Subscriptions, Webhook, Cancellation, Reconcili
 - `/etc/rehouse/database-admin.env`, runtime/backup env và rclone config là root0600. Không chép password/token vào repo/chat. Recovery crypt password+salt vẫn được giữ riêng trên Mac như runbook backup.
 - Restore dùng DBA để tạo/swap DB, restore objects dưới role migration và cấp lại runtime grants. Kiểm checksum trước khi dừng app; không test helper thay thế DB trên production để chứng minh restore.
 - Khởi tạo host mới: provision app + migration overlay/role helper, sau đó chạy `deploy/install-backup.sh` bằng root với private OAuth/crypt config đã cấp quyền. Cài Caddyfile và disclosure pages; xác nhận backup/restore tạm. OAuth hết hiệu lực/mất token cần chủ tài khoản tự cấp quyền lại.
-- Admin đã enroll có8recovery codes, mỗi mã một lần. Nếu mất cả authenticator và recovery codes, chỉ operator có sudo/DBA mới thực hiện quy trình khôi phục danh tính có kiểm toán; không mở endpoint public bỏ qua MFA.
+- Current source no longer uses authenticator or recovery codes; password recovery remains available through the existing audited admin flow.
 
 ## Giới hạn thực tế
 
-Không có cam kết ứng dụng hết mọi lỗ hổng. Chưa có HA/PITR, immutable backup, pentest, hay audit OS/provider toàn diện. Không mua thêm dịch vụ hoặc tự đổi chính sách SEO. Thiết bị TOTP và việc cất recovery codes cần chủ tài khoản tự thực hiện. Bằng chứng email cảnh báo thật Delivered/restore drill định kỳ là việc vận hành tiếp theo, không được đánh dấu PASS chỉ vì unit test.
+Không có cam kết ứng dụng hết mọi lỗ hổng. Chưa có HA/PITR, immutable backup, pentest, hay audit OS/provider toàn diện. Không mua thêm dịch vụ hoặc tự đổi chính sách SEO. Bằng chứng email cảnh báo thật Delivered/restore drill định kỳ là việc vận hành tiếp theo, không được đánh dấu PASS chỉ vì unit test.
 
 ## Final validation
 
@@ -49,7 +52,7 @@ Không có cam kết ứng dụng hết mọi lỗ hổng. Chưa có HA/PITR, im
 - Independently restored checkpoint snapshot `rehouse-20261016T031149Z-bw09fc`: four files verified by download/decrypt. Downloaded separately, SHA256 passed, DataProtection XML valid, pg_restore using migration ownership passed in a fresh PostgreSQL17 container with no network/published ports; runtime role can read both migrations,1admin,0invoices. No restore against production. All temporary decrypted copies/restore container were removed.
 - Local PostgreSQL upgraded additively; invoice count/total/paid unchanged0/0/0. Private pre-migration DB/key archive remains outside Git; Development API5080 runs with real payment jobs disabled and outbound HTTP proxy guard retained.
 - One watchdog alert was sent at initial activation before a last-success marker existed. This was a false positive, not a failed/missing snapshot. The timer now waits one hour after activation; successful backup writes the marker. SMTP accepted the alert, but provider Delivered was not established (read access unavailable); do not equate acceptance or mock tests with Inbox delivery. No extra live OTP/payOS or test email was sent in this review.
-- Production admin operations are gated until the account owner enrolls their own authenticator. Enroll at the next login and keep the eight one-use recovery codes offline. Recovery material and the full internal operational journal remain local/private.
+- Historical release required admin MFA; the current source removes that requirement. Recovery material and the full internal operational journal remain local/private.
 
 Architecture limits remain explicit: single instance, no HA/PITR/immutable retention, and no full OS/provider penetration audit or representative production load claim. These are deployment capability choices, not features silently installed or billed during this request.
 
@@ -65,4 +68,4 @@ After a successful backup, the alert cooldown marker is cleared so a new failure
 
 CI38845852582 succeeded in all three jobs; live container revision4f3d1bce01ef3a7482d85978b7fea0870a7c32a6 confirmed. Final snapshot rehouse-20261016T083836Z-5YVMHS uploaded/downloaded with four matching files and SHA256. A private verification record holds current financial aggregates; public documentation does not publish current customer amounts. Earlier zero-invoice snapshots in this journal are historical checkpoints, not current data counts. No live database reset or mutating integration tests occurred.
 
-Admin enrollment remains a human action: log in, add the key to an authenticator and save the eight recovery codes. The operator alert delivery limitation and one corrected initial false positive remain explicitly recorded. Private account/audit journals are excluded locally from accidental git add; the public handoff/runbooks contain no OAuth tokens, decryption keys or private folder identifiers.
+Admin enrollment instructions from this checkpoint are superseded by the user-requested MFA removal. The operator alert delivery limitation and one corrected initial false positive remain explicitly recorded. Private account/audit journals are excluded locally from accidental git add; the public handoff/runbooks contain no OAuth tokens, decryption keys or private folder identifiers.

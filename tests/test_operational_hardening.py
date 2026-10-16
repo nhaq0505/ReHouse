@@ -1,9 +1,4 @@
-"""Disposable-only regression for pagination, OTP/admin MFA and credential policy."""
-import base64
-import hashlib
-import hmac
-import struct
-import time
+"""Disposable-only regression for pagination, password-only login and credential policy."""
 import unittest
 import uuid
 from test_api_integration import ApiSession, ADMIN_EMAIL, ADMIN_PASSWORD, OWNER_PASSWORD
@@ -20,37 +15,42 @@ class OperationalHardeningTests(unittest.TestCase):
         self.assertGreaterEqual(first['total'],3)
         self.assertEqual(self.admin.request('GET','/api/admin/owners?page=0')[0],400)
         self.assertEqual(self.admin.request('GET','/api/admin/owners?pageSize=101')[0],400)
-    def test_register_rejects_weak_password(self):
-        for password in ['abcdefgh','longlowercasepassword']:
+    def test_register_password_length_policy(self):
+        for password in ['abcdefgh', ' ' * 9, 'x' * 257]:
             status,_,_=ApiSession().request('POST','/api/auth/register',{'email':f'weak-{uuid.uuid4().hex}@example.invalid','name':'Weak fixture','password':password,'phone':''})
             self.assertEqual(status,400)
-    def test_mfa_enrollment_login_replay_and_recovery(self):
-        # Admin fixture is shared: enroll last, then explicitly reset only its synthetic SQLite row.
-        import os,sqlite3
-        path=os.environ.get('TEST_SQLITE_DB')
-        if not path: self.skipTest('MFA enrollment mutation requires the disposable SQLite fixture')
+        for password in ('abcdefghi', '123456789'):
+            email = f'simple-{uuid.uuid4().hex}@example.invalid'
+            client = ApiSession()
+            client.ok('POST', '/api/auth/register', {'email': email, 'name': 'Password fixture', 'password': password, 'phone': ''})
+            ApiSession().ok('POST', '/api/auth/login', {'email': email, 'password': password})
+    def test_password_only_login_with_legacy_mfa_state(self):
+        # Only the disposable SQLite admin row is changed, then restored exactly.
+        import os, sqlite3
+        from pathlib import Path
+        path = os.environ.get('TEST_SQLITE_DB')
+        if not path:
+            self.skipTest('Legacy MFA row mutation requires the disposable SQLite fixture')
+        fixture = Path(path).resolve()
+        self.assertTrue(fixture.parent.name.startswith('roomie-ci-') and fixture.name == 'fixture.db')
+        with sqlite3.connect(path) as db:
+            previous = db.execute('SELECT MfaEnabled,ProtectedMfaSecret FROM Users WHERE Email=?', (ADMIN_EMAIL,)).fetchone()
         try:
-            admin_id=self.admin.ok('GET','/api/auth/me')['id']
-            setup=self.admin.ok('POST','/api/auth/mfa/setup',{'currentPassword':ADMIN_PASSWORD})
-            key=base64.b32decode(setup['secret'])
-            def code(step):
-                value=hmac.new(key,struct.pack('>Q',step),hashlib.sha1).digest(); offset=value[-1]&15
-                return str((struct.unpack('>I',value[offset:offset+4])[0]&0x7fffffff)%1000000).zfill(6)
-            step=int(time.time())//30
-            self.assertEqual(self.admin.request('POST','/api/auth/mfa/confirm',{'code':'invalid'})[0],400)
-            with sqlite3.connect(path) as db:
-                row=db.execute('SELECT Attempts FROM LoginThrottles WHERE Key=?',(hashlib.sha256(('mfa-confirm:'+admin_id).encode()).hexdigest().upper(),)).fetchone()
-                self.assertEqual(row[0],1,'Invalid MFA attempts must consume the account budget')
-            result=self.admin.ok('POST','/api/auth/mfa/confirm',{'code':code(step)})
-            self.assertEqual(len(result['recoveryCodes']),8)
-            self.assertEqual(self.admin.request('GET','/api/auth/me')[0],401)
-            login={'email':ADMIN_EMAIL,'password':ADMIN_PASSWORD}
-            self.assertEqual(ApiSession().request('POST','/api/auth/login',login)[0],401)
-            self.assertEqual(ApiSession().request('POST','/api/auth/login',{**login,'code':code(step)})[0],401)
-            ApiSession().ok('POST','/api/auth/login',{**login,'code':code(step+1)})
-            self.assertEqual(ApiSession().request('POST','/api/auth/login',{**login,'code':code(step+1)})[0],401)
-            ApiSession().ok('POST','/api/auth/login',{**login,'code':result['recoveryCodes'][0]})
-            self.assertEqual(ApiSession().request('POST','/api/auth/login',{**login,'code':result['recoveryCodes'][0]})[0],401)
+            for enabled in (0, 1):
+                with sqlite3.connect(path) as db:
+                    db.execute('UPDATE Users SET MfaEnabled=?,ProtectedMfaSecret=? WHERE Email=?', (enabled, 'unused-legacy-secret', ADMIN_EMAIL))
+                for extra in ({}, {'code': 'invalid-legacy-code'}):
+                    client = ApiSession()
+                    user = client.ok('POST', '/api/auth/login', {'email': ADMIN_EMAIL, 'password': ADMIN_PASSWORD, **extra})
+                    self.assertFalse(user['mfaEnabled']); self.assertFalse(user['mfaRequired'])
+                    me = client.ok('GET', '/api/auth/me')
+                    self.assertFalse(me['mfaEnabled']); self.assertFalse(me['mfaRequired'])
+                    client.ok('GET', '/api/admin/owners?page=1&pageSize=1')
+                    client.ok('POST', '/api/auth/logout', {})
+                    self.assertEqual(client.request('GET', '/api/auth/me')[0], 401)
+                self.assertEqual(ApiSession().request('POST', '/api/auth/login', {'email': ADMIN_EMAIL, 'password': 'Incorrect123!', 'code': '123456'})[0], 401)
+            for endpoint in ('setup', 'confirm'):
+                self.assertEqual(self.admin.request('POST', '/api/auth/mfa/' + endpoint, {'currentPassword': ADMIN_PASSWORD, 'code': '123456'})[0], 404)
         finally:
             with sqlite3.connect(path) as db:
-                db.execute('UPDATE Users SET MfaEnabled=0,ProtectedMfaSecret=NULL,PendingMfaSecret=NULL,MfaRecoveryHashes=NULL,MfaLastStep=-1 WHERE Email=?',(ADMIN_EMAIL,))
+                db.execute('UPDATE Users SET MfaEnabled=?,ProtectedMfaSecret=? WHERE Email=?', (*previous, ADMIN_EMAIL))

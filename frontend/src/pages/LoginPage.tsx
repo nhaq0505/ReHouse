@@ -4,7 +4,7 @@ import LanguageSelector from '../i18n/LanguageSelector';
 import { t, translateMessage } from '../i18n/runtime';
 import { useState } from 'react';
 import { Alert, Button, Form, Input, Typography } from 'antd';
-import { ArrowRightOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, ArrowRightOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, type User } from '../api';
 import { useAuth } from '../auth';
@@ -23,10 +23,10 @@ export default function LoginPage() {
   const notice = (location.state as { notice?: string } | null)?.notice;
   const [form] = Form.useForm();
 
-  const submit = async (values: { email: string; password: string; code?: string }) => {
+  const submit = async (values: { email: string; password: string }) => {
     setBusy(true); setError('');
     try {
-      const user = await api.auth.login(values.email, values.password, values.code);
+      const user = await api.auth.login(values.email, values.password);
       setUser(user);
       navigate(destination(user), { replace: true });
     } catch (err) {
@@ -41,13 +41,12 @@ export default function LoginPage() {
 
   return <main className="auth-page"><div className="public-language"><LanguageSelector /></div><div className="auth-decoration auth-decoration-one" /><div className="auth-decoration auth-decoration-two" />
     <div className="auth-aside"><div className="auth-brand"><div className="brand-mark"><RoomieMark /></div><div><strong>Roomie</strong><span>{t("QUẢN LÝ PHÒNG TRỌ")}</span></div></div><div className="auth-message"><div className="auth-kicker">{t("NHÀ TRỌ, NHẸ ĐẦU HƠN")}</div><Typography.Title>{t("Gọn gàng từng phòng.")}<br /><span>{t("Rõ ràng từng khoản.")}</span></Typography.Title><Typography.Paragraph>{t("Theo dõi người thuê, chốt chỉ số điện và gửi hóa đơn trong một nơi duy nhất.")}</Typography.Paragraph><div className="auth-feature-list"><div><i>✓</i>  {t("Nắm nhanh tình hình cả dãy trọ")}</div><div><i>✓</i>  {t("Hóa đơn minh bạch, dễ đối chiếu")}</div><div><i>✓</i>  {t("Người thuê tự xem hóa đơn bằng liên kết riêng")}</div></div></div><div className="auth-aside-foot">{t("Đơn giản hóa việc quản lý mỗi ngày")} <span>•</span> 2026</div></div>
-    <section className="auth-main"><div className="auth-form-wrap"><div className="auth-small-brand"><div className="brand-mark"><RoomieMark /></div><strong>Roomie</strong></div><div className="form-intro"><div className="eyebrow">{t("CHÀO MỪNG TRỞ LẠI")}</div><Typography.Title level={2}>{t("Đăng nhập")}</Typography.Title><Typography.Paragraph>{t("Nhập thông tin tài khoản để tiếp tục quản lý nhà trọ.")}</Typography.Paragraph></div>
+    <section className="auth-main"><div className="auth-form-wrap"><div className="auth-small-brand"><div className="brand-mark"><RoomieMark /></div><strong>Roomie</strong></div><Link className="back-link" to="/"><ArrowLeftOutlined aria-hidden="true" /> {t("Về trang chính")}</Link><div className="form-intro"><div className="eyebrow">{t("CHÀO MỪNG TRỞ LẠI")}</div><Typography.Title level={2}>{t("Đăng nhập")}</Typography.Title><Typography.Paragraph>{t("Nhập thông tin tài khoản để tiếp tục quản lý nhà trọ.")}</Typography.Paragraph></div>
       {notice && <Alert className="form-alert" type="success" showIcon message={translateMessage(notice)} />}
       {error && <Alert className="form-alert" type="error" showIcon message={errorText(error)} />}
       <Form form={form} layout="vertical" size="large" onFinish={submit} requiredMark={false}>
         <Form.Item label={t("Email")} name="email" rules={[{ required: true, message: t("Vui lòng nhập email.") }, { type: 'email', message: t("Email chưa đúng định dạng.") }]}><Input prefix={<MailOutlined />} placeholder="name@example.com" autoComplete="username" /></Form.Item>
         <Form.Item label={t("Mật khẩu")} name="password" rules={[{ required: true, message: t("Vui lòng nhập mật khẩu.") }]}><Input.Password prefix={<LockOutlined />} placeholder={t("Nhập mật khẩu")} autoComplete="current-password" /></Form.Item>
-        <Form.Item label={t("Mã xác thực hai bước hoặc mã khôi phục")} name="code"><Input autoComplete="one-time-code" maxLength={32} /></Form.Item>
         <Button className="auth-submit" type="primary" htmlType="submit" loading={busy} block>{t("Đăng nhập")} <ArrowRightOutlined /></Button>
       </Form>
           <Link to="/reset-password">{t("Đặt lại mật khẩu")}</Link>

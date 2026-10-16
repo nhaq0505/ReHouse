@@ -21,7 +21,7 @@ class AccountOccupancyDashboardTests(unittest.TestCase):
             'waterFee': room['waterFee'], 'waterPerPerson': True, 'serviceFee': room['serviceFee']})
     start_occupancy = billing.BillingUpgradeIntegrationTests.start_occupancy
     save_reading = billing.BillingUpgradeIntegrationTests.save_reading
-    new_password = 'NewOwnerPassword123!'
+    new_password = '123456789'
 
     def edit(self, room, occupancy, **changes):
         return self.owner.request('PATCH', f"/api/rooms/{room['id']}/occupancy", {

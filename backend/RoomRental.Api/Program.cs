@@ -64,7 +64,6 @@ if (!builder.Configuration.GetValue("EmailVerification:Enabled", true) && !build
 if (!builder.Configuration.GetValue("RequireVerifiedPaymentForTenantLink", true) && !builder.Environment.IsDevelopment())
     throw new InvalidOperationException("RequireVerifiedPaymentForTenantLink cannot be disabled outside Development.");
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<AdminMfaService>();
 builder.Services.AddHostedService<DataMaintenanceService>();
 if (!bool.TryParse(builder.Configuration["EnableInvoiceSweep"], out var enableInvoiceSweep) || enableInvoiceSweep)
     builder.Services.AddHostedService<InvoiceSweepService>();

@@ -801,4 +801,35 @@ Older checkout uses invoiceId scoped to the tenant occupancy; secondary invoice 
 
 ### Final completion56
 
-CI38845852582 passed verify/publish/deploy, live revision4f3d1bce01ef3a7482d85978b7fea0870a7c32a6 verified. SQLite76/76, PostgreSQL59run/8explicit skips, browser7/7, OTP10/10, backup tests7/7 and frontend102-row paging check PASS. Final Drive snapshot rehouse-20261016T083836Z-5YVMHS verified with four matching files/SHA256; restore verification is stored privately. Financial values above belong to earlier checkpoints: new non-fixture owner/business activity appeared later and has been retained. No resets or mutating production integration tests. Admin enrollment count0 at final check: owner must configure authenticator and keep recovery codes. Documentation/test-fixture-only follow-up commits do not change the live app image revision.
+CI38845852582 passed verify/publish/deploy, live revision4f3d1bce01ef3a7482d85978b7fea0870a7c32a6 verified. SQLite76/76, PostgreSQL59run/8explicit skips, browser7/7, OTP10/10, backup tests7/7 and frontend102-row paging check PASS. Final Drive snapshot rehouse-20261016T083836Z-5YVMHS verified with four matching files/SHA256; restore verification is stored privately. Financial values above belong to earlier checkpoints: new non-fixture owner/business activity appeared later and has been retained. No resets or mutating production integration tests. Historical admin enrollment count0; the requirement is superseded by section57 below. Documentation/test-fixture-only follow-up commits do not change the live app image revision.
+
+
+## 57. User-requested MFA removal — 16/10/2026
+
+- Removed the login code field, enrollment page/route, backend MFA verification/service/setup/confirm endpoints and Production admin enrollment gate. Admins with either legacy MFA flag can sign in using email/password.
+- Compatibility: login still accepts and ignores optional `code`; login/me return both MFA flags as false. Legacy columns, concurrency mappings and applied migrations are unchanged; no schema migration or data reset.
+- Registration email OTP, reset tokens, password policy, persistent account/IP throttling, authorization, session expiration/revocation and Origin checks remain active.
+- Replaced enrollment/replay tests with password-only login against legacy enabled/disabled rows, compatibility responses, bad password rejection, admin access, logout and removed endpoints. Browser coverage checks no code input, direct admin access with stale flags and no enrollment at the old URL.
+- Validation and release status: see [MFA removal log](mfa-removal-2026-10-16.md). This task changes the workspace only; it does not push/deploy or modify production.
+
+
+## 58. Simpler password policy — 16/10/2026
+
+- User requested passwords longer than eight characters only: minimum9, maximum256 retained. No uppercase, lowercase, digit or symbol requirement; whitespace-only input remains invalid and confirmation must still match.
+- Applied consistently to registration (including OTP), password change, admin-issued password reset and bootstrap admin creation. Existing passwords are not changed and login/current-password checks retain compatibility.
+- Registration/change/reset UI and all four translation catalogs reflect the rule. Hashing, session revocation, reset-token handling and request/account limits are unchanged.
+- Verification results: [password policy log](password-policy-2026-10-16.md). Local source update only; no push/deploy or production data changes.
+
+
+## 59. Auth pages return to landing — 16/10/2026
+
+- Login and registration now expose an explicit `Về trang chính` React Router link to `/` above the form. Registration keeps its existing bottom login link, and the home link remains visible during the OTP step.
+- Reuses existing back-link styling, icon and translated copy; gives the auth-page link a44px target and existing dark teal token. No backend/session/OTP changes. Authenticated visits to `/` still follow the existing dashboard redirect.
+- Validation: four real-browser navigation checks PASS (login/register at375/1280px); screenshots inspected; frontend build, i18n and diff checks PASS. UI probes still report pre-existing muted-text/input issues outside this change; the new home link has a44px target and dark teal contrast. Source/local only, not pushed or deployed.
+
+
+## 60. Combined auth update release — 16/10/2026
+
+- User authorized pushing sections57–59 to main: MFA removal, password minimum9 without composition rules, and landing-page return links on login/register.
+- Local verification completed as recorded above. This release entry supersedes the earlier local-only status; CI/CD is the source of truth for publication/deployment. [Actions](https://github.com/nhaq0505/ReHouse/actions).
+- No schema changes, database reset or live-provider test calls. Private recovery/config files are excluded from this commit.

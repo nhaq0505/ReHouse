@@ -29,7 +29,7 @@ class RegistrationOtpTests(unittest.TestCase):
     def setUp(self):
         self.client = ApiSession()
         self.email = 'otp-' + uuid.uuid4().hex + '@example.invalid'
-        self.body = {'name': 'Synthetic OTP owner', 'email': self.email, 'phone': '0900000000', 'password': 'OtpTestPassword123!'}
+        self.body = {'name': 'Synthetic OTP owner', 'email': self.email, 'phone': '0900000000', 'password': 'abcdefghi'}
 
     def register(self, body=None):
         status, result, _ = self.client.request('POST', '/api/auth/register', body or self.body)

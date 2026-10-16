@@ -356,9 +356,7 @@ export interface RegistrationVerification {
 
 export const api = {
   auth: {
-    mfaSetup: (currentPassword: string) => request<{secret: string; uri: string}>('/api/auth/mfa/setup', post({currentPassword})),
-    mfaConfirm: (code: string) => request<{recoveryCodes: string[]}>('/api/auth/mfa/confirm', post({code})),
-    login: (email: string, password: string, code?: string) => request<User>('/api/auth/login', post({ email, password, code })),
+    login: (email: string, password: string) => request<User>('/api/auth/login', post({ email, password })),
     verifyRegistration: (challengeToken: string, code: string) => request<User>('/api/auth/verify-registration', post({ challengeToken, code })),
     resendRegistration: (challengeToken: string) => request<RegistrationVerification>('/api/auth/resend-registration', post({ challengeToken })),
     me: () => request<User>('/api/auth/me'),

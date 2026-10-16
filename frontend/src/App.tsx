@@ -9,7 +9,6 @@ import { LoadError } from './components/Ui';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppShell from './components/AppShell';
 
-const MfaSetupPage = lazy(() => import('./pages/MfaSetupPage'));
 const PasswordPage = lazy(() => import('./pages/PasswordPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
@@ -33,7 +32,6 @@ function Gate({ children, admin = false }: { children: React.ReactNode; admin?: 
   if (!ready) return <div className="screen-center"><Spin size="large" /></div>;
   if (!user) return <Navigate to="/login" replace />;
   if (user.status && user.status !== 'Approved') return <Navigate to="/account-status" replace />;
-  if (user.mfaRequired) return <Navigate to="/mfa-setup" replace />;
   if (admin && user.role !== 'Admin') return <Navigate to="/dashboard" replace />;
   if (!admin && user.role === 'Admin') return <Navigate to="/admin/owners" replace />;
   return children;
@@ -55,7 +53,6 @@ export default function App() {
   useLanguage();
   const location = useLocation();
   return <><SeoMetadata /><ErrorBoundary><Suspense fallback={<AppFallback />}><Routes>
-    <Route path="/mfa-setup" element={<MfaSetupPage />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/reset-password" element={<PasswordPage reset />} />
     <Route path="/change-password" element={<PasswordPage />} />

@@ -46,3 +46,11 @@ out/
 .agents/skills/video-shotcraft/
 
 
+
+# Operational recovery and OAuth material stays outside Git/build contexts.
+**/rclone.conf
+**/recovery.json
+**/oauth-client.json
+**/runtime.env
+**/backup.env
+**/database-admin.env

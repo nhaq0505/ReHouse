@@ -16,6 +16,7 @@ import AppShell from '../components/AppShell';
 import { PageTitle, SectionCard } from '../components/Ui';
 
 export default function AccountStatusPage() {
+  const { message } = App.useApp();
   const { user, ready, refresh, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -45,7 +46,7 @@ export default function AccountStatusPage() {
         extra={<div className="status-actions">
           <Button type="primary" icon={<ReloadOutlined />} onClick={() => void refresh()}>{t("Kiểm tra trạng thái")}</Button>
           <Button onClick={() => navigate('/change-password')}>{t("Đổi mật khẩu")}</Button>
-          <Button icon={<LogoutOutlined />} onClick={() => void signOut().then(() => navigate('/login'))}>{t("Đăng xuất")}</Button>
+          <Button icon={<LogoutOutlined />} onClick={() => void signOut().then(() => navigate('/login')).catch((error: Error) => message.error(error.message))}>{t("Đăng xuất")}</Button>
         </div>}
       />
     </div>

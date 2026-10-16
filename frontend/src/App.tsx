@@ -5,8 +5,11 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Spin } from 'antd';
 import { useAuth } from './auth';
+import { LoadError } from './components/Ui';
+import ErrorBoundary from './components/ErrorBoundary';
 import AppShell from './components/AppShell';
 
+const MfaSetupPage = lazy(() => import('./pages/MfaSetupPage'));
 const PasswordPage = lazy(() => import('./pages/PasswordPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
@@ -25,17 +28,20 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 
 function Gate({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
-  const { user, ready } = useAuth();
+  const { user, ready, error, refresh } = useAuth();
+  if (error) return <LoadError error={error} onRetry={() => void refresh()} />;
   if (!ready) return <div className="screen-center"><Spin size="large" /></div>;
   if (!user) return <Navigate to="/login" replace />;
   if (user.status && user.status !== 'Approved') return <Navigate to="/account-status" replace />;
+  if (user.mfaRequired) return <Navigate to="/mfa-setup" replace />;
   if (admin && user.role !== 'Admin') return <Navigate to="/dashboard" replace />;
   if (!admin && user.role === 'Admin') return <Navigate to="/admin/owners" replace />;
   return children;
 }
 
 function HomeRedirect() {
-  const { user, ready } = useAuth();
+  const { user, ready, error, refresh } = useAuth();
+  if (error) return <LoadError error={error} onRetry={() => void refresh()} />;
   if (!ready || !user) return <LandingPage />;
   if (user.status && user.status !== 'Approved') return <Navigate to="/account-status" replace />;
   return <Navigate to={user.role === 'Admin' ? '/admin/owners' : '/dashboard'} replace />;
@@ -48,7 +54,8 @@ function AppFallback() {
 export default function App() {
   useLanguage();
   const location = useLocation();
-  return <><SeoMetadata /><Suspense fallback={<AppFallback />}><Routes>
+  return <><SeoMetadata /><ErrorBoundary><Suspense fallback={<AppFallback />}><Routes>
+    <Route path="/mfa-setup" element={<MfaSetupPage />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/reset-password" element={<PasswordPage reset />} />
     <Route path="/change-password" element={<PasswordPage />} />
@@ -69,5 +76,5 @@ export default function App() {
     <Route path="/settings/payment" element={<Gate><AppShell><PaymentSettingsPage /></AppShell></Gate>} />
     <Route path="/admin/owners" element={<Gate admin><AppShell><AdminOwnersPage /></AppShell></Gate>} />
     <Route path="*" element={<NotFoundPage />} />
-  </Routes></Suspense></>;
+  </Routes></Suspense></ErrorBoundary></>;
 }

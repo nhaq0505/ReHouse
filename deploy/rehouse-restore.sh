@@ -23,6 +23,7 @@ backup_dir=$(realpath -e -- "$1")
 [[ "$backup_dir" == /var/backups/rehouse/rehouse-* ]] || fail 'backup must be inside /var/backups/rehouse'
 [[ -s "$backup_dir/database.dump" && -f "$backup_dir/data-protection-keys.tar.gz" && -f "$backup_dir/manifest.txt" ]] || fail 'backup is incomplete'
 [[ -f "$compose_file" && -f "$runtime_env" ]] || fail 'Rehouse host files are missing'
+(cd "$backup_dir" && sha256sum --check checksums.sha256) >/dev/null || fail 'backup checksums failed'
 exec 9>"$lock_file"
 flock --exclusive --wait 600 9 || fail 'another Rehouse backup, restore, or deployment is still running'
 
@@ -47,13 +48,13 @@ compose() {
 }
 
 psql_admin() {
-  docker exec "$db_id" psql --no-psqlrc -v ON_ERROR_STOP=1 -U room_rental -d postgres "$@"
+  docker exec "$db_id" psql --no-psqlrc -v ON_ERROR_STOP=1 -U roomie_dba -d postgres "$@"
 }
 
 psql_database() {
   local selected_db=$1
   shift
-  docker exec "$db_id" psql --no-psqlrc -v ON_ERROR_STOP=1 -U room_rental -d "$selected_db" "$@"
+  docker exec "$db_id" psql --no-psqlrc -v ON_ERROR_STOP=1 -U roomie_dba -d "$selected_db" "$@"
 }
 
 db_id=''
@@ -143,7 +144,7 @@ compose "$image_ref" stop app >/dev/null 2>&1 || fail 'could not stop the app be
 
 psql_admin -c "CREATE DATABASE \"${restore_db}\" OWNER room_rental TEMPLATE template0"
 restore_db_created=1
-docker exec -i "$db_id" pg_restore -U room_rental -d "$restore_db" --no-owner < "$backup_dir/database.dump"
+docker exec -i "$db_id" pg_restore -U roomie_dba --role=room_rental -d "$restore_db" --no-owner < "$backup_dir/database.dump"
 [[ "$(psql_database "$restore_db" -At -c 'SELECT 1')" == 1 ]] || fail 'restored database failed its SQL check'
 table_count=$(psql_database "$restore_db" -At -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'")
 if [[ "$table_count" != 0 ]]; then
@@ -180,6 +181,7 @@ if ! psql_admin -c "ALTER DATABASE \"${restore_db}\" RENAME TO \"${db_name}\""; 
 fi
 database_swapped=1
 
+/usr/local/sbin/rehouse-db-roles "$image_ref" || fail 'restored runtime grants failed'
 compose "$image_ref" up -d --no-deps --force-recreate app
 wait_for_app || fail 'restored database and keys did not pass the app health check'
 

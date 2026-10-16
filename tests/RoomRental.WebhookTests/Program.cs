@@ -70,6 +70,7 @@ Assert(result.WebhookStatus == "Failed" && result.WebhookUrl == null && handler.
     "non-public HTTP callback fails before external call");
 Assert(await db.Receipts.CountAsync() == 0, "confirmation never creates financial receipts");
 
+await OperationalHardeningTests.RunAsync();
 await MigrationTests.RunAsync();
 await PayOsPaymentTests.RunAsync();
 await TenantLinkHttpTests.RunAsync();

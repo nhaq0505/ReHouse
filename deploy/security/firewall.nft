@@ -1,0 +1,12 @@
+flush table inet roomie_host
+table inet roomie_host {
+  chain input {
+    type filter hook input priority 0; policy drop;
+    ct state established,related accept
+    iifname "lo" accept
+    ct state invalid drop
+    ip protocol icmp accept
+    meta l4proto ipv6-icmp accept
+    tcp dport { 22, 80, 443 } ct state new accept
+  }
+}

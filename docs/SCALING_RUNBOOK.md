@@ -1,16 +1,20 @@
 # Runbook tăng trưởng nhanh Rehouse
 
-Cập nhật: 13/10/2026. Đây là kế hoạch ứng phó và điều kiện mở rộng, không phải tuyên bố app đã sẵn sàng production. Không triển khai thay đổi, khởi động lại dịch vụ, tạo payment hoặc chạy migration chỉ bằng việc đọc runbook này.
+
+**Hardening update16/10:** see the release record for current status. Production migrations use a separate deployment job/identity; account login budgets persist in DB; invoice/admin/tenant pages use server pagination; backup has deadlines/failure alerts/staleness watchdog. The older architecture bullets below are historical where superseded. IP limiters and billing/payment workers remain process-local; this is a single-instance deployment, not HA. Mock tests do not establish real email delivery or wider production telemetry.
+
+Cập nhật hiện trạng:16/10/2026; số đo tải bên dưới vẫn là QA lịch sử13/10. Đây là kế hoạch ứng phó và điều kiện mở rộng, không phải tuyên bố app đã sẵn sàng production. Không triển khai thay đổi, khởi động lại dịch vụ, tạo payment hoặc chạy migration chỉ bằng việc đọc runbook này. Nhật ký mới nhất: [migrations](ef-core-migrations.md), [backup Drive/restore](backup-operations.md), [bảo mật/tech debt](tech-debt-remediation-2026-10-16.md).
 
 ## Tóm tắt hiện trạng
 
-- Dev đang dùng SQLite; Compose dùng PostgreSQL 17 nhưng chỉ có một container app, một DB và volume cục bộ. FE được phục vụ cùng origin từ app. Compose hiện không phải topology HA; `docker compose up --scale app=...` sẽ đụng port publish và không tạo được shared volume liên máy.
+- Local đang dùng PostgreSQL; SQLite vẫn được hỗ trợ bằng migration riêng. Compose dùng PostgreSQL17 nhưng chỉ có một container app, một DB và volume cục bộ. FE được phục vụ cùng origin từ app. Compose hiện không phải topology HA; `docker compose up --scale app=...` sẽ đụng port publish và không tạo được shared volume liên máy.
 - PostgreSQL QA gần nhất: 16/16 API integration pass; hai lượt chỉ đọc overview của một tenant tổng hợp đạt lần lượt 1.412 req/s và 1.401 req/s ở 50/100 worker, p95 44,8/92,0 ms. Đây là tải nóng cùng máy, không đại diện nhiều khách, dữ liệu dài, mạng công khai hay mức tải production. Không dùng làm cam kết số người dùng hoặc ngưỡng autoscale. Xem [báo cáo QA](POSTGRES_QA.md).
-- Backend hiện chạy `EnsureCreated` rồi một số DDL bổ sung có điều kiện khi mỗi process khởi động; chưa có EF migration/runner vận hành. Không đổi SQLite sang PostgreSQL bằng cách đổi biến cấu hình rồi khởi động: PostgreSQL không tự nhận dữ liệu SQLite.
+- Backend chạy EF Core `MigrateAsync` với lịch sử migrations/snapshots theo provider. Vẫn chưa tách migration thành job triển khai có identity riêng; không coi startup migration là giải pháp hoàn chỉnh cho nhiều replica. Không đổi SQLite sang PostgreSQL bằng cách chỉ đổi connection string: tạo schema không tự chuyển dữ liệu.
 - Rate limiter auth (mặc định Production 10 request/phút/IP) và `tenant-payment` (12/phút/IP) đang ở bộ nhớ từng process. Nhiều replica sẽ nhân hạn mức và trạng thái không dùng chung; IP client chỉ đáng tin sau proxy được khai báo trong `TRUSTED_PROXIES`.
 - Checkout page hiện làm mới overview khoảng 5 giây, đối soát khoảng 20 giây khi đang chờ và tab hiển thị; FE đã backoff lỗi/429 và dừng auto-reconcile sau nhiều lỗi liên tiếp. Đây là hành vi mã hiện tại, không có cờ runtime để vận hành viên chỉnh interval.
 - Mỗi app process chạy cả `InvoiceSweepService` (khởi chạy ngay, sau đó 24 giờ) và `PaymentReconciliationHostedService` (chờ 1 phút, rồi chạy batch tuần tự cách khoảng 3 phút). Không có leader/lease phân tán. Batch payment chọn 12 attempt Pending cũ nhất mỗi lần; lỗi lặp lại có thể giữ chỗ và làm đói các attempt sau. Không tăng replica hoặc chỉ tăng batch size để xử lý backlog.
-- `/api/health` hiện trả `200` tĩnh; không phải readiness check cho PostgreSQL, job, payOS hoặc tính toàn vẹn. Repo chưa có dashboard/alert production cho p95, pool DB, backlog job, payOS 429 hay chênh lệch tiền. Các ngưỡng bên dưới đều là **đề xuất**, chưa được cấu hình hay đo trên production.
+- `/api/health` kiểm tra kết nối database và trả200/503; không kiểm chứng backlog job, payOS hoặc tính toàn vẹn dữ liệu. Repo chưa có dashboard/alert production cho p95, pool DB, backlog job, payOS429 hay chênh lệch tiền. Các ngưỡng bên dưới đều là **đề xuất**, chưa được cấu hình hay đo trên production.
+- Backup PostgreSQL+DataProtection đã lên Google Drive qua crypt, daily03:00–03:20VN và pre-deploy; restore từ snapshot giải mã vào PostgreSQL17 tạm đã PASS. Đây chưa phải HA/PITR hoặc cam kết RPO/RTO đã đo; giám sát thất bại backup/alert ngoài máy vẫn cần hoàn thiện.
 - Một số danh sách API chưa phân trang; tổng quan và danh sách phòng/hóa đơn có thể đọc lịch sử dài. Trước khi dự báo tăng trưởng phải đo truy vấn nhiều tenant và dữ liệu thực tế đã ẩn danh.
 
 ## Checklist trước khi mở dịch vụ công khai
@@ -99,8 +103,8 @@ Kịch bản giả định: 10× GET từ nhiều khách cùng lúc tải portal
 
 ## SQLite → PostgreSQL: kế hoạch chuyển đổi, không làm giữa incident
 
-1. Không chỉ đổi `DatabaseProvider`/connection string. Khi DB PostgreSQL trống, `EnsureCreated` tạo schema mới nhưng không chuyển dữ liệu SQLite. Schema hiện có DDL nâng cấp viết tay và chưa có lịch sử migration được kiểm thử.
-2. Trước khi lên production, thiết kế migration/import có phiên bản và một migration runner đơn; kiểm tra kiểu dữ liệu, UUID, `numeric`, timestamp/timezone, index lọc, unique/idempotency và foreign key trên cả hai provider.
+1. Không chỉ đổi `DatabaseProvider`/connection string. `MigrateAsync` tạo/nâng schema PostgreSQL nhưng không chuyển dữ liệu SQLite. Cả hai provider đã có migration/snapshot; công cụ DbMigrator import tạo target bằng migrations. Xem nhật ký cutover trước khi xử lý snapshot legacy.
+2. Trước khi mở rộng nhiều instance, tách bước apply migration đơn và identity triển khai khỏi runtime; mỗi migration mới vẫn cần kiểm tra kiểu dữ liệu, UUID, `numeric`, timestamp/timezone, index lọc, unique/idempotency và foreign key trên cả hai provider.
 3. Dựng staging từ bản sao đã khử dữ liệu. So sánh số dòng theo bảng/owner, kỳ hóa đơn, tổng `Total/Paid/Outstanding`, receipts, deposit settlements, `PayOsAttempts`, `ProcessedWebhooks`, payment settings và webhook registrations. Kiểm thử callback/replay fixture bằng fake handler chỉ trên DB/test provider tách biệt.
 4. Lên lịch maintenance/write freeze. Tạo backup SQLite nhất quán (dùng SQLite online backup/checkpoint khi cần), kiểm integrity và checksum; export/import vào PostgreSQL; giữ DB SQLite gốc chỉ đọc. Có kế hoạch quay lại và cách xử lý writes phát sinh sau cutover.
 5. Sao lưu PostgreSQL cùng DataProtection key ring ở cùng restore point/quy trình bảo vệ. PostgreSQL backup không bao gồm volume `/app/data/keys`; mất key ring có thể làm mất khả năng giải mã khóa payOS/token đã bảo vệ và vô hiệu hóa session. Giữ key ring mã hóa/ACL phù hợp và chia sẻ bền vững trước khi chạy nhiều instance.

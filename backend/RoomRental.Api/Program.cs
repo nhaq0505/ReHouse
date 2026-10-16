@@ -64,6 +64,8 @@ if (!builder.Configuration.GetValue("EmailVerification:Enabled", true) && !build
 if (!builder.Configuration.GetValue("RequireVerifiedPaymentForTenantLink", true) && !builder.Environment.IsDevelopment())
     throw new InvalidOperationException("RequireVerifiedPaymentForTenantLink cannot be disabled outside Development.");
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<AdminMfaService>();
+builder.Services.AddHostedService<DataMaintenanceService>();
 if (!bool.TryParse(builder.Configuration["EnableInvoiceSweep"], out var enableInvoiceSweep) || enableInvoiceSweep)
     builder.Services.AddHostedService<InvoiceSweepService>();
 if (!bool.TryParse(builder.Configuration["EnablePaymentReconciliation"], out var enablePaymentReconciliation) || enablePaymentReconciliation)
@@ -78,7 +80,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
     options.Cookie.Path = "/";
     options.ExpireTimeSpan = TimeSpan.FromHours(12);
-    options.SlidingExpiration = true;
+    options.SlidingExpiration = false;
     options.Events.OnRedirectToLogin = context =>
     {
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -123,6 +125,7 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 await DatabaseInitializer.InitializeAsync(app);
+if (builder.Configuration.GetValue("Database:MigrateOnly", false)) return;
 
 var forwardedHeaders = new ForwardedHeadersOptions
 {
@@ -140,6 +143,8 @@ app.UseForwardedHeaders(forwardedHeaders);
 app.UseMiddleware<ApiExceptionMiddleware>();
 app.Use(async (context, next) =>
 {
+    if (context.Request.IsHttps) context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000";
+    context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Referrer-Policy"] = "no-referrer";

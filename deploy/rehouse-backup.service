@@ -1,14 +1,19 @@
 [Unit]
 Description=Back up the Rehouse PostgreSQL database and DataProtection keys
+OnFailure=rehouse-backup-alert.service
 ConditionPathExists=/var/lib/rehouse/current-image
 
 [Service]
 Type=oneshot
+TimeoutStartSec=16min
+TimeoutStopSec=30s
+KillMode=control-group
 ExecStart=/usr/local/sbin/rehouse-backup
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/var/backups/rehouse /var/lib/rehouse/ops.lock /run/docker.sock
+ReadWritePaths=/var/backups/rehouse /var/lib/rehouse /run/docker.sock
+ReadWritePaths=-/etc/rehouse/rclone
 NoNewPrivileges=true

@@ -1,0 +1,9 @@
+services:
+  app:
+    restart: "no"
+    ports: !reset []
+    environment:
+      BootstrapAdmin__Email: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BootstrapAdmin__Password: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      Database__MigrateOnly: "true"
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=room_rental;Username=room_rental;Password=${DB_PASSWORD:?};Maximum Pool Size=2;Timeout=15;Command Timeout=120"

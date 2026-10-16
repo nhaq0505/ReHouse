@@ -2,7 +2,7 @@
 
 ## Cơ chế mới
 
-API dùng `MigrateAsync()` trước khi phục vụ request, sau đó mới seed Development hoặc bootstrap admin. Đã bỏ `EnsureCreated` và SQL nâng schema thủ công trong startup. Không tự xóa dữ liệu khi khởi động. DB legacy chưa reset sẽ không chạy được initial migration.
+Cập nhật hardening16/10: Production chỉ kiểm tra schema lúc startup; deploy chạy `Database__MigrateOnly=true` trước khi thay app, dùng role migration riêng. Development mặc định vẫn có thể `MigrateAsync()` trước khi phục vụ request. Bootstrap chỉ cấp credentials cho bước khởi tạo có kiểm soát, không vào steady-state app. Xem [nhật ký xử lý](tech-debt-remediation-2026-10-16.md). Đã bỏ `EnsureCreated` và SQL nâng schema thủ công trong startup. Không tự xóa dữ liệu khi khởi động. DB legacy chưa reset sẽ không chạy được initial migration.
 
 Hai context `SqliteAppDbContext` / `PostgresAppDbContext` kế thừa mô hình chung `AppDbContext`, mỗi provider có initial migration và snapshot riêng trong `backend/RoomRental.Api/Data/Migrations`. Services vẫn dùng scoped `AppDbContext`. Công cụ import SQLite→Postgres cũng tạo target bằng migrations; bỏ qua bảng lịch sử EF khi kiểm tra bảng dữ liệu.
 

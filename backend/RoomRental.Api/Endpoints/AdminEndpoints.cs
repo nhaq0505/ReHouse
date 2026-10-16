@@ -11,7 +11,7 @@ public static class AdminEndpoints
     {
         var routes = app.MapGroup("/api/admin").RequireAuthorization(policy => policy.RequireRole("Admin"));
 
-        routes.MapGet("/owners", async (string? status, AppDbContext db, CancellationToken cancellationToken) =>
+        routes.MapGet("/owners", async (string? status, int? page, int? pageSize, AppDbContext db, CancellationToken cancellationToken) =>
         {
             var query = db.Users.AsNoTracking().Where(row => row.Role == UserRole.Owner);
             if (!string.IsNullOrWhiteSpace(status))
@@ -20,8 +20,11 @@ public static class AdminEndpoints
                     throw new ApiException(StatusCodes.Status400BadRequest, "Unknown owner status.");
                 query = query.Where(row => row.Status == parsed);
             }
-            var owners = await query.OrderBy(row => row.Status).ThenBy(row => row.CreatedAt)
-                .ToListAsync(cancellationToken);
+            var paging = PageRequest.Parse(page, pageSize);
+            var total = await query.CountAsync(cancellationToken);
+            var pendingCount = await db.Users.CountAsync(x => x.Role == UserRole.Owner && x.Status == OwnerStatus.Pending, cancellationToken);
+            var owners = await query.OrderBy(row => row.Status).ThenBy(row => row.CreatedAt).ThenBy(row => row.Id)
+                .Skip(paging.Offset).Take(paging.Size).ToListAsync(cancellationToken);
             var ownerIds = owners.Select(row => row.Id).ToList();
             var roomCounts = await (from r in db.Rooms.AsNoTracking()
                                     join b in db.Buildings.AsNoTracking() on r.BuildingId equals b.Id
@@ -38,7 +41,7 @@ public static class AdminEndpoints
                     row.CreatedAt, row.SubscriptionTier.ToString(), row.SubscriptionExpiresAt,
                     row.IsPro, count, row.MaxRooms);
             }).ToList();
-            return Results.Ok(result);
+            return Results.Ok(page is null ? (object)result : new { items = result, total, pendingCount, page = paging.Number, pageSize = paging.Size });
         });
 
         routes.MapPost("/owners/{id:guid}/reset-password", async (Guid id, AdminResetPasswordRequest request,

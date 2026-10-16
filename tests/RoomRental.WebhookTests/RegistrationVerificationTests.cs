@@ -114,6 +114,7 @@ internal static class RegistrationVerificationTests
         public Fixture()
         {
             connection.Open(); Db = new(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options); Db.Database.EnsureCreated();
+            Sender.CheckTransaction = () => Db.Database.CurrentTransaction is null;
             Service = new(Db, Sender, Clock);
         }
         public Task<RegistrationVerificationDto> Start()
@@ -128,9 +129,11 @@ internal static class RegistrationVerificationTests
     {
         public string Code = "";
         public bool Fail;
+        public Func<bool>? CheckTransaction;
         public void EnsureConfigured() { }
         public Task SendAsync(string email, string code, CancellationToken ct)
         {
+            if (CheckTransaction?.Invoke() != true) throw new Exception("SMTP must run outside a database transaction");
             if (Fail) throw new ApiException(503, "Synthetic SMTP failure");
             Code = code; return Task.CompletedTask;
         }

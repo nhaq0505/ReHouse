@@ -72,7 +72,7 @@ public static class PaymentEndpoints
             return Results.Ok(await payOsService.ReconcileAsync(ownerId, orderCode, cancellationToken));
         });
 
-        app.MapGet("/api/tenant/{token}", async (string token, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
+        app.MapGet("/api/tenant/{token}", async (string token, int? page, int? pageSize, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
         {
             var occupancy = await FindTenantAsync(db, token, cancellationToken);
             var roomBuilding = await (from room in db.Rooms.AsNoTracking()
@@ -81,10 +81,14 @@ public static class PaymentEndpoints
                                       select new { Room = room, Building = building }).SingleAsync(cancellationToken);
             var roomDto = await OwnerManagementEndpoints.ToRoomDtoAsync(db, tokenService, webhookService, roomBuilding.Room, roomBuilding.Building,
                 occupancy, OwnerManagementEndpoints.CurrentVietnamPeriod(), cancellationToken);
-            var invoices = await db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().Where(invoice => invoice.OccupancyId == occupancy.Id && invoice.LifecycleState == InvoiceLifecycleState.Issued)
-                .OrderByDescending(invoice => invoice.Period).ToListAsync(cancellationToken);
+            var paging = PageRequest.Parse(page, pageSize);
+            var invoiceQuery = db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().Where(invoice => invoice.OccupancyId == occupancy.Id && invoice.LifecycleState == InvoiceLifecycleState.Issued);
+            var total = await invoiceQuery.CountAsync(cancellationToken);
+            var totals = new { outstanding = await QueryAggregates.SumMoneyAsync(db, invoiceQuery.Select(x => x.Total - x.Paid), cancellationToken) };
+            var invoices = await invoiceQuery.OrderByDescending(x => x.Period).ThenByDescending(x => x.IssuedAt).ThenBy(x => x.Id)
+                .Skip(paging.Offset).Take(paging.Size).ToListAsync(cancellationToken);
             var occupancyDto = roomDto.Occupancy ?? throw new ApiException(StatusCodes.Status404NotFound, "Tenant link is no longer active.");
-            return Results.Ok(new TenantSummaryDto(roomDto, occupancyDto, invoices.Select(invoice => InvoiceService.ToDto(invoice)).ToList()));
+            return Results.Ok(new { room = roomDto, occupancy = occupancyDto, invoices = invoices.Select(invoice => InvoiceService.ToDto(invoice)).ToList(), total, totals, page = paging.Number, pageSize = paging.Size });
         });
 
         app.MapPost("/api/tenant/{token}/invoices/{id:guid}/payment", async (string token, Guid id, AppDbContext db, PayOsService payOsService, CancellationToken cancellationToken) =>

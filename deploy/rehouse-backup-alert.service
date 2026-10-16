@@ -1,0 +1,9 @@
+[Unit]
+Description=Alert on Roomie backup failure
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/rehouse-backup-alert failed
+TimeoutStartSec=45s
+ProtectSystem=strict
+ReadWritePaths=/var/lib/rehouse
+NoNewPrivileges=true

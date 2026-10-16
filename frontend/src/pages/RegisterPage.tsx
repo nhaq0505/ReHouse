@@ -102,7 +102,7 @@ export default function RegisterPage() {
         <Form.Item label={t("Tên của bạn")} name="name" rules={[{ required: true, whitespace: true, message: t("Vui lòng nhập tên.") }]}><Input prefix={<UserOutlined />} placeholder={t("Nguyễn Minh Anh")} autoComplete="name" /></Form.Item>
         <Form.Item label={t("Số điện thoại")} name="phone" rules={[{ required: true, message: t("Vui lòng nhập số điện thoại.") }]}><Input prefix={<PhoneOutlined />} placeholder="09xx xxx xxx" autoComplete="tel" /></Form.Item>
         <Form.Item label={t("Email")} name="email" rules={[{ required: true, message: t("Vui lòng nhập email.") }, { type: 'email', message: t("Email chưa đúng định dạng.") }]}><Input prefix={<MailOutlined />} placeholder="name@example.com" autoComplete="email" /></Form.Item>
-        <Form.Item label={t("Mật khẩu")} name="password" rules={[{ required: true, min: 8, message: t("Mật khẩu cần có ít nhất 8 ký tự.") }]}><Input.Password prefix={<LockOutlined />} placeholder={t("Ít nhất 8 ký tự")} autoComplete="new-password" /></Form.Item>
+        <Form.Item label={t("Mật khẩu")} name="password" rules={[{ required: true, min: 12, message: t("Mật khẩu mới cần 12–256 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt.") }]}><Input.Password prefix={<LockOutlined />} placeholder={t("Mật khẩu mới")} autoComplete="new-password" /></Form.Item>
         <Button className="auth-submit" type="primary" htmlType="submit" loading={busy} block>{t("Gửi mã xác nhận")} <ArrowRightOutlined /></Button>
       </Form>}
       <div className="auth-switch">{t("Đã có tài khoản?")} <Link to="/login">{t("Đăng nhập")}</Link></div><div className="auth-legal">{t("Email cần được xác nhận trước khi đăng nhập.")}</div>

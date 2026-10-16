@@ -36,6 +36,17 @@ namespace RoomRental.Api.Data.Migrations.Postgres
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");
 
+                    b.Property<bool>("MfaEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("MfaLastStep")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("MfaRecoveryHashes")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(160)
@@ -55,9 +66,18 @@ namespace RoomRental.Api.Data.Migrations.Postgres
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<DateTimeOffset?>("PendingMfaExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PendingMfaSecret")
+                        .HasColumnType("text");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
+
+                    b.Property<string>("ProtectedMfaSecret")
+                        .HasColumnType("text");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -86,7 +106,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.AuthSession", b =>
@@ -108,9 +128,11 @@ namespace RoomRental.Api.Data.Migrations.Postgres
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ExpiresAt");
+
                     b.HasIndex("UserId", "ExpiresAt");
 
-                    b.ToTable("AuthSessions", (string)null);
+                    b.ToTable("AuthSessions");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.Building", b =>
@@ -149,7 +171,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
 
                     b.HasIndex("OwnerId");
 
-                    b.ToTable("Buildings", (string)null);
+                    b.ToTable("Buildings");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.DepositSettlement", b =>
@@ -189,7 +211,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
                     b.HasIndex("InvoiceId", "IdempotencyKey")
                         .IsUnique();
 
-                    b.ToTable("DepositSettlements", (string)null);
+                    b.ToTable("DepositSettlements");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.Invoice", b =>
@@ -350,7 +372,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
                         .HasDatabaseName("IX_Invoices_OccupancyId_FinalMeter")
                         .HasFilter("\"IsFinalMeterReading\" = TRUE");
 
-                    b.ToTable("Invoices", (string)null);
+                    b.ToTable("Invoices");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.InvoiceRevision", b =>
@@ -408,7 +430,27 @@ namespace RoomRental.Api.Data.Migrations.Postgres
                     b.HasIndex("InvoiceId", "Revision")
                         .IsUnique();
 
-                    b.ToTable("InvoiceRevisions", (string)null);
+                    b.ToTable("InvoiceRevisions");
+                });
+
+            modelBuilder.Entity("RoomRental.Api.Domain.LoginThrottle", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Attempts")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("WindowStartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("WindowStartedAt");
+
+                    b.ToTable("LoginThrottles");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.MonthlyReading", b =>
@@ -484,7 +526,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
 
                     b.HasIndex("RoomId", "Period");
 
-                    b.ToTable("Readings", (string)null);
+                    b.ToTable("Readings");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.MoveoutCompletion", b =>
@@ -541,7 +583,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
 
                     b.HasIndex("OwnerId", "CompletedAt");
 
-                    b.ToTable("MoveoutCompletions", (string)null);
+                    b.ToTable("MoveoutCompletions");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.Occupancy", b =>
@@ -592,7 +634,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
 
                     b.HasIndex("RoomId", "IsActive");
 
-                    b.ToTable("Occupancies", (string)null);
+                    b.ToTable("Occupancies");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.OwnerPaymentSettings", b =>
@@ -621,7 +663,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
 
                     b.HasKey("OwnerId");
 
-                    b.ToTable("PaymentSettings", (string)null);
+                    b.ToTable("PaymentSettings");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.PayOsAttempt", b =>
@@ -713,7 +755,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
 
                     b.HasIndex("InvoiceId", "Status");
 
-                    b.ToTable("PayOsAttempts", (string)null);
+                    b.ToTable("PayOsAttempts");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.PaymentReceipt", b =>
@@ -760,7 +802,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
                     b.HasIndex("OwnerId", "ExternalReference")
                         .IsUnique();
 
-                    b.ToTable("Receipts", (string)null);
+                    b.ToTable("Receipts");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.PaymentWebhookRegistration", b =>
@@ -789,7 +831,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
 
                     b.HasKey("OwnerId");
 
-                    b.ToTable("PaymentWebhookRegistrations", (string)null);
+                    b.ToTable("PaymentWebhookRegistrations");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.ProcessedWebhook", b =>
@@ -817,7 +859,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
                     b.HasIndex("OwnerId", "Reference")
                         .IsUnique();
 
-                    b.ToTable("ProcessedWebhooks", (string)null);
+                    b.ToTable("ProcessedWebhooks");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.RegistrationVerification", b =>
@@ -879,7 +921,9 @@ namespace RoomRental.Api.Data.Migrations.Postgres
                     b.HasIndex("ChallengeHash")
                         .IsUnique();
 
-                    b.ToTable("RegistrationVerifications", (string)null);
+                    b.HasIndex("ExpiresAt");
+
+                    b.ToTable("RegistrationVerifications");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.Room", b =>
@@ -937,7 +981,7 @@ namespace RoomRental.Api.Data.Migrations.Postgres
 
                     b.HasIndex("BuildingId");
 
-                    b.ToTable("Rooms", (string)null);
+                    b.ToTable("Rooms");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.DepositSettlement", b =>

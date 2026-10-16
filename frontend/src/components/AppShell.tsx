@@ -3,7 +3,7 @@ import ChangePasswordModal from './ChangePasswordModal';
 import LanguageSelector from '../i18n/LanguageSelector';
 import { t } from '../i18n/runtime';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Avatar, Button, Drawer, Dropdown, Layout, Menu, Space, Typography } from 'antd';
+import { App, Avatar, Button, Drawer, Dropdown, Layout, Menu, Space, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -17,6 +17,7 @@ const { Sider, Header, Content } = Layout;
 
 
 export default function AppShell({ children }: { children: ReactNode }) {
+  const { message } = App.useApp();
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ const adminItems = [{ key: '/admin/owners', icon: <UserOutlined />, label: t("Ch
   const handleMenu = ({ key }: { key: string }) => {
     if (key === 'subscription') navigate('/account-status');
     if (key === 'password') setPasswordOpen(true);
-    if (key === 'logout') void signOut().then(() => navigate('/login'));
+    if (key === 'logout') void signOut().then(() => navigate('/login')).catch((error: Error) => message.error(error.message));
   };
   const menu = <Menu theme="dark" mode="inline" selectedKeys={[location.pathname]} items={items} onClick={({ key }) => { navigate(key); setMobileOpen(false); }} />;
 

@@ -1,5 +1,11 @@
 # Local API integration tests
 
+## Backup Google Drive — 16/10/2026
+
+`python3 -m unittest discover -s tests -p 'test_backup_retention.py' -v` kiểm tra4ca: các mốc ngày/tuần/tháng, nhiều snapshot cùng ngày, tên/ngày không hợp lệ và kho rỗng. Không kết nối Drive/VPS hoặc xóa dữ liệu. Bước CI mới đã thêm ở source, chưa push/chạy trên GitHub trong đợt này.
+
+Kiểm chứng thực tế riêng đã PASS: upload crypt, download/decrypt4file không khác biệt, SHA256, restore PostgreSQL17 container tạm networknone và kiểm tra archive DataProtection XML; forced token refresh dưới systemd cũng PASS. Đây là kiểm chứng trên dataset tại thời điểm chạy, không phải cam kết phục hồi mọi dữ liệu tương lai. Nhật ký và lệnh phục hồi: [google-drive-backup.md](../docs/backup-operations.md).
+
 ## SEO HTTP checks
 
 Build frontend first (`npm --prefix frontend run build`) and backend (`dotnet build backend/RoomRental.Api`). Start a separate API using the disposable database command below, with these additional arguments/configuration:
@@ -331,3 +337,7 @@ fixture and drops only that generated database afterwards. Never point it at the
 Latest PostgreSQL run:167 assertions passed, including simultaneous cash submissions with
 exactly one committed receipt. The disposable HTTP regression API also passed59/59 business
 tests (two OTP fixture classes skipped), with outbound proxy blocking and localhost callback.
+
+## Operational hardening16/10/2026
+
+run_disposable.py owns temporary SQLite/PostgreSQL/OTP APIs. PostgreSQL requires TEST_HTTP_POSTGRES_CONTAINER and a loopback TEST_HTTP_POSTGRES_CONNECTION naming roomie_qa_*; it creates/drops its own random database in that explicit disposable container. Never use the app database/container. CI passes --image to test the exact image promoted to GHCR. Skip counts are gated: SQLite0, PostgreSQL8 known SQLite-only cases, OTP0. check_db_roles.py creates a separate network-none PostgreSQL container and executes the real provisioner twice, verifying runtime DML/denied DDL and migration-history writes. test_backup_*.py covers retention, failed verification before rotation, finite subprocess and TLS alert content/cooldown without sending email. frontend/e2e has five synthetic browser smoke cases. See [release record](../docs/tech-debt-remediation-2026-10-16.md).

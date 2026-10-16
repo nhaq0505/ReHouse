@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using RoomRental.Api.Data;
@@ -11,8 +12,13 @@ internal static class MigrationTests
         await connection.OpenAsync();
         var options = new DbContextOptionsBuilder<SqliteAppDbContext>().UseSqlite(connection).Options;
         await using var db = new SqliteAppDbContext(options);
+        await db.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>().MigrateAsync("20261015043532_InitialCreate");
+        var retainedId=Guid.NewGuid();
+        await db.Database.ExecuteSqlRawAsync("INSERT INTO \"Users\" (\"Id\",\"Name\",\"Email\",\"PasswordHash\",\"Role\",\"Status\",\"SubscriptionTier\",\"CreatedAt\") VALUES ({0}, 'Existing user', 'retained@example.test', 'fixture', 'Owner', 'Approved', 'Free', 0)", retainedId);
         await db.Database.MigrateAsync();
-        if ((await db.Database.GetAppliedMigrationsAsync()).Count() != 1 || db.Database.HasPendingModelChanges())
+        if (!(await db.Users.SingleAsync()).Id.Equals(retainedId)) throw new Exception("Additive migration lost existing data");
+        db.Users.Remove(await db.Users.SingleAsync()); await db.SaveChangesAsync();
+        if ((await db.Database.GetAppliedMigrationsAsync()).Count() != 2 || db.Database.HasPendingModelChanges())
             throw new Exception("SQLite initial migration or model snapshot is incomplete.");
 
         var user = new AppUser { Email = "migration@example.test", Name = "Migration fixture", PasswordHash = "fixture" };

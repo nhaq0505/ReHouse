@@ -8,6 +8,7 @@ umask 077
 readonly image_pattern='^ghcr\.io/nhaq0505/rehouse@sha256:[a-f0-9]{64}$'
 readonly compose_file=/opt/rehouse/compose.yaml
 readonly runtime_env=/etc/rehouse/runtime.env
+readonly backup_env=/etc/rehouse/backup.env
 readonly backup_root=/var/backups/rehouse
 readonly state_dir=/var/lib/rehouse
 readonly lock_file=/var/lib/rehouse/ops.lock
@@ -18,6 +19,13 @@ fail() {
 }
 
 [[ "$EUID" -eq 0 ]] || fail 'must run as root'
+# Bound timer and direct pre-deploy calls, including child rclone processes.
+if [[ "${REHOUSE_BACKUP_DEADLINE:-}" != 1 ]]; then
+  status=0
+  REHOUSE_BACKUP_DEADLINE=1 timeout --signal=TERM --kill-after=30s 15m "$0" "$@" || status=$?
+  if [[ "$status" -ne 0 ]]; then /usr/local/sbin/rehouse-backup-alert failed || true; fi
+  exit "$status"
+fi
 [[ "$#" -le 1 ]] || fail 'accepts at most one image reference for the backup manifest'
 [[ -f "$compose_file" && -f "$runtime_env" ]] || fail 'Rehouse host files are missing'
 if [[ "${REHOUSE_LOCK_HELD:-}" != 1 ]]; then
@@ -85,6 +93,7 @@ fi
   printf 'database=PostgreSQL custom dump, database room_rental\n'
   printf 'data_protection_keys=data-protection-keys.tar.gz\n'
 } > "$backup_dir/manifest.txt"
+(cd "$backup_dir" && sha256sum database.dump data-protection-keys.tar.gz manifest.txt > checksums.sha256)
 chmod 0600 "$backup_dir"/*
 
 # The local backup is complete. A sync failure must not delete the only usable copy.
@@ -95,7 +104,9 @@ trap - EXIT
 # explicitly trusted root-admin hook, executed only when configured.
 offhost_sync_cmd=${OFFHOST_SYNC_CMD:-}
 rclone_dest=${RCLONE_DEST:-}
-while IFS= read -r config_line || [[ -n "$config_line" ]]; do
+for config_file in "$runtime_env" "$backup_env"; do
+  [[ -f "$config_file" ]] || continue
+  while IFS= read -r config_line || [[ -n "$config_line" ]]; do
   config_line=${config_line%$'\r'}
   case "$config_line" in
     OFFHOST_SYNC_CMD=*|RCLONE_DEST=*)
@@ -111,7 +122,8 @@ while IFS= read -r config_line || [[ -n "$config_line" ]]; do
       fi
       ;;
   esac
-done < "$runtime_env"
+  done < "$config_file"
+done
 
 if [[ -n "$offhost_sync_cmd" ]]; then
   # The hook receives the completed backup path as $1 and REHOUSE_BACKUP_DIR.
@@ -129,4 +141,5 @@ for ((index = 10; index < ${#existing_backups[@]}; index++)); do
 done
 
 trap - EXIT
+touch /var/lib/rehouse/backup-last-success
 printf '%s\n' "$backup_dir"

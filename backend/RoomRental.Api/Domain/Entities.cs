@@ -16,6 +16,12 @@ public sealed class AppUser
     public required string Email { get; set; }
     public string? Phone { get; set; }
     public required string PasswordHash { get; set; }
+    public string? ProtectedMfaSecret { get; set; }
+    public string? PendingMfaSecret { get; set; }
+    public DateTimeOffset? PendingMfaExpiresAt { get; set; }
+    public bool MfaEnabled { get; set; }
+    public long MfaLastStep { get; set; } = -1;
+    public string? MfaRecoveryHashes { get; set; }
     public string? PasswordResetHash { get; set; }
     public DateTimeOffset? PasswordResetExpiresAt { get; set; }
     public UserRole Role { get; set; } = UserRole.Owner;
@@ -271,4 +277,11 @@ public sealed class ProcessedWebhook
     public required string Reference { get; set; }
     public long OrderCode { get; set; }
     public DateTimeOffset ProcessedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class LoginThrottle
+{
+    public required string Key { get; set; }
+    public DateTimeOffset WindowStartedAt { get; set; }
+    public int Attempts { get; set; }
 }

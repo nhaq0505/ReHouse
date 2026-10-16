@@ -1,0 +1,9 @@
+[Unit]
+Description=Check age of Roomie successful backup
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/rehouse-backup-alert stale
+TimeoutStartSec=45s
+ProtectSystem=strict
+ReadWritePaths=/var/lib/rehouse
+NoNewPrivileges=true

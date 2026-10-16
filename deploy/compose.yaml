@@ -2,7 +2,7 @@ name: rehouse
 
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
     environment:
       POSTGRES_DB: room_rental
       POSTGRES_USER: room_rental
@@ -50,14 +50,12 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
       DatabaseProvider: Postgres
-      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=room_rental;Username=room_rental;Password=${DB_PASSWORD:?DB_PASSWORD must be set in /etc/rehouse/runtime.env};Maximum Pool Size=15;Timeout=15;Command Timeout=30"
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=room_rental;Username=roomie_app;Password=${APP_DB_PASSWORD:?APP_DB_PASSWORD must be set in /etc/rehouse/runtime.env};Maximum Pool Size=15;Timeout=15;Command Timeout=30"
       DataProtection__KeysPath: /app/data/keys
       PublicBaseUrl: ${PUBLIC_BASE_URL:-http://localhost:8080}
       WebhookBaseUrl: ${WEBHOOK_BASE_URL:-http://localhost:8080}
       TrustedProxies: ${TRUSTED_PROXIES:-}
       Seo__AllowIndexing: ${SEO_ALLOW_INDEXING:-true}
-      BootstrapAdmin__Email: ${BOOTSTRAP_ADMIN_EMAIL:-}
-      BootstrapAdmin__Password: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       AuthRequestsPerMinute: "10"
       Email__FromAddress: ${SMTP_FROM_ADDRESS:-}
       Email__FromName: ${SMTP_FROM_NAME:-Roomie}

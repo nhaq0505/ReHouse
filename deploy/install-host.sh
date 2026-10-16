@@ -38,6 +38,9 @@ if [[ ! -e /var/lib/rehouse/ops.lock ]]; then
   install -o root -g root -m 0600 /dev/null /var/lib/rehouse/ops.lock
 fi
 install -o root -g root -m 0644 "$compose_source" /opt/rehouse/compose.yaml
+source_dir=$(dirname -- "$compose_source")
+install -m0644 "$source_dir/migrate.yaml" /opt/rehouse/migrate.yaml
+install -m0750 "$source_dir/rehouse-db-roles.py" /usr/local/sbin/rehouse-db-roles
 install -o root -g root -m 0750 "$deploy_source" /usr/local/sbin/rehouse-deploy
 install -o root -g root -m 0750 "$backup_source" /usr/local/sbin/rehouse-backup
 install -o root -g root -m 0750 "$restore_source" /usr/local/sbin/rehouse-restore
@@ -104,6 +107,7 @@ PY
 )
   {
     printf 'DB_PASSWORD=%s\n' "$db_password"
+    printf 'APP_DB_PASSWORD=%s\n' "$(openssl rand -hex 32)"
     printf 'BOOTSTRAP_ADMIN_EMAIL=admin@rehouse.local\n'
     printf 'BOOTSTRAP_ADMIN_PASSWORD=%s\n' "$admin_password"
     printf 'PUBLIC_BASE_URL=http://localhost:8080\n'

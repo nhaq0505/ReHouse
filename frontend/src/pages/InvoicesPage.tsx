@@ -1,5 +1,5 @@
 import { dateFormat, formatDate, getLocale, t } from '../i18n/runtime';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, App, Button, Col, Collapse, DatePicker, Drawer, Form, Input, InputNumber, Row, Select, Space, Tag, Tooltip, Typography } from 'antd';
 import type { TableProps } from 'antd';
 import { ArrowRightOutlined, CheckCircleFilled, CreditCardOutlined, FileTextOutlined, MessageOutlined, PlusOutlined, SearchOutlined, WalletOutlined } from '@ant-design/icons';
@@ -48,22 +48,17 @@ export default function InvoicesPage() {
   const [correctionForm] = Form.useForm<{ amount?: number; rent?: number; electricityAmount?: number; waterAmount?: number; serviceAmount?: number; currentReading?: number; reason: string; dueDate?: Dayjs; description?: string }>();
   const receiptKeys = useRef(new Map<string, string>());
   const correctionKeys = useRef(new Map<string, string>());
-  const listQuery = useQuery({ queryKey: ['invoices', 'owner-all-periods'], queryFn: () => api.invoices.list() });
+  const [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [kindFilter, issuanceFilter, period, statusFilter, searchText]);
+  const listQuery = useQuery({ queryKey: ['invoices', page, kindFilter, issuanceFilter, period, statusFilter, searchText], queryFn: () => api.invoices.page({page: String(page), pageSize:'10',
+    ...(kindFilter === 'All' ? {} : {kind: kindFilter}), ...(issuanceFilter === 'All' ? {} : {lifecycleState: issuanceFilter}),
+    ...(period ? {period} : {}), ...(statusFilter === 'All' ? {} : {status:statusFilter}), ...(searchText.trim() ? {search:searchText.trim()} : {})}) });
   const detailQuery = useQuery({ queryKey: ['invoice', selectedId], queryFn: () => api.invoices.get(selectedId!), enabled: !!selectedId });
-  const invoices = useMemo(() => {
-    const search = searchText.trim().toLocaleLowerCase();
-    return (listQuery.data ?? []).filter((item) =>
-      (kindFilter === 'All' || item.kind === kindFilter) &&
-      (issuanceFilter === 'All' || (item.lifecycleState ?? 'Issued') === issuanceFilter) &&
-      (!period || item.period === period) &&
-      (statusFilter === 'All' || ((item.lifecycleState ?? 'Issued') !== 'Draft' && item.status.toLowerCase() === statusFilter.toLowerCase())) &&
-      (!search || [item.roomName, item.buildingName, item.tenantName].some((value) => value?.toLocaleLowerCase().includes(search)))
-    );
-  }, [listQuery.data, kindFilter, issuanceFilter, period, statusFilter, searchText]);
+  const invoices = listQuery.data?.items ?? [];
   const hasActiveFilters = kindFilter !== 'All' || issuanceFilter !== 'All' || period !== null || statusFilter !== 'All' || !!searchText.trim();
-  const issuedInvoices = useMemo(() => invoices.filter((invoice) => invoice.lifecycleState !== 'Draft'), [invoices]);
-  const draftCount = invoices.length - issuedInvoices.length;
-  const totals = useMemo(() => issuedInvoices.reduce((acc, invoice) => ({ billed: acc.billed + invoice.total, paid: acc.paid + invoice.paid, outstanding: acc.outstanding + invoice.outstanding }), { billed: 0, paid: 0, outstanding: 0 }), [issuedInvoices]);
+  const draftCount = listQuery.data?.draftCount ?? 0;
+  const issuedCount = (listQuery.data?.total ?? 0) - draftCount;
+  const totals = listQuery.data?.totals ?? {billed:0, paid:0, outstanding:0};
   const generateMutation = useMutation({
     mutationFn: (selectedPeriod: string) => api.invoices.generate(selectedPeriod),
     onSuccess: async () => { await Promise.all([client.invalidateQueries({ queryKey: ['invoices'] }), client.invalidateQueries({ queryKey: ['dashboard'] }), client.invalidateQueries({ queryKey: ['rooms'] })]); message.success(t("Đã kiểm tra và tạo các hóa đơn còn thiếu.")); },
@@ -129,7 +124,7 @@ export default function InvoicesPage() {
     let requestId = correctionKeys.current.get(invoice.id);
     if (!requestId) { requestId = crypto.randomUUID(); correctionKeys.current.set(invoice.id, requestId); }
     const common = { reason: values.reason.trim(), dueDate: values.dueDate?.format('YYYY-MM-DD'), description: values.description?.trim() };
-    const monthlyOverlap = invoice.kind === 'Supplemental' && invoice.isFinalMeterReading && (listQuery.data ?? []).some((candidate) => candidate.kind === 'Monthly' && candidate.occupancyId === invoice.occupancyId && candidate.period === invoice.period);
+    const monthlyOverlap = !!invoice.hasMonthlyOverlap;
     const body = invoice.kind === 'Monthly'
       ? { ...common, rent: values.rent, electricityAmount: values.electricityAmount, waterAmount: values.waterAmount, serviceAmount: values.serviceAmount, currentReading: invoice.canCorrectMeter ? values.currentReading : undefined }
       : invoice.kind === 'Deposit'
@@ -140,7 +135,7 @@ export default function InvoicesPage() {
     modal.confirm({ title: t("Lưu điều chỉnh hóa đơn?"), content: t("Mức phí mới và lý do sẽ được ghi vào lịch sử hóa đơn."), okText: t("Lưu điều chỉnh"), cancelText: t("Kiểm tra lại"), onOk: () => correctionMutation.mutateAsync({ id: invoice.id, values: body, requestId: requestId!, version: invoice.version ?? 0 }) });
   };
   const adjustmentBlockedReason = invoice?.hasPendingPayment ? t("Hóa đơn có giao dịch payOS đang chờ. Hãy đối soát giao dịch trước khi điều chỉnh.") : invoice?.status === 'Paid' || invoice?.status === 'Partial' || (invoice?.paid ?? 0) > 0 ? t("Chỉ được điều chỉnh hóa đơn chưa thanh toán. Hóa đơn này đã ghi nhận tiền.") : null;
-  const hasMonthlyOverlap = !!invoice && invoice.kind === 'Supplemental' && invoice.isFinalMeterReading && (listQuery.data ?? []).some((candidate) => candidate.kind === 'Monthly' && candidate.occupancyId === invoice.occupancyId && candidate.period === invoice.period);
+  const hasMonthlyOverlap = !!invoice && !!invoice.hasMonthlyOverlap;
   const getCheckoutUrl = (item: Invoice) => {
     if (!item.tenantToken) return '';
     return `${window.location.origin}/t/${encodeURIComponent(item.tenantToken)}/invoices/${encodeURIComponent(item.id)}/checkout`;
@@ -215,8 +210,8 @@ export default function InvoicesPage() {
     <PageTitle eyebrow={t("THU TIỀN RÕ RÀNG")} title={t("Hóa đơn")} subtitle={t("Theo dõi tiền thuê, điện, nước và các khoản đã thu theo từng phòng.")} extra={kindFilter === 'Monthly' && period ? <Button title={t("Chỉ tạo hóa đơn còn thiếu; không phát hành các bản nháp.")} type="primary" icon={<PlusOutlined />} loading={generateMutation.isPending} onClick={() => generateMutation.mutate(period)}>{t("Tạo hóa đơn còn thiếu")}</Button> : undefined} />
     {listQuery.isError ? <LoadError error={listQuery.error} onRetry={() => void listQuery.refetch()} /> : listQuery.isPending ? <div className="content-card"><div className="loading-placeholder" /></div> : <>
       <Row gutter={[14, 14]} className="invoice-totals-row"><Col xs={24} md={8}><div className="invoice-total-tile"><span>{t("Tổng giá trị hóa đơn")}</span><strong>{formatVnd(totals.billed)}</strong></div></Col><Col xs={24} md={8}><div className="invoice-total-tile invoice-total-paid"><span>{t("Đã ghi nhận trên hóa đơn")}</span><strong>{formatVnd(totals.paid)}</strong></div></Col><Col xs={24} md={8}><div className="invoice-total-tile invoice-total-due"><span>{t("Còn phải thu")}</span><strong>{formatVnd(totals.outstanding)}</strong></div></Col></Row>
-      <p className="invoice-summary-scope">{t("Ba số liệu tính từ {0} hóa đơn đã phát hành phù hợp bộ lọc. Tiền cọc không phải doanh thu.", [issuedInvoices.length])}{draftCount > 0 && <> · {t("{0} bản nháp chưa phát hành", [draftCount])}</>}</p>
-      <SectionCard className="invoice-list-card" title={t("Hóa đơn")} extra={<div className="invoice-list-actions"><span className="section-caption">{t("Kết quả bộ lọc: {0} hóa đơn", [invoices.length])}</span>{hasActiveFilters && invoices.length > 0 && <Button type="text" onClick={clearFilters}>{t("Xóa lọc")}</Button>}</div>}>
+      <p className="invoice-summary-scope">{t("Ba số liệu tính từ {0} hóa đơn đã phát hành phù hợp bộ lọc. Tiền cọc không phải doanh thu.", [issuedCount])}{draftCount > 0 && <> · {t("{0} bản nháp chưa phát hành", [draftCount])}</>}</p>
+      <SectionCard className="invoice-list-card" title={t("Hóa đơn")} extra={<div className="invoice-list-actions"><span className="section-caption">{t("Kết quả bộ lọc: {0} hóa đơn", [listQuery.data?.total ?? 0])}</span>{hasActiveFilters && invoices.length > 0 && <Button type="text" onClick={clearFilters}>{t("Xóa lọc")}</Button>}</div>}>
         <div className="invoice-filter-toolbar">
           <label className="invoice-filter"><span>{t("Loại hóa đơn")}</span><Select aria-label={t("Loại hóa đơn")} value={kindFilter} onChange={(value) => setKindFilter(value as InvoiceKindFilter)} options={[{ value: 'All', label: t("Tất cả loại hóa đơn") }, { value: 'Monthly', label: t("Hóa đơn tháng") }, { value: 'Deposit', label: t("Tiền cọc các lượt thuê") }, { value: 'Supplemental', label: t("Hóa đơn bổ sung") }]} /></label>
           <label className="invoice-filter"><span>{t("Trạng thái phát hành")}</span><Select aria-label={t("Trạng thái phát hành")} value={issuanceFilter} onChange={(value) => setIssuanceFilter(value as IssuanceFilter)} options={[{ value: 'All', label: t("Tất cả trạng thái phát hành") }, { value: 'Issued', label: t("Đã phát hành") }, { value: 'Draft', label: t("Bản nháp") }]} /></label>
@@ -224,7 +219,7 @@ export default function InvoicesPage() {
           <label className="invoice-filter"><span>{t("Trạng thái thanh toán")}</span><Select aria-label={t("Trạng thái thanh toán")} value={statusFilter} onChange={(value) => setStatusFilter(value as InvoiceStatusFilter)} options={[{ value: 'All', label: t("Tất cả trạng thái") }, { value: 'Unpaid', label: t("Chưa thanh toán") }, { value: 'Partial', label: t("Thanh toán một phần") }, { value: 'Paid', label: t("Đã thanh toán") }]} /></label>
           <label className="invoice-filter invoice-filter-search"><span>{t("Tìm hóa đơn")}</span><Input aria-label={t("Tìm hóa đơn")} prefix={<SearchOutlined />} value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder={t("Phòng, dãy trọ hoặc người thuê")} allowClear /></label>
         </div>
-        {invoices.length ? <ResponsiveTable className="invoice-table" rowKey="id" columns={columns} dataSource={invoices} pagination={{ pageSize: 10, showSizeChanger: false, hideOnSinglePage: true }} scroll={{ x: 980 }} /> : hasActiveFilters ? <EmptyPanel title={t("Không có hóa đơn khớp bộ lọc")} description={t("Hãy đổi bộ lọc hoặc từ khóa để xem hóa đơn.")} action={<Button onClick={clearFilters}>{t("Xóa lọc")}</Button>} /> : <EmptyPanel title={t("Chưa có hóa đơn")} description={t("Hóa đơn sẽ xuất hiện sau khi bạn ghi nhận tiền cọc, tạo khoản bổ sung hoặc chốt chỉ số điện.")} />}
+        {invoices.length ? <ResponsiveTable className="invoice-table" rowKey="id" columns={columns} dataSource={invoices} pagination={{ current:page, total:listQuery.data?.total ?? 0, onChange:setPage, pageSize:10, showSizeChanger:false, hideOnSinglePage:true }} scroll={{ x: 980 }} /> : hasActiveFilters ? <EmptyPanel title={t("Không có hóa đơn khớp bộ lọc")} description={t("Hãy đổi bộ lọc hoặc từ khóa để xem hóa đơn.")} action={<Button onClick={clearFilters}>{t("Xóa lọc")}</Button>} /> : <EmptyPanel title={t("Chưa có hóa đơn")} description={t("Hóa đơn sẽ xuất hiện sau khi bạn ghi nhận tiền cọc, tạo khoản bổ sung hoặc chốt chỉ số điện.")} />}
       </SectionCard>
     </>}
     <Drawer className="invoice-drawer" title={t("Chi tiết hóa đơn")} width={520} open={!!selectedId} onClose={closeInvoice} destroyOnClose>

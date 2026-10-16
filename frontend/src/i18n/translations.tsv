@@ -1028,3 +1028,7 @@
 1027|Step 4: Enter into Roomie & Verify|第 4 步：填入 Roomie 并验证|4단계: Roomie에 입력 및 확인|चरण 4: Roomie में दर्ज करें और सत्यापित करें
 1028|Paste the 3 keys into the form and click 'Save and verify payOS'. The system will automatically register the secure webhook.|将 3 个密钥粘贴到表单中，点击'保存并验证 payOS'。系统将自动安全注册 Webhook。|양식에 3개의 키를 붙여넣고 'payOS 저장 및 확인'을 클릭하세요. 시스템이 안전하게 웹훅을 자동 등록합니다.|फ़ॉर्म में 3 कुंजियाँ चिपकाएँ और 'payOS सहेजें और सत्यापित करें' पर क्लिक करें। सिस्टम स्वचालित रूप से सुरक्षित वेबहुक पंजीकृत करेगा।
 1029|Important note: Only when the webhook is verified by payOS (green dot) can you issue links to tenants.|重要提示：仅当 Webhook 经 payOS 验证（绿点）后，方可向租客提供链接。|중요 알림: 웹훅이 payOS에서 확인(녹색 점)된 경우에만 임차인에게 링크를 발급할 수 있습니다.|महत्वपूर्ण सूचना: केवल तभी जब payOS द्वारा वेबहुक सत्यापित हो (हरा बिंदु), आप किरायेदारों को लिंक जारी कर सकते हैं।
+1030|Authenticator or recovery code|验证器代码或恢复码|인증 앱 코드 또는 복구 코드|प्रमाणक या रिकवरी कोड
+1031|Two-step verification|两步验证|2단계 인증|दो चरणों में पुष्टि
+1032|Save recovery codes somewhere safe. Each code works once.|请妥善保存恢复码，每个只能使用一次。|복구 코드를 안전하게 보관하세요. 각 코드는 한 번만 사용할 수 있습니다.|रिकवरी कोड सुरक्षित रखें। हर कोड केवल एक बार उपयोग किया जा सकता है।
+1033|Add this key to your authenticator app, then enter its six-digit code.|将此密钥添加到验证器应用，然后输入六位验证码。|인증 앱에 이 키를 추가한 다음 6자리 코드를 입력하세요.|यह कुंजी अपने प्रमाणक ऐप में जोड़ें, फिर उसका छह अंकों का कोड दर्ज करें।

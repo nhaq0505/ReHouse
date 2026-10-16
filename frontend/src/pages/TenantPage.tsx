@@ -3,7 +3,7 @@ import { errorText } from '../i18n/errors';
 import LanguageSelector from '../i18n/LanguageSelector';
 import { formatDate, t } from '../i18n/runtime';
 import { useState } from 'react';
-import { Alert, App, Button, Card, Collapse, Result, Skeleton, Tag, Typography } from 'antd';
+import { Pagination, Alert, App, Button, Card, Collapse, Result, Skeleton, Tag, Typography } from 'antd';
 import { ArrowRightOutlined, CheckCircleFilled, CreditCardOutlined, FileTextOutlined, HomeOutlined, LockOutlined } from '@ant-design/icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -39,10 +39,11 @@ function TenantPageContent({ token }: { token: string }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const location = useLocation();
+  const [page, setPage] = useState(1);
   const [openingInvoiceId, setOpeningInvoiceId] = useState('');
   const query = useQuery({
-    queryKey: ['tenant', token],
-    queryFn: () => api.tenant.overview(token),
+    queryKey: ['tenant', token, page],
+    queryFn: () => api.tenant.overview(token, page),
     enabled: !!token,
     retry: false,
   });
@@ -71,7 +72,7 @@ function TenantPageContent({ token }: { token: string }) {
   }
   const overview = query.data;
   const invoices = [...(overview?.invoices ?? [])].sort((a, b) => b.period.localeCompare(a.period));
-  const outstanding = invoices.reduce((total, invoice) => total + invoice.outstanding, 0);
+  const outstanding = overview?.totals.outstanding ?? 0;
   const searchParams = new URLSearchParams(window.location.search || location.search);
   const invoicePath = location.pathname.startsWith('/tenant/') ? '/tenant' : '/t';
   const tenantPath = `${invoicePath}/${encodeURIComponent(token)}`;
@@ -85,7 +86,8 @@ function TenantPageContent({ token }: { token: string }) {
       {query.isError && query.data && !isTenantAccessError(query.error) && <Alert className="tenant-payment-error" type="warning" showIcon message={t("Đã có lỗi khi tải dữ liệu.")} description={errorText(query.error.message)} action={<Button size="small" onClick={() => void query.refetch()}>{t("Thử lại")}</Button>} />}
       {searchParams.get('payment') === 'returned' && <Alert className="tenant-payment-error" type="info" showIcon message={t("Đang xác minh thanh toán")} description={t("Khoản thanh toán sẽ được cập nhật sau khi payOS xác nhận giao dịch. Làm mới hóa đơn để kiểm tra trạng thái mới nhất.")} action={<Button size="small" onClick={() => void query.refetch()}>{t("Làm mới")}</Button>} />}
       {searchParams.get('payment') === 'cancelled' && <Alert className="tenant-payment-error" type="info" showIcon message={t("Bạn đã quay lại từ trang thanh toán")} description={t("Hóa đơn vẫn hiển thị số dư hiện tại. Bạn có thể thử thanh toán lại khi sẵn sàng.")} />}
-      <div className="tenant-section-heading"><div><Typography.Title level={4}>{t("Hóa đơn của bạn")}</Typography.Title><span>{t("Tiền cọc, hóa đơn tháng và khoản thu bổ sung được theo dõi riêng.")}</span></div><span className="tenant-count">{invoices.length}  {t("hóa đơn")}</span></div>
+      <div className="tenant-section-heading"><div><Typography.Title level={4}>{t("Hóa đơn của bạn")}</Typography.Title><span>{t("Tiền cọc, hóa đơn tháng và khoản thu bổ sung được theo dõi riêng.")}</span></div><span className="tenant-count">{overview?.total ?? 0}  {t("hóa đơn")}</span></div>
+      <Pagination current={page} total={overview?.total ?? 0} pageSize={10} onChange={setPage} showSizeChanger={false} hideOnSinglePage />
       {invoices.length ? <div className="tenant-invoice-list">{invoices.map((invoice) => <TenantInvoice key={invoice.id} invoice={invoice} busy={openingInvoiceId === invoice.id} paymentDisabled={false} reconciling={reconcileMutation.isPending && reconcileMutation.variables === invoice.id} onPay={() => openCheckout(invoice.id)} onReconcile={() => reconcileMutation.mutate(invoice.id)} />)}</div> : <Card className="tenant-empty" bordered={false}><FileTextOutlined /><strong>{t("Chưa có hóa đơn")}</strong><span>{t("Hóa đơn mới sẽ xuất hiện ở đây sau khi chủ trọ hoàn tất chốt kỳ.")}</span></Card>}
       <div className="tenant-secure-note"><LockOutlined /><span>{t("Thông tin này chỉ dành cho người có liên kết riêng của phòng.")}</span></div>
     </main>

@@ -95,6 +95,10 @@ fi
 
 backup_ref=${previous_image:-$image_ref}
 backup_dir=$("$backup_command" "$backup_ref") || fail 'pre-deploy database/key backup failed; the current app was left running'
+# One-shot schema deployment uses the owner identity, never the runtime role.
+# Credentials are delivered through Compose interpolation, not command arguments.
+compose "$image_ref" --file /opt/rehouse/migrate.yaml run --rm --no-deps -T app </dev/null || fail 'migration failed; current app was left running'
+/usr/local/sbin/rehouse-db-roles "$image_ref" || fail 'database grants failed; current app was left running'
 new_compose_started=0
 if compose "$image_ref" up -d --no-deps --force-recreate app; then
   new_compose_started=1

@@ -1,0 +1,6 @@
+[Timer]
+OnActiveSec=1h
+OnUnitActiveSec=1h
+Unit=rehouse-backup-watchdog.service
+[Install]
+WantedBy=timers.target

@@ -56,6 +56,9 @@ public static class ApiSupport
         return new DateOnly(year, month, 1).AddMonths(1).AddDays(4);
     }
 
+    public static string SafePath(PathString path) => path.StartsWithSegments("/api/tenant") || path.StartsWithSegments("/t") || path.StartsWithSegments("/tenant")
+        ? "/tenant/[redacted]" : path.Value ?? "";
+
     public static decimal RoundVnd(decimal value) => decimal.Round(value, 0, MidpointRounding.AwayFromZero);
 
     public static string UtcIsoString(DateTimeOffset value) =>
@@ -94,22 +97,19 @@ public sealed class ApiExceptionMiddleware(RequestDelegate next, ILogger<ApiExce
         {
             // The client has gone away; there is no response left to write.
         }
-        catch (DbUpdateConcurrencyException exception)
+        catch (DbUpdateConcurrencyException)
         {
-            logger.LogInformation(exception, "A concurrent update was rejected for {Path}.", context.Request.Path);
+            logger.LogInformation("A concurrent update was rejected for {Path}.", ApiSupport.SafePath(context.Request.Path));
             await WriteConflictAsync(context, "The record changed while you were editing it. Refresh and retry.");
         }
         catch (Exception exception) when (IsDatabaseConflict(exception))
         {
-            logger.LogInformation(exception, "A database concurrency conflict was rejected for {Path}.", context.Request.Path);
+            logger.LogInformation("A database concurrency conflict was rejected for {Path}.", ApiSupport.SafePath(context.Request.Path));
             await WriteConflictAsync(context, "Another request changed this record. Refresh and retry.");
         }
         catch (Exception exception)
         {
-            var requestPath = context.Request.Path.StartsWithSegments("/api/tenant")
-                ? "/api/tenant/[redacted]"
-                : context.Request.Path.Value;
-            logger.LogError(exception, "Unhandled request error for {Path}", requestPath);
+            logger.LogError("Unhandled request error {ErrorType} for {Path}", exception.GetType().Name, ApiSupport.SafePath(context.Request.Path));
             if (context.Response.HasStarted) throw;
             context.Response.Clear();
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;

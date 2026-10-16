@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     protected AppDbContext(DbContextOptions options) : base(options) { }
 
     public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<LoginThrottle> LoginThrottles => Set<LoginThrottle>();
     public DbSet<RegistrationVerification> RegistrationVerifications => Set<RegistrationVerification>();
     public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
     public DbSet<Building> Buildings => Set<Building>();
@@ -51,6 +52,17 @@ public class AppDbContext : DbContext
             entity.Property(x => x.SubscriptionTier).HasConversion<string>().HasMaxLength(24);
         });
 
+        modelBuilder.Entity<LoginThrottle>(entity =>
+        {
+            entity.HasKey(x => x.Key);
+            entity.Property(x => x.Key).HasMaxLength(64);
+            entity.Property(x => x.Attempts).IsConcurrencyToken();
+            entity.HasIndex(x => x.WindowStartedAt);
+        });
+        modelBuilder.Entity<AppUser>().Property(x => x.MfaLastStep).IsConcurrencyToken();
+        modelBuilder.Entity<AppUser>().Property(x => x.MfaRecoveryHashes).IsConcurrencyToken();
+        modelBuilder.Entity<RegistrationVerification>().HasIndex(x => x.ExpiresAt);
+        modelBuilder.Entity<AuthSession>().HasIndex(x => x.ExpiresAt);
         modelBuilder.Entity<RegistrationVerification>(entity =>
         {
             entity.HasKey(x => x.Email);

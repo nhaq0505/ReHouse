@@ -9,6 +9,8 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  mfaEnabled?: boolean;
+  mfaRequired?: boolean;
   status?: AccountStatus;
   phone?: string;
   rejectionReason?: string | null;
@@ -94,6 +96,7 @@ export interface DepositSettlement {
   id: string; amount: number; kind: 'Refund' | 'Deduction'; reason: string; recordedAt: string; targetInvoiceId?: string;
 }
 export interface Invoice {
+  hasMonthlyOverlap?: boolean;
   kind: 'Monthly' | 'Deposit' | 'Supplemental';
   description?: string;
   isFinalMeterReading: boolean;
@@ -234,6 +237,8 @@ export interface PaymentSettings {
 }
 
 export interface TenantOverview {
+  total: number;
+  totals: {outstanding: number};
   room: Room;
   occupancy: Occupancy;
   invoices: Invoice[];
@@ -296,7 +301,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   headers.set('Accept-Language', getLocale());
   let response: Response;
   try {
-    response = await fetch(path, { ...init, headers, credentials: 'same-origin' });
+    response = await fetch(path, { ...init, signal: init.signal ?? AbortSignal.timeout(35000), headers, credentials: 'same-origin' });
   } catch {
     throw new ApiError(t("Không thể kết nối máy chủ. Vui lòng kiểm tra kết nối và thử lại."), 0);
   }
@@ -324,7 +329,7 @@ async function requestBlob(path: string): Promise<Blob> {
   const headers = new Headers({ Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   headers.set('Accept-Language', getLocale());
   let response: Response;
-  try { response = await fetch(path, { headers, credentials: 'same-origin' }); }
+  try { response = await fetch(path, { headers, signal: AbortSignal.timeout(90000), credentials: 'same-origin' }); }
   catch { throw new ApiError(t("Không thể kết nối máy chủ. Vui lòng kiểm tra kết nối và thử lại."), 0); }
   if (!response.ok) {
     const text = await response.text();
@@ -351,7 +356,9 @@ export interface RegistrationVerification {
 
 export const api = {
   auth: {
-    login: (email: string, password: string) => request<User>('/api/auth/login', post({ email, password })),
+    mfaSetup: (currentPassword: string) => request<{secret: string; uri: string}>('/api/auth/mfa/setup', post({currentPassword})),
+    mfaConfirm: (code: string) => request<{recoveryCodes: string[]}>('/api/auth/mfa/confirm', post({code})),
+    login: (email: string, password: string, code?: string) => request<User>('/api/auth/login', post({ email, password, code })),
     verifyRegistration: (challengeToken: string, code: string) => request<User>('/api/auth/verify-registration', post({ challengeToken, code })),
     resendRegistration: (challengeToken: string) => request<RegistrationVerification>('/api/auth/resend-registration', post({ challengeToken })),
     me: () => request<User>('/api/auth/me'),
@@ -385,6 +392,7 @@ export const api = {
     save: (body: { roomId: string; period: string; currentReading: number }) => request<ReadingSaveResult>('/api/readings', post(body)),
   },
   invoices: {
+    page: (filters: Record<string, string>) => request<{items: Invoice[]; total: number; totals: {billed:number; paid:number; outstanding:number}; draftCount:number}>(`/api/invoices?${new URLSearchParams(filters)}`),
     createSupplemental: (roomId: string, body: { requestId: string; occupancyId: string; description: string; amount: number; dueDate: string }) => request<Invoice>(`/api/rooms/${encodeURIComponent(roomId)}/supplemental-invoices`, post(body)),
     settleDeposit: (id: string, body: { amount: number; kind: 'Refund' | 'Deduction'; reason: string; idempotencyKey: string; expectedVersion?: number; targetInvoiceId?: string; targetExpectedVersion?: number }) => request<Invoice>(`/api/invoices/${encodeURIComponent(id)}/deposit-settlements`, post(body)),
     list: (period?: string) => request<unknown>(`/api/invoices${period ? `?period=${encodeURIComponent(period)}` : ''}`).then(listFrom<Invoice>),
@@ -397,6 +405,7 @@ export const api = {
     addReceipt: (id: string, body: { amount: number; note: string; idempotencyKey: string; expectedVersion?: number }) => request<ReceiptResult>(`/api/invoices/${encodeURIComponent(id)}/receipts`, post(body)),
   },
   owners: {
+    page: (page: number, status: string) => request<{items:OwnerRequest[]; total:number; pendingCount:number}>(`/api/admin/owners?page=${page}&pageSize=10${status === 'All' ? '' : `&status=${status}`}`),
     resetPassword: (id: string, currentPassword: string) => request<{ token: string; expiresAt: string }>(`/api/admin/owners/${encodeURIComponent(id)}/reset-password`, post({ currentPassword })),
     list: () => request<unknown>('/api/admin/owners').then(listFrom<OwnerRequest>),
     updateStatus: (id: string, body: { status: AccountStatus; reason?: string }) => request<OwnerRequest>(`/api/admin/owners/${encodeURIComponent(id)}/status`, post(body)),
@@ -413,7 +422,7 @@ export const api = {
     verifyWebhook: () => request<PaymentSettings>('/api/settings/payment/verify-webhook', post()),
   },
   tenant: {
-    overview: (token: string) => request<TenantOverview>(`/api/tenant/${encodeURIComponent(token)}`),
+    overview: (token: string, page = 1) => request<TenantOverview>(`/api/tenant/${encodeURIComponent(token)}?page=${page}&pageSize=10`),
     createPayment: (token: string, invoiceId: string) => request<TenantCheckout>(`/api/tenant/${encodeURIComponent(token)}/invoices/${encodeURIComponent(invoiceId)}/payment`, post()),
     reconcile: (token: string, invoiceId: string) => request<PaymentReconcileResult>(`/api/tenant/${encodeURIComponent(token)}/invoices/${encodeURIComponent(invoiceId)}/reconcile`, post()),
   },

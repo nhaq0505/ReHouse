@@ -1,6 +1,6 @@
 namespace RoomRental.Api.Domain;
 
-public sealed record UserDto(Guid Id, string Name, string Email, string Role, string Status, string SubscriptionTier = "Free", DateTimeOffset? SubscriptionExpiresAt = null, int MaxRooms = 5);
+public sealed record UserDto(Guid Id, string Name, string Email, string Role, string Status, string SubscriptionTier = "Free", DateTimeOffset? SubscriptionExpiresAt = null, int MaxRooms = 5, bool MfaEnabled = false, bool MfaRequired = false);
 public sealed record OwnerAdminDto(Guid Id, string Name, string Email, string? Phone, string Status, string? Reason, DateTimeOffset CreatedAt, string SubscriptionTier = "Free", DateTimeOffset? SubscriptionExpiresAt = null, bool IsPro = false, int RoomCount = 0, int MaxRooms = 5);
 public sealed record AdminSubscriptionRequest(string Tier, int? Days = null, DateTimeOffset? ExpiresAt = null, string? Reason = null);
 public sealed record SubscriptionPackageDto(string Id, string Name, int Days, decimal Price, string Description);
@@ -10,7 +10,9 @@ public sealed record RegisterRequest(string Name, string Email, string Password,
 public sealed record RegistrationVerificationDto(bool VerificationRequired, string ChallengeToken, string Email, DateTimeOffset ExpiresAt, DateTimeOffset ResendAvailableAt);
 public sealed record VerifyRegistrationRequest(string ChallengeToken, string Code);
 public sealed record ResendRegistrationRequest(string ChallengeToken);
-public sealed record LoginRequest(string Email, string Password);
+public sealed record LoginRequest(string Email, string Password, string? Code = null);
+public sealed record MfaSetupRequest(string CurrentPassword);
+public sealed record MfaConfirmRequest(string Code);
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword, string? ConfirmPassword = null);
 public sealed record ResetPasswordRequest(string Email, string Token, string NewPassword, string ConfirmPassword);
 public sealed record AdminResetPasswordRequest(string CurrentPassword);
@@ -34,7 +36,7 @@ public sealed record GenerateInvoiceRequest(string Period);
 public sealed record InvoiceDto(Guid Id, Guid RoomId, string RoomName, string BuildingName, string Period, string TenantName, decimal PreviousReading, decimal CurrentReading, decimal Consumption, decimal Rent, decimal ElectricityAmount, decimal WaterAmount, decimal ServiceAmount, decimal Total, decimal Paid, decimal Outstanding, string Status, DateOnly DueDate, DateTimeOffset IssuedAt, string Kind, Guid OccupancyId, decimal DepositHeld, IReadOnlyList<DepositSettlement> DepositSettlements, string? Description, bool IsFinalMeterReading,
     string LifecycleState, long Version, Guid BuildingId, decimal? MonthlyRentRate, decimal? ElectricityRate, decimal? WaterRate, bool? WaterPerPerson, decimal? ServiceRate,
     DateOnly? BillingStartDate, DateOnly? BillingEndDate, int? BillableDays, int? MonthDays,
-    bool HasPendingPayment = false, bool CanCorrectMeter = false, string? MeterCorrectionBlockedReason = null, string? TenantToken = null);
+    bool HasPendingPayment = false, bool CanCorrectMeter = false, string? MeterCorrectionBlockedReason = null, string? TenantToken = null, bool HasMonthlyOverlap = false);
 public sealed record ReceiptRequest(decimal Amount, string? Note, string? IdempotencyKey, long? ExpectedVersion = null);
 public sealed record PublishInvoiceRequest(Guid RequestId, long ExpectedVersion, decimal Rent, decimal ElectricityAmount, decimal WaterAmount, decimal ServiceAmount, string? Reason = null);
 public sealed record InvoiceCorrectionRequest(Guid RequestId, long ExpectedVersion, string Reason, decimal? Rent = null, decimal? ElectricityAmount = null, decimal? WaterAmount = null, decimal? ServiceAmount = null, decimal? CurrentReading = null, DateOnly? DueDate = null, string? Description = null, decimal? Amount = null);

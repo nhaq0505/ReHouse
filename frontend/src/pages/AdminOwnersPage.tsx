@@ -1,5 +1,5 @@
 import { dateFormat, t } from '../i18n/runtime';
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { App, Button, Form, Input, InputNumber, Modal, Radio, Select, Space, Tag, Tooltip, Typography } from 'antd';
 import type { TableProps } from 'antd';
 import { CheckOutlined, CloseOutlined, CrownOutlined, UserOutlined } from '@ant-design/icons';
@@ -50,7 +50,9 @@ export default function AdminOwnersPage() {
   const [filter, setFilter] = useState<'All' | AccountStatus>('All');
   const [reasonTarget, setReasonTarget] = useState<{ owner: OwnerRequest; status: AccountStatus } | null>(null);
   const [form] = Form.useForm<{ reason: string }>();
-  const ownersQuery = useQuery({ queryKey: ['admin-owners'], queryFn: api.owners.list });
+  const [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [filter]);
+  const ownersQuery = useQuery({ queryKey: ['admin-owners', page, filter], queryFn: () => api.owners.page(page, filter) });
   const updateMutation = useMutation({
     mutationFn: ({ id, status, reason }: { id: string; status: AccountStatus; reason?: string }) => api.owners.updateStatus(id, { status, reason }),
     onSuccess: async (_, variables) => {
@@ -62,8 +64,8 @@ export default function AdminOwnersPage() {
     onError: (e: Error) => message.error(e.message),
   });
 
-  const owners = useMemo(() => filter === 'All' ? ownersQuery.data ?? [] : (ownersQuery.data ?? []).filter((owner) => owner.status === filter), [ownersQuery.data, filter]);
-  const pendingCount = (ownersQuery.data ?? []).filter((owner) => owner.status === 'Pending').length;
+  const owners = ownersQuery.data?.items ?? [];
+  const pendingCount = ownersQuery.data?.pendingCount ?? 0;
   const approve = (owner: OwnerRequest) => modal.confirm({ title: t("Duyệt tài khoản {0}?", [owner.name]), content: t("Chủ trọ sẽ có quyền truy cập khu vực quản lý sau khi được duyệt."), okText: t("Duyệt tài khoản"), cancelText: t("Hủy"), onOk: () => updateMutation.mutateAsync({ id: owner.id, status: 'Approved' }) });
   const requestReason = (owner: OwnerRequest, status: AccountStatus) => { setReasonTarget({ owner, status }); form.resetFields(); };
   const submitReason = (values: { reason: string }) => { if (reasonTarget) updateMutation.mutate({ id: reasonTarget.owner.id, status: reasonTarget.status, reason: values.reason.trim() }); };
@@ -131,7 +133,7 @@ export default function AdminOwnersPage() {
     {ownersQuery.isError ? <LoadError error={ownersQuery.error} onRetry={() => void ownersQuery.refetch()} /> : ownersQuery.isPending ? <div className="content-card"><div className="loading-placeholder" /></div> : <>
       <div className="admin-summary-card"><div className="admin-summary-symbol"><UserOutlined /></div><div><span>{t("Yêu cầu cần xem xét")}</span><strong>{pendingCount}</strong></div><div className="admin-summary-note">{pendingCount ? t("Đang chờ bạn xử lý") : t("Bạn đã xem hết yêu cầu mới")}</div></div>
       <SectionCard className="owner-list-card" title={t("Danh sách tài khoản")} extra={<Select aria-label={t("Lọc trạng thái chủ trọ")} value={filter} onChange={setFilter} options={[{ value: 'All', label: t("Tất cả trạng thái") }, { value: 'Pending', label: t("Chờ duyệt") }, { value: 'Approved', label: t("Đã duyệt") }, { value: 'Rejected', label: t("Từ chối") }, { value: 'Suspended', label: t("Tạm khóa") }]} style={{ width: 170 }} />}>
-        {owners.length ? <ResponsiveTable className="owner-table" rowKey="id" columns={columns} dataSource={owners} pagination={{ pageSize: 10, showSizeChanger: false, hideOnSinglePage: true }} scroll={{ x: 950 }} /> : <EmptyPanel title={filter === 'All' ? t("Chưa có tài khoản chủ trọ") : t("Không có tài khoản {0}", [statusLabel[filter].toLowerCase()])} description={filter === 'Pending' ? t("Khi có yêu cầu đăng ký mới, bạn sẽ thấy ở đây.") : undefined} />}
+        {owners.length ? <ResponsiveTable className="owner-table" rowKey="id" columns={columns} dataSource={owners} pagination={{ current:page, total:ownersQuery.data?.total ?? 0, onChange:setPage, pageSize:10, showSizeChanger:false, hideOnSinglePage:true }} scroll={{ x: 950 }} /> : <EmptyPanel title={filter === 'All' ? t("Chưa có tài khoản chủ trọ") : t("Không có tài khoản {0}", [statusLabel[filter].toLowerCase()])} description={filter === 'Pending' ? t("Khi có yêu cầu đăng ký mới, bạn sẽ thấy ở đây.") : undefined} />}
       </SectionCard>
     </>}
 

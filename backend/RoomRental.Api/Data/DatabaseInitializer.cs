@@ -14,7 +14,16 @@ public static class DatabaseInitializer
     {
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.MigrateAsync();
+        if (app.Configuration.GetValue("Database:MigrateOnly", false))
+        {
+            await db.Database.MigrateAsync();
+            await BootstrapAdminAsync(db, app.Configuration);
+            return;
+        }
+        if (app.Environment.IsDevelopment() && app.Configuration.GetValue("Database:MigrateOnStartup", true))
+            await db.Database.MigrateAsync();
+        else if ((await db.Database.GetPendingMigrationsAsync()).Any())
+            throw new InvalidOperationException("Apply database migrations with the deployment identity before starting the application.");
 
         var seedDevelopmentData = ReadFlag(app.Configuration["SeedDemo"]) || ReadFlag(app.Configuration["SeedDevelopmentData"]);
         if (app.Environment.IsDevelopment() && seedDevelopmentData)

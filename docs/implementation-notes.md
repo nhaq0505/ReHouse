@@ -41,7 +41,11 @@ Thêm camera trực tiếp trên HTTPS, backend gửi ảnh đến Gemini API; k
 - Trả phòng dùng `POST /api/rooms/{id}/complete-moveout` với `{occupancyId,requestId,refundAmount,expectedHeld,expectedDepositVersion}` (alias end-occupancy). Chặn nháp/nợ/payOS pending, ghi hoàn cọc thủ công và phần còn giữ có audit/idempotency, đóng lượt thuê/thu hồi link và cập nhật baseline. Không tạo final invoice, receipt giả hoặc chuyển tiền ngân hàng.
 - Báo cáo `/api/reports/receipts|debt|deposits` và `/export.xlsx`: tổng theo toàn bộ tập lọc, snapshot lịch sử, Excel có kiểu và chống formula injection. Dãy/phòng DELETE là archive mềm; restore kiểm tra owner/quota và archive batch, giữ dữ liệu lịch sử.
 
-### Backup ngoài máy chủ (opt-in)
+### Backup ngoài máy chủ — đã hoạt động 16/10/2026
+
+**Cấu hình hiện tại:** `/etc/rehouse/backup.env` root0600 đặt `OFFHOST_SYNC_CMD='/usr/local/sbin/rehouse-drive-sync "$1"'`. Helper đọc runtime.env rồi backup.env mà không source/eval toàn bộ file. Sync dùng rclone crypt, đúng folder đã duyệt, kiểm tra tải xuống/giải mã trước retention7bản ngày/4bản tuần/3bản tháng; local giữ10bản và có SHA256. Daily03:00–03:20VN và pre-deploy dùng cùng helper; off-site thất bại giữ local, trả lỗi và chặn app swap. OAuthInproduction, forced refresh trong systemd và restorePG17 tạm đều PASS. Xem [nhật ký backup/phục hồi](backup-operations.md).
+
+Các ví dụ tổng quát bên dưới mô tả cơ chế opt-in ban đầu; nhận xét “chưa cài lên VPS” là checkpoint lịch sử, đã được thay thế bởi cấu hình hiện tại ở trên.
 
 `deploy/rehouse-backup.sh` vẫn lưu dump, DataProtection keys và manifest local, giữ 10 bản.
 Cấu hình trong `/etc/rehouse/runtime.env` (root quản lý, chmod 0600), mỗi giá trị trên một dòng:
@@ -58,7 +62,11 @@ Không cấu hình thì hành vi local giữ nguyên. Rclone phải được cà
 chỉ quản trị viên tin cậy được sửa cấu hình. Script không source toàn bộ runtime.env và không nội suy giá trị dotenv;
 chỉ bỏ một cặp dấu nháy bao ngoài. Sync thất bại trả mã khác 0 để job báo lỗi, giữ nguyên bản local hoàn chỉnh
 và không chạy retention. Bản remote chứa dữ liệu và khóa giải mã: dùng remote có mã hóa và phân quyền phù hợp;
-retention remote và restore drill phải cấu hình riêng. Thay đổi này chưa cài đặt/chạy lên VPS.
+retention remote và restore drill phải cấu hình riêng. Với VPS hiện tại, cả hai đã được cấu hình/kiểm chứng như nhật ký liên kết ở trên.
+
+### Quản lý schema — EF Core Migrations
+
+Startup dùng `MigrateAsync`; SQLite/PostgreSQL có context, migrations và snapshot riêng cùng model. Seed/bootstrap chạy sau migration. Các mô tả EnsureCreated/SQL nâng cấp trong báo cáo cũ là lịch sử trước cutover. Reset local/VPS chỉ thực hiện lần đầu theo chấp thuận riêng, không chạy lại mỗi lần deploy. Xem [quy trình và nhật ký migrations](ef-core-migrations.md).
 
 ## OTP email cho đăng ký mới
 
@@ -76,3 +84,7 @@ Chưa cấu hình hộp thư/mật khẩu ứng dụng và chưa gửi email th�
 - ManualReceiptService kiểm tra owner, version, số dư và idempotency trước khi gọi provider. Trong transaction Serializable, GET trạng thái theo order code, xác minh chữ ký/order/amount/amountPaid rồi hủy order chưa nhận tiền. Chỉ CANCELLED/EXPIRED có amountPaid=0 mới kết thúc pending và ghi receipt Manual cùng cập nhật Paid/Version nguyên tử. Attempt.Status là concurrency token; unique pending reservation được giữ tới commit để chặn checkout xen vào.
 - payOS đã nhận đủ tiền trước/trong lúc hủy: rollback nhánh cash, ghi payOS qua luồng xác minh/idempotency sẵn có, trả409 và FE tải lại hóa đơn/báo cáo. Đã nhận một phần hoặc dữ liệu thiếu/không hợp lệ: giữ pending, không thêm cash. Reconcile nền cũng không giải phóng order đóng nhưng đã nhận một phần tiền.
 - Hủy từ xa thành công nhưng DB rollback/timeout: retry kiểm tra lại trạng thái đã hủy, không giả định thất bại HTTP đồng nghĩa link đã hủy. Pending cũ thiếu metadata vẫn lookup bằng order code. UI xác nhận giải thích tự kiểm tra/hủy; không yêu cầu người dùng đối soát thủ công trước mỗi lần thu.
+
+### Operational hardening16/10/2026
+
+Production uses a separate migration job/role and a DML runtime identity. Admin TOTP/recovery, persistent account login budgets, unified new-password policy, independent retention, server pagination, bounded backups/alerts and browser regressions are implemented. Earlier dated checkpoints remain history. See [release evidence](tech-debt-remediation-2026-10-16.md) for actual deployment status.

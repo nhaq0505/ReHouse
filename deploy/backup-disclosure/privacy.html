@@ -1,0 +1,15 @@
+<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Quyền riêng tư — Roomie Backup</title><style>body{max-width:760px;margin:64px auto;padding:0 24px;font:18px/1.65 system-ui;color:#15343e}a{color:#087763}</style><main>
+<h1>Quyền riêng tư của Roomie Backup</h1>
+<p>Roomie Backup là công cụ sao lưu nội bộ do người quản trị dự án Roomie vận hành.</p>
+<h2>Dữ liệu và mục đích</h2>
+<p>Công cụ tạo bản sao PostgreSQL, khóa DataProtection, thông tin phiên bản triển khai và checksum để phục hồi hệ thống khi cần. Bản sao cơ sở dữ liệu có thể chứa dữ liệu tài khoản, người thuê và hóa đơn do Roomie đang lưu.</p>
+<h2>Quyền Google Drive</h2>
+<p>OAuth yêu cầu quyền truy cập Google Drive. Quyền này rộng hơn thư mục backup; cấu hình của công cụ chỉ đọc, ghi, kiểm tra và luân phiên các bản sao trong thư mục backup mà người quản trị đã chọn. Công cụ không chủ động đọc tài liệu khác trên Drive.</p>
+<h2>Mã hóa và lưu trữ</h2>
+<p>Nội dung và tên file backup được mã hóa bằng rclone crypt trước khi tải lên Google Drive. Mật khẩu và salt giải mã không được lưu trong thư mục backup trên Drive. Quyền truy cập Google và khóa vận hành được giữ trong cấu hình chỉ dành cho quản trị viên trên VPS; người quản trị giữ thêm bản khôi phục riêng.</p>
+<p>Chính sách luân phiên giữ bản mới nhất của 7 ngày có backup gần nhất, 4 tuần có backup gần nhất và 3 tháng có backup gần nhất; các nhóm có thể dùng chung một bản sao. Google Drive cũng có thể giữ dữ liệu trong Thùng rác theo cài đặt của tài khoản.</p>
+<h2>Chia sẻ và kiểm soát</h2>
+<p>Công cụ không bán dữ liệu, dùng dữ liệu cho quảng cáo hoặc chủ động chia sẻ bản sao với bên thứ ba ngoài nơi lưu trữ Google Drive đã chọn. Người quản trị có thể thu hồi quyền ứng dụng trong tài khoản Google và xóa bản sao trên Drive; việc đó không tự xóa dữ liệu đang vận hành trong Roomie hoặc backup local.</p>
+<p>Các câu hỏi và yêu cầu xử lý dữ liệu được gửi đến người quản trị dự án Roomie qua kênh hỗ trợ hiện có.</p>
+<p><a href="index.html">Roomie Backup</a></p>
+</main></html>

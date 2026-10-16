@@ -23,10 +23,10 @@ export default function LoginPage() {
   const notice = (location.state as { notice?: string } | null)?.notice;
   const [form] = Form.useForm();
 
-  const submit = async (values: { email: string; password: string }) => {
+  const submit = async (values: { email: string; password: string; code?: string }) => {
     setBusy(true); setError('');
     try {
-      const user = await api.auth.login(values.email, values.password);
+      const user = await api.auth.login(values.email, values.password, values.code);
       setUser(user);
       navigate(destination(user), { replace: true });
     } catch (err) {
@@ -47,6 +47,7 @@ export default function LoginPage() {
       <Form form={form} layout="vertical" size="large" onFinish={submit} requiredMark={false}>
         <Form.Item label={t("Email")} name="email" rules={[{ required: true, message: t("Vui lòng nhập email.") }, { type: 'email', message: t("Email chưa đúng định dạng.") }]}><Input prefix={<MailOutlined />} placeholder="name@example.com" autoComplete="username" /></Form.Item>
         <Form.Item label={t("Mật khẩu")} name="password" rules={[{ required: true, message: t("Vui lòng nhập mật khẩu.") }]}><Input.Password prefix={<LockOutlined />} placeholder={t("Nhập mật khẩu")} autoComplete="current-password" /></Form.Item>
+        <Form.Item label={t("Mã xác thực hai bước hoặc mã khôi phục")} name="code"><Input autoComplete="one-time-code" maxLength={32} /></Form.Item>
         <Button className="auth-submit" type="primary" htmlType="submit" loading={busy} block>{t("Đăng nhập")} <ArrowRightOutlined /></Button>
       </Form>
           <Link to="/reset-password">{t("Đặt lại mật khẩu")}</Link>

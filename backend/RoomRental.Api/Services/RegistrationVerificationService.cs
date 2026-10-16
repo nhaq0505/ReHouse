@@ -30,6 +30,7 @@ public sealed class RegistrationVerificationService(AppDbContext db, IRegistrati
             pending = new RegistrationVerification { Email = proposedUser.Email };
             db.RegistrationVerifications.Add(pending);
         }
+        var previous = db.Entry(pending).State == EntityState.Added ? null : db.Entry(pending).CurrentValues.Clone();
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         pending.ChallengeHash = Hash(token);
         pending.UserId = proposedUser.Id;
@@ -39,10 +40,11 @@ public sealed class RegistrationVerificationService(AppDbContext db, IRegistrati
         pending.ExpiresAt = now.AddMinutes(30);
         pending.ConsumedAt = null;
         var code = PrepareCode(pending, token, now);
-        // Save first to serialize competing sends; a delivery failure rolls this reservation back.
+        // Commit a reservation before SMTP: no database locks are held during delivery.
         await db.SaveChangesAsync(ct);
-        await sender.SendAsync(pending.Email, code, ct);
         await transaction.CommitAsync(ct);
+        await transaction.DisposeAsync();
+        await DeliverAsync(pending, code, previous, ct);
         return ToDto(pending, token);
     }
 
@@ -55,10 +57,12 @@ public sealed class RegistrationVerificationService(AppDbContext db, IRegistrati
         if (pending is null || pending.ConsumedAt is not null || pending.ExpiresAt <= now)
             throw new ApiException(400, InvalidCode);
         CheckDeliveryLimit(pending, now);
+        var previous = db.Entry(pending).CurrentValues.Clone();
         var code = PrepareCode(pending, token, now);
         await db.SaveChangesAsync(ct);
-        await sender.SendAsync(pending.Email, code, ct);
         await transaction.CommitAsync(ct);
+        await transaction.DisposeAsync();
+        await DeliverAsync(pending, code, previous, ct);
         return ToDto(pending, token);
     }
 
@@ -90,6 +94,31 @@ public sealed class RegistrationVerificationService(AppDbContext db, IRegistrati
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return user;
+    }
+
+    private async Task DeliverAsync(RegistrationVerification pending, string code,
+        Microsoft.EntityFrameworkCore.ChangeTracking.PropertyValues? previous, CancellationToken ct)
+    {
+        var email = pending.Email;
+        var challenge = pending.ChallengeHash;
+        var codeHash = pending.CodeHash;
+        try { await sender.SendAsync(email, code, ct); }
+        catch
+        {
+            // Compensate only our unchanged reservation. A concurrent verify/re-registration wins.
+            db.ChangeTracker.Clear();
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cleanup.Token);
+            var current = await db.RegistrationVerifications.SingleOrDefaultAsync(x => x.Email == email, cleanup.Token);
+            if (current is not null && current.ChallengeHash == challenge && current.CodeHash == codeHash && current.ConsumedAt is null)
+            {
+                if (previous is null) db.RegistrationVerifications.Remove(current);
+                else db.Entry(current).CurrentValues.SetValues(previous);
+                await db.SaveChangesAsync(cleanup.Token);
+            }
+            await transaction.CommitAsync(cleanup.Token);
+            throw;
+        }
     }
 
     private Task<RegistrationVerification?> FindAsync(string token, CancellationToken ct)

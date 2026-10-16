@@ -20,15 +20,15 @@ jobs:
     runs-on: ubuntu-24.04
     services:
       postgres:
-        image: postgres:17-alpine
+        image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
         env:
-          POSTGRES_DB: room_rental
+          POSTGRES_DB: roomie_qa_ci
           POSTGRES_USER: room_rental
           POSTGRES_PASSWORD: ci-only-db-password
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U room_rental -d room_rental"
+          --health-cmd "pg_isready -U room_rental -d roomie_qa_ci"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -38,20 +38,33 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Test backup retention
+        run: python3 -m unittest discover -s tests -p 'test_backup_*.py' -v
+
+      - name: Verify database role permissions on isolated PostgreSQL
+        run: python3 tests/check_db_roles.py
+
       - name: Build frontend and check translations
         run: >-
           docker run --rm
           --volume "$GITHUB_WORKSPACE/frontend:/workspace"
           --workdir /workspace
-          node:24-alpine
+          node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f
           sh -ec 'npm ci && npm run build && npm run i18n:check'
+
+      - name: Browser smoke tests (synthetic API only)
+        run: >-
+          docker run --rm --ipc=host
+          --volume "$GITHUB_WORKSPACE/frontend:/workspace" --workdir /workspace
+          mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
+          sh -ec 'npm ci && npm run test:e2e'
 
       - name: Build backend
         run: >-
           docker run --rm
           --volume "$GITHUB_WORKSPACE:/workspace"
           --workdir /workspace
-          mcr.microsoft.com/dotnet/sdk:10.0
+          mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
           dotnet build backend/RoomRental.Api/RoomRental.Api.csproj
           --configuration Release --nologo
 
@@ -60,7 +73,7 @@ jobs:
           docker run --rm
           --volume "$GITHUB_WORKSPACE:/workspace"
           --workdir /workspace
-          mcr.microsoft.com/dotnet/sdk:10.0
+          mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
           dotnet run --project tests/RoomRental.WebhookTests/RoomRental.WebhookTests.csproj
           --configuration Release
 
@@ -69,7 +82,7 @@ jobs:
           docker run --rm
           --volume "$GITHUB_WORKSPACE:/workspace"
           --workdir /workspace
-          mcr.microsoft.com/dotnet/sdk:10.0
+          mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
           sh -ec 'dotnet tool restore &&
           dotnet restore backend/RoomRental.Api --force &&
           dotnet ef migrations has-pending-model-changes --project backend/RoomRental.Api --context SqliteAppDbContext --configuration Release --no-build &&
@@ -78,56 +91,27 @@ jobs:
       - name: Build image and run API integration suite on disposable PostgreSQL
         env:
           CI_POSTGRES_PASSWORD: ci-only-db-password
+          TEST_HTTP_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           set -euo pipefail
           image="rehouse-ci:${GITHUB_SHA}"
-          docker build --platform linux/amd64 --tag "$image" .
+          docker build --platform linux/amd64 \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" --tag "$image" .
+          python3 tests/run_disposable.py --image "$image" --provider sqlite
+          TEST_HTTP_POSTGRES_CONNECTION="Host=127.0.0.1;Port=5432;Database=roomie_qa_ci;Username=room_rental;Password=${CI_POSTGRES_PASSWORD}" \
+            python3 tests/run_disposable.py --image "$image" --provider postgres
+          python3 tests/run_disposable.py --image "$image" --provider otp
+          mkdir -p artifacts
+          docker save "$image" | gzip > artifacts/verified-image.tar.gz
 
-          cleanup() {
-            docker rm --force rehouse-ci-api >/dev/null 2>&1 || true
-          }
-          trap cleanup EXIT
+      - name: Upload the tested image
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verified-image
+          path: artifacts/verified-image.tar.gz
+          retention-days: 2
 
-          docker run --detach \
-            --name rehouse-ci-api \
-            --network host \
-            --env ASPNETCORE_ENVIRONMENT=Development \
-            --env ASPNETCORE_URLS=http://+:5080 \
-            --env DatabaseProvider=Postgres \
-            --env "ConnectionStrings__DefaultConnection=Host=127.0.0.1;Port=5432;Database=room_rental;Username=room_rental;Password=${CI_POSTGRES_PASSWORD}" \
-            --env DataProtection__KeysPath=/app/data/keys \
-            --env WebhookBaseUrl=http://localhost:5080 \
-            --env SeedDemo=true \
-            --env EmailVerification__Enabled=false \
-            --env RequireVerifiedPaymentForTenantLink=false \
-            --env EnableInvoiceSweep=false \
-            --env EnablePaymentReconciliation=false \
-            --env Seo__AllowIndexing=true \
-            --env HTTPS_PROXY=http://127.0.0.1:9 \
-            --env HTTP_PROXY=http://127.0.0.1:9 \
-            --env ALL_PROXY=http://127.0.0.1:9 \
-            --env NO_PROXY=localhost,127.0.0.1 \
-            "$image"
-
-          ready=false
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:5080/api/health >/dev/null; then
-              ready=true
-              break
-            fi
-            sleep 2
-          done
-          if [[ "$ready" != true ]]; then
-            docker logs rehouse-ci-api
-            exit 1
-          fi
-
-          API_BASE_URL=http://127.0.0.1:5080 \
-          API_ORIGIN=http://127.0.0.1:5080 \
-            python3 -m unittest discover -s tests -p 'test_api_integration.py' -v
-
-          SEO_BASE_URL=http://127.0.0.1:5080 \
-            python3 -m unittest discover -s tests -p 'test_seo_http.py' -v
 
   publish:
     name: Publish immutable image
@@ -145,7 +129,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Build and push commit-tagged image
+      - name: Download the tested image
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: verified-image
+          path: artifacts
+
+      - name: Promote the tested image
         id: push
         env:
           GHCR_TOKEN: ${{ github.token }}
@@ -157,10 +147,9 @@ jobs:
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
 
-          docker build --platform linux/amd64 \
-            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
-            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
-            --tag "$image_tag" .
+          gzip -dc artifacts/verified-image.tar.gz | docker load
+          test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "rehouse-ci:${GITHUB_SHA}")" = "$GITHUB_SHA"
+          docker tag "rehouse-ci:${GITHUB_SHA}" "$image_tag"
           docker push "$image_tag"
 
           image_ref="$(docker image inspect --format '{{index .RepoDigests 0}}' "$image_tag")"

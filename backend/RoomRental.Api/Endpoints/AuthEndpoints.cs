@@ -24,8 +24,7 @@ public static class AuthEndpoints
                 throw new ApiException(StatusCodes.Status400BadRequest, "Vui lòng nhập họ tên tối đa 160 ký tự.");
             if (string.IsNullOrWhiteSpace(email) || email.Length > 320 || !email.Contains('@') || !System.Net.Mail.MailAddress.TryCreate(email, out _))
                 throw new ApiException(StatusCodes.Status400BadRequest, "Vui lòng nhập địa chỉ email hợp lệ.");
-            if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8 || request.Password.Length > 256)
-                throw new ApiException(StatusCodes.Status400BadRequest, "Mật khẩu cần có ít nhất 8 ký tự.");
+            PasswordSecurity.ValidateNewPassword(request.Password, request.Password);
             if (await db.Users.AnyAsync(user => user.Email == email, cancellationToken))
                 throw new ApiException(StatusCodes.Status409Conflict, "Email này đã được đăng ký.");
 
@@ -40,7 +39,7 @@ public static class AuthEndpoints
                 SubscriptionTier = SubscriptionTier.Free,
                 CreatedAt = DateTimeOffset.UtcNow
             };
-            user.PasswordHash = hasher.HashPassword(user, request.Password);
+            user.PasswordHash = hasher.HashPassword(user, request.Password!);
             if (configuration.GetValue("EmailVerification:Enabled", true))
                 return Results.Json(await verification.StartAsync(user, cancellationToken), statusCode: 202);
             db.Users.Add(user);
@@ -59,8 +58,11 @@ public static class AuthEndpoints
             RegistrationVerificationService verification, CancellationToken ct) =>
             Results.Ok(await verification.ResendAsync(request.ChallengeToken, ct))).RequireRateLimiting("auth");
 
-        routes.MapPost("/login", async (LoginRequest request, HttpContext context, AppDbContext db, IPasswordHasher<AppUser> hasher, CancellationToken cancellationToken) =>
+        routes.MapPost("/login", async (LoginRequest request, HttpContext context, AppDbContext db, IPasswordHasher<AppUser> hasher, AdminMfaService mfa, CancellationToken cancellationToken) =>
         {
+            var normalizedEmail = request.Email?.Trim().ToLowerInvariant() ?? "";
+            if (normalizedEmail.Length > 320 || request.Password?.Length > 256) throw new ApiException(400, "Thông tin đăng nhập không hợp lệ.");
+            await AccountLoginLimiter.ReserveAsync(db, normalizedEmail, app.Environment.IsDevelopment() ? 1000 : 10, cancellationToken);
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
             var email = request.Email?.Trim().ToLowerInvariant();
             var user = string.IsNullOrWhiteSpace(email)
@@ -77,6 +79,7 @@ public static class AuthEndpoints
 
             if (user.PasswordResetHash is not null)
                 throw new ApiException(403, "Tài khoản cần đặt lại mật khẩu bằng mã do quản trị viên cấp.");
+            if (user.MfaEnabled) mfa.Verify(user, request.Code);
             var now = DateTimeOffset.UtcNow;
             var session = new AuthSession
             {
@@ -87,7 +90,7 @@ public static class AuthEndpoints
             };
             db.AuthSessions.Add(session);
             if (verificationResult == PasswordVerificationResult.SuccessRehashNeeded)
-                user.PasswordHash = hasher.HashPassword(user, request.Password);
+                user.PasswordHash = hasher.HashPassword(user, request.Password!);
             await db.SaveChangesAsync(cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
@@ -106,14 +109,13 @@ public static class AuthEndpoints
                 AllowRefresh = true,
                 ExpiresUtc = session.ExpiresAt
             });
-            return Results.Ok(ToDto(user));
+            return Results.Ok(ToDto(user, app.Environment.IsProduction()));
         }).RequireRateLimiting("auth");
 
         routes.MapPost("/change-password", async (ChangePasswordRequest request, HttpContext context,
             AppDbContext db, IPasswordHasher<AppUser> hasher, CancellationToken ct) =>
         {
-            if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length is < 8 or > 256)
-                throw new ApiException(400, "Mật khẩu mới cần từ 8 đến 256 ký tự.");
+            PasswordSecurity.ValidateNewPassword(request.NewPassword, request.ConfirmPassword ?? request.NewPassword);
             if (request.ConfirmPassword is not null && request.NewPassword != request.ConfirmPassword)
                 throw new ApiException(400, "Xác nhận mật khẩu không khớp.");
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
@@ -162,8 +164,33 @@ public static class AuthEndpoints
             var userId = ApiSupport.UserId(context);
             var user = await db.Users.AsNoTracking().SingleOrDefaultAsync(row => row.Id == userId, cancellationToken)
                 ?? throw new ApiException(StatusCodes.Status401Unauthorized, "Please sign in.");
-            return Results.Ok(ToDto(user));
+            return Results.Ok(ToDto(user, app.Environment.IsProduction()));
         }).RequireAuthorization();
+
+        routes.MapPost("/mfa/setup", async (MfaSetupRequest request, HttpContext context, AppDbContext db,
+            IPasswordHasher<AppUser> hasher, AdminMfaService mfa, CancellationToken ct) =>
+        {
+            ApiSupport.RequireAdmin(context);
+            var user = await db.Users.SingleAsync(x => x.Id == ApiSupport.UserId(context), ct);
+            PasswordSecurity.VerifyCurrentPassword(user, request.CurrentPassword, hasher);
+            if (user.MfaEnabled) throw new ApiException(409, "Xác thực hai bước đã được bật.");
+            var secret = mfa.Begin(user);
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { secret, uri = $"otpauth://totp/Roomie:{Uri.EscapeDataString(user.Email)}?secret={secret}&issuer=Roomie&digits=6&period=30" });
+        }).RequireAuthorization().RequireRateLimiting("auth");
+        routes.MapPost("/mfa/confirm", async (MfaConfirmRequest request, HttpContext context, AppDbContext db,
+            AdminMfaService mfa, CancellationToken ct) =>
+        {
+            ApiSupport.RequireAdmin(context);
+            await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            var user = await db.Users.SingleAsync(x => x.Id == ApiSupport.UserId(context), ct);
+            var recoveryCodes = mfa.Confirm(user, request.Code);
+            await PasswordSecurity.RevokeSessionsAsync(db, user.Id, ct);
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            await context.SignOutAsync();
+            return Results.Ok(new { recoveryCodes });
+        }).RequireAuthorization().RequireRateLimiting("auth");
 
         routes.MapPost("/logout", async (HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
         {
@@ -182,7 +209,7 @@ public static class AuthEndpoints
         }).RequireAuthorization();
     }
 
-    public static UserDto ToDto(AppUser user) => new(
+    public static UserDto ToDto(AppUser user, bool requireMfa = false) => new(
         user.Id,
         user.Name,
         user.Email,
@@ -190,6 +217,6 @@ public static class AuthEndpoints
         user.Status.ToString(),
         user.SubscriptionTier.ToString(),
         user.SubscriptionExpiresAt,
-        user.MaxRooms
+        user.MaxRooms, user.MfaEnabled, requireMfa && user.Role == UserRole.Admin && !user.MfaEnabled
     );
 }

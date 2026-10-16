@@ -31,6 +31,17 @@ namespace RoomRental.Api.Data.Migrations.Sqlite
                         .HasMaxLength(320)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("MfaEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("MfaLastStep")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MfaRecoveryHashes")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(160)
@@ -50,8 +61,17 @@ namespace RoomRental.Api.Data.Migrations.Sqlite
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("PendingMfaExpiresAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PendingMfaSecret")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProtectedMfaSecret")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Role")
@@ -102,6 +122,8 @@ namespace RoomRental.Api.Data.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
 
                     b.HasIndex("UserId", "ExpiresAt");
 
@@ -404,6 +426,26 @@ namespace RoomRental.Api.Data.Migrations.Sqlite
                         .IsUnique();
 
                     b.ToTable("InvoiceRevisions");
+                });
+
+            modelBuilder.Entity("RoomRental.Api.Domain.LoginThrottle", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Attempts")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("WindowStartedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("WindowStartedAt");
+
+                    b.ToTable("LoginThrottles");
                 });
 
             modelBuilder.Entity("RoomRental.Api.Domain.MonthlyReading", b =>
@@ -873,6 +915,8 @@ namespace RoomRental.Api.Data.Migrations.Sqlite
 
                     b.HasIndex("ChallengeHash")
                         .IsUnique();
+
+                    b.HasIndex("ExpiresAt");
 
                     b.ToTable("RegistrationVerifications");
                 });

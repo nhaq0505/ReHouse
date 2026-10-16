@@ -50,7 +50,7 @@ jobs:
           --volume "$GITHUB_WORKSPACE/frontend:/workspace"
           --workdir /workspace
           node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f
-          sh -ec 'npm ci && npm run build && npm run i18n:check'
+          sh -ec 'npm ci && npm run build && npm run i18n:check && npm run test:api'
 
       - name: Browser smoke tests (synthetic API only)
         run: >-

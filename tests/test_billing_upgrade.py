@@ -581,6 +581,25 @@ class BillingUpgradeIntegrationTests(unittest.TestCase):
         status, body, _ = self.owner.request("POST", "/api/subscription/upgrade", {"packageId": "pro_1m"})
         self.assertIn(status, (200, 502))
 
+    def test_older_tenant_invoice_lookup_is_not_limited_to_first_page(self):
+        room=self.create_room()
+        occupancy=self.start_occupancy(room['id'])
+        ids=[]
+        for index in range(12):
+            invoice=self.owner.ok('POST',f"/api/rooms/{room['id']}/supplemental-invoices",{
+                'requestId':str(uuid.uuid4()),'occupancyId':occupancy['id'],'description':f'Pagination regression{index}',
+                'amount':10,'dueDate':today_vietnam().isoformat()})
+            ids.append(invoice['id'])
+        token=occupancy['token']
+        first=ApiSession().ok('GET',f'/api/tenant/{token}?page=1&pageSize=10')
+        old=next(item for item in ids if item not in {x['id'] for x in first['invoices']})
+        selected=ApiSession().ok('GET',f'/api/tenant/{token}?invoiceId={old}')
+        self.assertEqual([x['id'] for x in selected['invoices']],[old])
+        foreign=ApiSession().ok('GET',f'/api/tenant/{token}?invoiceId={uuid.uuid4()}')
+        self.assertEqual(foreign['invoices'],[])
+        owner_page=self.owner.ok('GET',f"/api/invoices?page=1&pageSize=100&occupancyId={occupancy['id']}")
+        self.assertTrue(all(x['occupancyId']==occupancy['id'] for x in owner_page['items']))
+
 
 if __name__ == "__main__":
     unittest.main()

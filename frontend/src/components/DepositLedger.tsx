@@ -13,7 +13,7 @@ export default function DepositLedger({ invoice }: { invoice: Invoice }) {
   const [form] = Form.useForm<Values>();
   const kind = Form.useWatch('kind', form);
   const keys = useRef(new Map<string, string>());
-  const targetsQuery = useQuery({ queryKey: ['invoices', 'deposit-targets', invoice.occupancyId], queryFn: () => api.invoices.list() });
+  const targetsQuery = useQuery({ queryKey: ['invoices', 'deposit-targets', invoice.occupancyId], queryFn: () => api.invoices.list(undefined, invoice.occupancyId) });
   const targets = (targetsQuery.data || []).filter(x => x.kind !== 'Deposit' && x.lifecycleState !== 'Draft' && x.occupancyId === invoice.occupancyId && x.outstanding > 0);
   const mutation = useMutation({
     mutationFn: (values: Values) => {

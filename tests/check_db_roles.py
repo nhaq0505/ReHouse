@@ -21,7 +21,7 @@ def main():
             if original_run(['docker','exec',name,'pg_isready','-U','room_rental'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
             time.sleep(.2)
         def sql(user,statement,check=True):
-            return original_run(['docker','exec','-i',name,'psql','-X','-q','-v','ON_ERROR_STOP=1','-U',user,'-d','room_rental'],input=statement,text=True,check=check,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            return original_run(['docker','exec','-i',name,'psql','-X','-At','-q','-v','ON_ERROR_STOP=1','-U',user,'-d','room_rental'],input=statement,text=True,check=check,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         sql('room_rental','CREATE TABLE "Users" (id int PRIMARY KEY); CREATE TABLE "__EFMigrationsHistory" (id int);')
         spec=importlib.util.spec_from_file_location('db_roles',ROOT/'deploy/rehouse-db-roles.py');roles=importlib.util.module_from_spec(spec);spec.loader.exec_module(roles)
         with tempfile.TemporaryDirectory(prefix='roomie-role-config-') as folder:
@@ -37,7 +37,8 @@ def main():
         assert sql('roomie_app','DELETE FROM "__EFMigrationsHistory";',check=False).returncode!=0
         assert sql('room_rental','CREATE TABLE migration_allowed(id int);').returncode==0
         flags=sql('roomie_dba',"SELECT rolname,rolsuper,rolcreatedb,rolcreaterole FROM pg_roles WHERE rolname IN ('roomie_app','room_rental')").stdout
-        assert 't' not in flags.replace('room_rental','').replace('roomie_app','').splitlines()[-1].split('|')[1:]
+        rows=[line.split('|') for line in flags.splitlines() if line.strip()]
+        assert len(rows)==2 and all(row[1:]==['f','f','f'] for row in rows), 'Migration/runtime must have no cluster-wide role privileges'
         print('PASS: real role script rerun; runtime DML; DDL/history writes denied; migration DDL allowed')
     finally:
         docker('rm','--force','--volumes',name)

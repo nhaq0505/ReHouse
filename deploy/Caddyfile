@@ -1,5 +1,5 @@
 roomie.io.vn {
-	header Strict-Transport-Security "max-age=31536000"
+	header >Strict-Transport-Security "max-age=31536000"
 	encode zstd gzip
 	handle_path /backup-info/* {
 		root * /var/www/rehouse-backup
@@ -10,13 +10,13 @@ roomie.io.vn {
 }
 
 www.roomie.io.vn {
-	header Strict-Transport-Security "max-age=31536000"
+	header >Strict-Transport-Security "max-age=31536000"
 	redir https://roomie.io.vn{uri} permanent
 }
 
 # Preserve existing guest links, payment return URLs and provider callbacks.
 roomiedemo.duckdns.org {
-	header Strict-Transport-Security "max-age=31536000"
+	header >Strict-Transport-Security "max-age=31536000"
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:8080
 }

@@ -50,6 +50,10 @@ def main():
             fields=dict(part.split('=',1) for part in connection.split(';') if '=' in part)
             database='roomie_qa_'+secrets.token_hex(8)
             user=fields['Username']
+            for _ in range(100):
+                if subprocess.run(['docker','exec',container,'pg_isready','-U',user],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
+                time.sleep(.2)
+            else:raise RuntimeError('Disposable PostgreSQL readiness timeout')
             subprocess.run(['docker','exec',container,'createdb','-U',user,database],check=True)
             postgres_cleanup=['docker','exec',container,'dropdb','--force','-U',user,database]
             fields['Database']=database

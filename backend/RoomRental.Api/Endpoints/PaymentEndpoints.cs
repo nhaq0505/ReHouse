@@ -72,7 +72,7 @@ public static class PaymentEndpoints
             return Results.Ok(await payOsService.ReconcileAsync(ownerId, orderCode, cancellationToken));
         });
 
-        app.MapGet("/api/tenant/{token}", async (string token, int? page, int? pageSize, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
+        app.MapGet("/api/tenant/{token}", async (string token, int? page, int? pageSize, Guid? invoiceId, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
         {
             var occupancy = await FindTenantAsync(db, token, cancellationToken);
             var roomBuilding = await (from room in db.Rooms.AsNoTracking()
@@ -83,6 +83,7 @@ public static class PaymentEndpoints
                 occupancy, OwnerManagementEndpoints.CurrentVietnamPeriod(), cancellationToken);
             var paging = PageRequest.Parse(page, pageSize);
             var invoiceQuery = db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().Where(invoice => invoice.OccupancyId == occupancy.Id && invoice.LifecycleState == InvoiceLifecycleState.Issued);
+            if (invoiceId is not null) invoiceQuery = invoiceQuery.Where(x => x.Id == invoiceId);
             var total = await invoiceQuery.CountAsync(cancellationToken);
             var totals = new { outstanding = await QueryAggregates.SumMoneyAsync(db, invoiceQuery.Select(x => x.Total - x.Paid), cancellationToken) };
             var invoices = await invoiceQuery.OrderByDescending(x => x.Period).ThenByDescending(x => x.IssuedAt).ThenBy(x => x.Id)

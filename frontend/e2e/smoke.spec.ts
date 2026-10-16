@@ -47,3 +47,13 @@ test('invoice pagination uses server totals and requests the next page',async({p
   await page.locator('.ant-pagination-next').click();
   await expect(page.getByText('Page 2',{exact:true})).toBeVisible(); expect(pages).toContain(2);
 });
+test('checkout loads the selected older invoice directly',async({page})=>{
+  const wanted='00000000-0000-0000-0000-000000000001';
+  let selected=false;
+  await page.route('**/api/tenant/**',route=>{
+    const url=new URL(route.request().url());selected=url.searchParams.get('invoiceId')===wanted;
+    return route.fulfill({json:{room:{name:'Older invoice room',buildingName:'Fixture'},occupancy:{},invoices:selected?[{id:wanted,kind:'Monthly',period:'2026-10',status:'Paid',outstanding:0,total:100,paid:100}]:[],total:1,totals:{outstanding:0}}});
+  });
+  await page.goto(`/t/fixture-private-token/invoices/${wanted}/checkout`);
+  await expect(page.getByText('Đã thanh toán',{exact:true})).toBeVisible();expect(selected).toBe(true);
+});

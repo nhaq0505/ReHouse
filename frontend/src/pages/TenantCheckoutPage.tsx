@@ -82,8 +82,8 @@ function TenantCheckoutContent({ token, invoiceId }: { token: string; invoiceId:
   }
 
   const query = useQuery({
-    queryKey: ['tenant', token],
-    queryFn: () => api.tenant.overview(token),
+    queryKey: ['tenant', token, 'invoice', invoiceId],
+    queryFn: () => api.tenant.overview(token, 1, invoiceId),
     enabled: !!token,
     retry: false,
     refetchOnMount: 'always',

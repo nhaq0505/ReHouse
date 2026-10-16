@@ -12,7 +12,7 @@ public static partial class BillingEndpoints
 {
     private static void MapInvoiceListRoutes(RouteGroupBuilder routes)
     {
-        routes.MapGet("/invoices", async (string? period, string? kind, string? lifecycleState, string? status, string? search, int? page, int? pageSize, HttpContext context, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
+        routes.MapGet("/invoices", async (string? period, string? kind, string? lifecycleState, string? status, string? search, Guid? occupancyId, int? page, int? pageSize, HttpContext context, AppDbContext db, TenantTokenService tokenService, PaymentWebhookService webhookService, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);
             var query = db.Invoices.Include(x => x.DepositSettlements).AsNoTracking().Where(row => row.OwnerId == ownerId);
@@ -40,6 +40,7 @@ public static partial class BillingEndpoints
                 query = query.Where(row => row.RoomName.ToLower().Contains(term) ||
                     row.BuildingName.ToLower().Contains(term) || row.TenantName.ToLower().Contains(term));
             }
+            if (occupancyId is not null) query = query.Where(x => x.OccupancyId == occupancyId);
             var paging = PageRequest.Parse(page, pageSize);
             var total = await query.CountAsync(cancellationToken);
             var issued = query.Where(x => x.LifecycleState == InvoiceLifecycleState.Issued);

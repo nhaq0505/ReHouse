@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiError, type User } from './api';
 
@@ -18,21 +18,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<Error | null>(null);
   const [ready, setReady] = useState(false);
   const queryClient = useQueryClient();
-  const setUser = useCallback((next: User | null) => { queryClient.clear(); setUserState(next); }, [queryClient]);
+  const generation = useRef(0);
+  const setUser = useCallback((next: User | null) => {
+    generation.current++;
+    queryClient.clear(); setError(null); setUserState(next); setReady(true);
+  }, [queryClient]);
   const refresh = useCallback(async () => {
+    const request = ++generation.current;
     setError(null);
     try {
       const next = await api.auth.me();
-      setUser(next);
+      if (request !== generation.current) return null;
+      queryClient.clear(); setUserState(next);
       return next;
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) setUser(null);
+      if (request !== generation.current) return null;
+      if (error instanceof ApiError && error.status === 401) { queryClient.clear(); setUserState(null); }
       else setError(error instanceof Error ? error : new Error(String(error)));
       return null;
     } finally {
-      setReady(true);
+      if (request === generation.current) setReady(true);
     }
-  }, [setUser]);
+  }, [queryClient]);
   const signOut = useCallback(async () => {
     await api.auth.logout(); setUser(null);
   }, [setUser]);

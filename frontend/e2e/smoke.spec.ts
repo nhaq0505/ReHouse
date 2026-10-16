@@ -57,3 +57,20 @@ test('checkout loads the selected older invoice directly',async({page})=>{
   await page.goto(`/t/fixture-private-token/invoices/${wanted}/checkout`);
   await expect(page.getByText('Đã thanh toán',{exact:true})).toBeVisible();expect(selected).toBe(true);
 });
+test('a delayed failed session lookup cannot overwrite a successful login',async({page})=>{
+  let release:()=>void=()=>{};
+  const pending=new Promise<void>(resolve=>{release=resolve;});
+  await page.route('**/api/**',async route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path==='/api/auth/me'){await pending;return route.fulfill({status:503,json:{message:'Temporary failure'}});}
+    if(path==='/api/auth/login')return route.fulfill({json:owner});
+    return route.fulfill({json:dashboard});
+  });
+  await page.goto('/login');
+  await page.getByLabel('Email',{exact:true}).fill(owner.email);
+  await page.getByLabel('Mật khẩu',{exact:true}).fill('SmokeOwner123!');
+  await page.locator('button[type=submit]').click();await expect(page).toHaveURL(/dashboard/);
+  const response=page.waitForResponse('**/api/auth/me');release();await response;
+  await expect(page.getByRole('button',{name:'Thử lại'})).toHaveCount(0);
+  await expect(page).toHaveURL(/dashboard/);
+});

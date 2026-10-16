@@ -142,4 +142,6 @@ done
 
 trap - EXIT
 touch /var/lib/rehouse/backup-last-success
+# Recovery ends the previous alert episode; a new failure must notify promptly.
+rm -f /var/lib/rehouse/backup-last-alert
 printf '%s\n' "$backup_dir"

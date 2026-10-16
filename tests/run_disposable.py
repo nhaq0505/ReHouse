@@ -51,7 +51,7 @@ def main():
             database='roomie_qa_'+secrets.token_hex(8)
             user=fields['Username']
             for _ in range(100):
-                if subprocess.run(['docker','exec',container,'pg_isready','-U',user],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
+                if subprocess.run(['docker','exec',container,'pg_isready','-h','127.0.0.1','-U',user],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
                 time.sleep(.2)
             else:raise RuntimeError('Disposable PostgreSQL readiness timeout')
             subprocess.run(['docker','exec',container,'createdb','-U',user,database],check=True)

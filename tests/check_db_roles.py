@@ -18,8 +18,9 @@ def main():
     docker('run','--detach','--name',name,'--network','none','--env','POSTGRES_USER=room_rental','--env','POSTGRES_DB=room_rental','--env','POSTGRES_PASSWORD='+('a'*64),IMAGE)
     try:
         for _ in range(80):
-            if original_run(['docker','exec',name,'pg_isready','-U','room_rental'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
+            if original_run(['docker','exec',name,'pg_isready','-h','127.0.0.1','-U','room_rental','-d','room_rental'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
             time.sleep(.2)
+        else:raise RuntimeError('Disposable PostgreSQL TCP readiness timed out')
         def sql(user,statement,check=True):
             return original_run(['docker','exec','-i',name,'psql','-X','-At','-q','-v','ON_ERROR_STOP=1','-U',user,'-d','room_rental'],input=statement,text=True,check=check,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         sql('room_rental','CREATE TABLE "Users" (id int PRIMARY KEY); CREATE TABLE "__EFMigrationsHistory" (id int);')

@@ -128,7 +128,7 @@ jobs:
           --volume "$HOME/.npm:/root/.npm"
           --volume "$GITHUB_WORKSPACE/frontend:/workspace" --workdir /workspace
           mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
-          sh -ec 'npm ci && npm run test:e2e'
+          sh -ec 'npm ci && npm run build && npm run test:e2e'
 
   integration:
     name: API integration suite and image verification

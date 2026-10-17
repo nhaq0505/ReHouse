@@ -833,3 +833,18 @@ CI38845852582 passed verify/publish/deploy, live revision4f3d1bce01ef3a7482d8597
 - User authorized pushing sections57–59 to main: MFA removal, password minimum9 without composition rules, and landing-page return links on login/register.
 - Local verification completed as recorded above. This release entry supersedes the earlier local-only status; CI/CD is the source of truth for publication/deployment. [Actions](https://github.com/nhaq0505/ReHouse/actions).
 - No schema changes, database reset or live-provider test calls. Private recovery/config files are excluded from this commit.
+
+
+## 61. Mobile payment header overflow — 16/10/2026
+
+- Reproduced `Thanh toán trực tuyến` wrapping out of the fixed-height header into compact navigation at375px. The header's inherited line-height amplified wrapped text; in production, late-injected Ant Design header styles also overrode the application rule at equal specificity.
+- Set normal header line-height, allowed the left/title flex items to shrink, kept title text on one line with ellipsis, and protected language/profile/menu controls from shrinking. Scoped header rules to `.topbar.ant-layout-header` across existing breakpoints so the production build retains application dimensions.
+- Before/after screenshots inspected at mobile/desktop with a synthetic owner and fake payment-settings responses; no provider call or payment-settings write. Added Playwright regression at320/375/768px checking header/title/navigation bounds, no page overflow, and visible language/profile controls.
+- Frontend build, i18n check, diff check and all10Playwright cases PASS. Local Vite reflects the fix. This follow-up is not yet committed/pushed/deployed.
+
+
+### System Design document — 17/10/2026
+
+- User selected the System Design artifact template. Created [Vietnamese architecture document](system-design/Roomie_System_Design_2026-10-17.docx) from the retained DOCX, not a blank style preset; reference unchanged.
+-12sections/7pages cover architecture diagram, requirements, components, business flow, receipt/API contracts, consistency, security, operations, tradeoffs and open decisions. Baseline e869b76 CI/CD confirmed successful via Actions; no new live-server inspection or application test run claimed.
+- Rendered and inspected all pages; section/styles/numbering/font/header preservation and package inventory checked. Source/provenance and output hash: [document log](system-design/README.md). No credentials/customer values included; source changes from other ongoing work were preserved. Not committed/pushed in this task.

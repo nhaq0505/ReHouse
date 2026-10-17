@@ -1,8 +1,8 @@
 import { dateFormat, t } from '../i18n/runtime';
 import { useEffect, useState } from 'react';
-import { App, Button, Form, Input, InputNumber, Modal, Radio, Select, Space, Tag, Tooltip, Typography } from 'antd';
-import type { TableProps } from 'antd';
-import { CheckOutlined, CloseOutlined, CrownOutlined, UserOutlined } from '@ant-design/icons';
+import { App, Button, Dropdown, Form, Input, InputNumber, Modal, Radio, Select, Space, Tag, Tooltip, Typography } from 'antd';
+import type { MenuProps, TableProps } from 'antd';
+import { CheckOutlined, CloseOutlined, CrownOutlined, EllipsisOutlined, KeyOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type AccountStatus, type OwnerRequest, type SubscriptionTier } from '../api';
@@ -95,36 +95,53 @@ export default function AdminOwnersPage() {
       title: '',
       key: 'actions',
       fixed: 'right',
-      width: 290,
+      width: 160,
       align: 'right',
-      render: (_, owner) => (
-        <Space wrap>
-          <Button size="small" icon={<CrownOutlined />} onClick={() => openSubModal(owner)}>
-            {t("Gói cước")}
-          </Button>
-          <Button size="small" onClick={() => { resetForm.resetFields(); setResetResult(null); setResetOwner(owner); }}>
-            {t("Đặt lại mật khẩu")}
-          </Button>
-          {owner.status === 'Pending' ? (
-            <Space>
-              <Button type="primary" size="small" icon={<CheckOutlined />} loading={updateMutation.isPending} onClick={() => approve(owner)}>
-                {t("Duyệt")}
+      render: (_, owner) => {
+        const moreItems: MenuProps['items'] = [
+          {
+            key: 'sub',
+            icon: <CrownOutlined />,
+            label: t("Gói cước"),
+            onClick: () => openSubModal(owner),
+          },
+          {
+            key: 'reset',
+            icon: <KeyOutlined />,
+            label: t("Đặt lại mật khẩu"),
+            onClick: () => {
+              resetForm.resetFields();
+              setResetResult(null);
+              setResetOwner(owner);
+            },
+          },
+        ];
+        return (
+          <Space size={4}>
+            {owner.status === 'Pending' ? (
+              <>
+                <Button type="primary" size="small" icon={<CheckOutlined />} loading={updateMutation.isPending} onClick={() => approve(owner)}>
+                  {t("Duyệt")}
+                </Button>
+                <Button danger size="small" icon={<CloseOutlined />} onClick={() => requestReason(owner, 'Rejected')}>
+                  {t("Từ chối")}
+                </Button>
+              </>
+            ) : owner.status === 'Approved' ? (
+              <Button size="small" onClick={() => requestReason(owner, 'Suspended')}>
+                {t("Tạm khóa")}
               </Button>
-              <Button danger size="small" icon={<CloseOutlined />} onClick={() => requestReason(owner, 'Rejected')}>
-                {t("Từ chối")}
+            ) : (
+              <Button size="small" type={owner.status === 'Suspended' ? 'primary' : 'default'} onClick={() => approve(owner)}>
+                {owner.status === 'Suspended' ? t("Mở khóa") : t("Duyệt lại")}
               </Button>
-            </Space>
-          ) : owner.status === 'Approved' ? (
-            <Button size="small" onClick={() => requestReason(owner, 'Suspended')}>
-              {t("Tạm khóa")}
-            </Button>
-          ) : (
-            <Button size="small" type={owner.status === 'Suspended' ? 'primary' : 'default'} onClick={() => approve(owner)}>
-              {owner.status === 'Suspended' ? t("Mở khóa") : t("Duyệt lại")}
-            </Button>
-          )}
-        </Space>
-      ),
+            )}
+            <Dropdown menu={{ items: moreItems }} trigger={['click']} placement="bottomRight">
+              <Button size="small" icon={<EllipsisOutlined />} aria-label={t("Tác vụ {0}", [owner.name])} />
+            </Dropdown>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -133,7 +150,7 @@ export default function AdminOwnersPage() {
     {ownersQuery.isError ? <LoadError error={ownersQuery.error} onRetry={() => void ownersQuery.refetch()} /> : ownersQuery.isPending ? <div className="content-card"><div className="loading-placeholder" /></div> : <>
       <div className="admin-summary-card"><div className="admin-summary-symbol"><UserOutlined /></div><div><span>{t("Yêu cầu cần xem xét")}</span><strong>{pendingCount}</strong></div><div className="admin-summary-note">{pendingCount ? t("Đang chờ bạn xử lý") : t("Bạn đã xem hết yêu cầu mới")}</div></div>
       <SectionCard className="owner-list-card" title={t("Danh sách tài khoản")} extra={<Select aria-label={t("Lọc trạng thái chủ trọ")} value={filter} onChange={setFilter} options={[{ value: 'All', label: t("Tất cả trạng thái") }, { value: 'Pending', label: t("Chờ duyệt") }, { value: 'Approved', label: t("Đã duyệt") }, { value: 'Rejected', label: t("Từ chối") }, { value: 'Suspended', label: t("Tạm khóa") }]} style={{ width: 170 }} />}>
-        {owners.length ? <ResponsiveTable className="owner-table" rowKey="id" columns={columns} dataSource={owners} pagination={{ current:page, total:ownersQuery.data?.total ?? 0, onChange:setPage, pageSize:10, showSizeChanger:false, hideOnSinglePage:true }} scroll={{ x: 950 }} /> : <EmptyPanel title={filter === 'All' ? t("Chưa có tài khoản chủ trọ") : t("Không có tài khoản {0}", [statusLabel[filter].toLowerCase()])} description={filter === 'Pending' ? t("Khi có yêu cầu đăng ký mới, bạn sẽ thấy ở đây.") : undefined} />}
+        {owners.length ? <ResponsiveTable className="owner-table" rowKey="id" columns={columns} dataSource={owners} pagination={{ current:page, total:ownersQuery.data?.total ?? 0, onChange:setPage, pageSize:10, showSizeChanger:false, hideOnSinglePage:true }} scroll={{ x: 820 }} /> : <EmptyPanel title={filter === 'All' ? t("Chưa có tài khoản chủ trọ") : t("Không có tài khoản {0}", [statusLabel[filter].toLowerCase()])} description={filter === 'Pending' ? t("Khi có yêu cầu đăng ký mới, bạn sẽ thấy ở đây.") : undefined} />}
       </SectionCard>
     </>}
 

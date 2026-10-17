@@ -32,6 +32,26 @@ public static partial class OwnerManagementEndpoints
             return Results.Created($"/api/buildings/{building.Id}", new BuildingDto(building.Id, building.Name, building.Address));
         });
 
+        routes.MapMethods("/buildings/{id:guid}", ["PUT", "PATCH"], async (Guid id, BuildingRequest request, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            var ownerId = ApiSupport.OwnerId(context);
+            var building = await db.Buildings.SingleOrDefaultAsync(row => row.Id == id && row.OwnerId == ownerId, cancellationToken)
+                ?? throw new ApiException(StatusCodes.Status404NotFound, "Building was not found.");
+            if (building.ArchivedAt is not null)
+                throw new ApiException(StatusCodes.Status409Conflict, "Dãy trọ đã được lưu trữ.");
+
+            var name = request.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 160)
+                throw new ApiException(StatusCodes.Status400BadRequest, "Building name is required and must be 160 characters or fewer.");
+
+            var address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
+            building.Name = name;
+            building.Address = address is { Length: > 500 } ? address[..500] : address;
+
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new BuildingDto(building.Id, building.Name, building.Address));
+        });
+
         routes.MapDelete("/buildings/{id:guid}", async (Guid id, HttpContext context, AppDbContext db, CancellationToken cancellationToken) =>
         {
             var ownerId = ApiSupport.OwnerId(context);

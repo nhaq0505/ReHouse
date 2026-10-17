@@ -1,6 +1,6 @@
 import { t } from '../i18n/runtime';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, App, Button, DatePicker, Form, InputNumber, Modal, Popconfirm, Tag, Typography } from 'antd';
+import { Alert, App, Button, DatePicker, Form, InputNumber, Modal, Tag, Typography } from 'antd';
 import type { TableProps } from 'antd';
 import { CheckCircleFilled, ClockCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -88,7 +88,18 @@ export default function ReadingsPage() {
       const previous = row.saved?.previousReading ?? row.room.previousReading ?? row.room.initialReading ?? 0;
       const current = row.saved?.currentReading ?? drafts[row.room.id];
       const usage = current == null ? null : Math.round(Math.max(0, current - previous) * 1000) / 1000;
-      return <span className="consumption-value">{usage === null ? '—' : `${usage} kWh`}</span>;
+      const rate = row.room.electricityRate ?? 0;
+      const estimatedCost = usage == null ? null : Math.round(usage * rate);
+      return (
+        <div>
+          <span className="consumption-value">{usage === null ? '—' : `${usage} kWh`}</span>
+          {estimatedCost != null && usage !== null && (
+            <div style={{ color: '#8a999d', fontSize: '11px', marginTop: 2 }}>
+              ≈ {formatVnd(estimatedCost)}
+            </div>
+          )}
+        </div>
+      );
     } },
     { title: t("TRẠNG THÁI PHÁT HÀNH"), key: 'lifecycle', width: 140, render: (_, row) => row.draftInvoice ? <Tag className="draft-state-tag" icon={<ClockCircleOutlined />}>{t("Bản nháp")}</Tag> : row.saved ? <Tag icon={<CheckCircleFilled />} className="submitted-tag">{t("Đã phát hành")}</Tag> : <span>—</span> },
     { title: '', key: 'action', fixed: 'right', width: 190, align: 'right', render: (_, row) => {
@@ -96,7 +107,19 @@ export default function ReadingsPage() {
       if (row.saved) return <span className="already-done">{t("Đã phát hành")}</span>;
       const currentReading = drafts[row.room.id];
       const invalid = currentReading == null || currentReading < (row.room.previousReading ?? row.room.initialReading ?? 0);
-      return <Popconfirm title={t("Chốt chỉ số và lập hóa đơn?")} description={t("Tiền thuê được tính đủ theo tháng, không phụ thuộc ngày bắt đầu thuê.")} okText={t("Chốt & lập hóa đơn")} cancelText={t("Kiểm tra lại")} onConfirm={() => { if (currentReading != null) confirmReading(row, currentReading); }}><Button type="primary" size="small" loading={readingMutation.isPending && readingMutation.variables?.roomId === row.room.id} disabled={invalid || readingMutation.isPending}>{t("Chốt & lập hóa đơn")}</Button></Popconfirm>;
+      return (
+        <Button
+          type="primary"
+          size="small"
+          loading={readingMutation.isPending && readingMutation.variables?.roomId === row.room.id}
+          disabled={invalid || readingMutation.isPending}
+          onClick={() => {
+            if (currentReading != null) confirmReading(row, currentReading);
+          }}
+        >
+          {t("Chốt & lập hóa đơn")}
+        </Button>
+      );
     } },
   ];
   const setMonth = (value: Dayjs | null) => { if (value) setPeriod(value.format('YYYY-MM')); };

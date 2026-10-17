@@ -84,17 +84,18 @@ public static class DatabaseInitializer
         };
         db.Rooms.AddRange(roomOne, roomTwo, roomThree);
 
-        var guest = tokenService.Create();
+        var guestOne = tokenService.Create();
+        var guestTwo = tokenService.Create();
         db.Occupancies.AddRange(
             new Occupancy
             {
                 RoomId = roomOne.Id, TenantName = "Nguyễn Minh Anh", Phone = "0901234567", People = 2,
-                StartDate = new DateOnly(2026, 9, 1), TenantTokenHash = guest.Hash, ProtectedTenantToken = guest.ProtectedToken
+                StartDate = new DateOnly(2026, 9, 1), TenantTokenHash = guestOne.Hash, ProtectedTenantToken = guestOne.ProtectedToken
             },
             new Occupancy
             {
                 RoomId = roomTwo.Id, TenantName = "Trần Quốc Bảo", Phone = "0912345678", People = 1,
-                StartDate = new DateOnly(2026, 10, 1)
+                StartDate = new DateOnly(2026, 10, 1), TenantTokenHash = guestTwo.Hash, ProtectedTenantToken = guestTwo.ProtectedToken
             });
         await db.SaveChangesAsync();
     }

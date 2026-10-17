@@ -1032,5 +1032,12 @@
   "Mã xác thực hai bước hoặc mã khôi phục": "验证器代码或恢复码",
   "Xác thực hai bước": "两步验证",
   "Lưu mã khôi phục ở nơi an toàn. Mỗi mã chỉ dùng một lần.": "请妥善保存恢复码，每个只能使用一次。",
-  "Thêm khóa này vào ứng dụng xác thực, rồi nhập mã 6 số để xác nhận.": "将此密钥添加到验证器应用，然后输入六位验证码。"
+  "Thêm khóa này vào ứng dụng xác thực, rồi nhập mã 6 số để xác nhận.": "将此密钥添加到验证器应用，然后输入六位验证码。",
+  "Tạo lại mã QR": "重新生成二维码",
+  "Đã sao chép số tiền": "已复制金额",
+  "Lưu trữ phòng": "归档房间",
+  "Lưu trữ phòng {0}?": "归档房间 {0}？",
+  "Sửa": "编辑",
+  "Sửa dãy trọ": "编辑楼栋",
+  "Đã cập nhật dãy trọ.": "已更新楼栋。"
 }

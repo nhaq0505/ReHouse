@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 const owner = {id:'fixture-owner',name:'Smoke Owner',email:'smoke@example.invalid',role:'Owner',status:'Approved'};
 const emptyInvoices={items:[],total:0,draftCount:0,totals:{billed:0,paid:0,outstanding:0}};
 const dashboard = {totalRooms:0,occupiedRooms:0,totalBilled:0,totalPaid:0,totalOutstanding:0,pendingReadings:0,monthlyBilled:0,monthlyPaid:0,monthlyOutstanding:0,collectionRate:0,period:'2026-10'};
+test.describe('Smoke Suite', () => {
+  test.describe.configure({ mode: 'serial' });
+
 test('login enters the owner area and sends credentials only once', async ({page}) => {
   let authenticated=false, logins=0;
   await page.route('**/api/**', async route => {
@@ -110,3 +113,26 @@ test('password reset rejects eight characters and accepts nine lowercase charact
   await page.getByRole('button',{name:'Lưu mật khẩu',exact:true}).click();
   await expect(page).toHaveURL(/login/); expect(resets).toBe(1);
 });
+
+test('mobile payment header keeps its title above navigation',async({page})=>{
+  await page.route('**/api/**',route=>route.fulfill({json:new URL(route.request().url()).pathname==='/api/auth/me'
+    ? owner : {clientId:'',webhookStatus:'Unconfigured'}}));
+  for (const width of [320,375,768]) {
+    await page.setViewportSize({width,height:812});
+    await page.goto('/settings/payment');
+    const title=page.locator('.breadcrumb-label strong');
+    await expect(title).toHaveText('Thanh toán trực tuyến');
+    const headerBox=await page.locator('.topbar').boundingBox();
+    const titleBox=await title.boundingBox();
+    const navBox=await page.locator('.compact-navigation').boundingBox();
+    expect(titleBox!.y).toBeGreaterThanOrEqual(headerBox!.y);
+    expect(titleBox!.y+titleBox!.height).toBeLessThanOrEqual(headerBox!.y+headerBox!.height);
+    expect(titleBox!.y+titleBox!.height).toBeLessThanOrEqual(navBox!.y);
+    expect(await title.evaluate(el=>getComputedStyle(el).whiteSpace)).toBe('nowrap');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    await expect(page.getByRole('combobox',{name:'Ngôn ngữ'})).toBeVisible();
+    await expect(page.locator('.profile-button')).toBeVisible();
+  }
+});
+});
+

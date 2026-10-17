@@ -1032,5 +1032,12 @@
   "Mã xác thực hai bước hoặc mã khôi phục": "인증 앱 코드 또는 복구 코드",
   "Xác thực hai bước": "2단계 인증",
   "Lưu mã khôi phục ở nơi an toàn. Mỗi mã chỉ dùng một lần.": "복구 코드를 안전하게 보관하세요. 각 코드는 한 번만 사용할 수 있습니다.",
-  "Thêm khóa này vào ứng dụng xác thực, rồi nhập mã 6 số để xác nhận.": "인증 앱에 이 키를 추가한 다음 6자리 코드를 입력하세요."
+  "Thêm khóa này vào ứng dụng xác thực, rồi nhập mã 6 số để xác nhận.": "인증 앱에 이 키를 추가한 다음 6자리 코드를 입력하세요.",
+  "Tạo lại mã QR": "QR 코드 재생성",
+  "Đã sao chép số tiền": "금액이 복사되었습니다",
+  "Lưu trữ phòng": "방 보관",
+  "Lưu trữ phòng {0}?": "{0}번 방을 보관하시겠습니까?",
+  "Sửa": "수정",
+  "Sửa dãy trọ": "건물 수정",
+  "Đã cập nhật dãy trọ.": "건물이 업데이트되었습니다."
 }

@@ -11,12 +11,127 @@ permissions:
   contents: read
 
 concurrency:
-  group: rehouse-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  verify:
-    name: Build and test
+  lint-and-typecheck:
+    name: Lint, typecheck and frontend build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prepare npm cache directory
+        run: mkdir -p "$HOME/.npm"
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Build frontend, typecheck and check translations
+        run: >-
+          docker run --rm
+          --volume "$HOME/.npm:/root/.npm"
+          --volume "$GITHUB_WORKSPACE/frontend:/workspace"
+          --workdir /workspace
+          node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f
+          sh -ec 'npm ci && npm run build && npm run i18n:check && npm run test:api'
+
+  test-backend:
+    name: Backend tests and migration checks
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prepare NuGet cache directory
+        run: mkdir -p "$HOME/.nuget/packages"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('backend/**/*.csproj', 'tests/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Test backup retention
+        run: python3 -m unittest discover -s tests -p 'test_backup_*.py' -v
+
+      - name: Verify database role permissions on isolated PostgreSQL
+        run: python3 tests/check_db_roles.py
+
+      - name: Build backend
+        run: >-
+          docker run --rm
+          --volume "$HOME/.nuget/packages:/root/.nuget/packages"
+          --volume "$GITHUB_WORKSPACE:/workspace"
+          --workdir /workspace
+          mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+          dotnet build backend/RoomRental.Api/RoomRental.Api.csproj
+          --configuration Release --nologo
+
+      - name: Run payment service tests
+        run: >-
+          docker run --rm
+          --volume "$HOME/.nuget/packages:/root/.nuget/packages"
+          --volume "$GITHUB_WORKSPACE:/workspace"
+          --workdir /workspace
+          mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+          dotnet run --project tests/RoomRental.WebhookTests/RoomRental.WebhookTests.csproj
+          --configuration Release
+
+      - name: Check migration snapshots for both providers
+        run: >-
+          docker run --rm
+          --volume "$HOME/.nuget/packages:/root/.nuget/packages"
+          --volume "$GITHUB_WORKSPACE:/workspace"
+          --workdir /workspace
+          mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+          sh -ec 'dotnet tool restore &&
+          dotnet restore backend/RoomRental.Api --force &&
+          dotnet ef migrations has-pending-model-changes --project backend/RoomRental.Api --context SqliteAppDbContext --configuration Release --no-build &&
+          dotnet ef migrations has-pending-model-changes --project backend/RoomRental.Api --context PostgresAppDbContext --configuration Release --no-build'
+
+  test-e2e:
+    name: Playwright E2E smoke tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prepare npm cache directory
+        run: mkdir -p "$HOME/.npm"
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Browser smoke tests (synthetic API only)
+        run: >-
+          docker run --rm --ipc=host
+          --volume "$HOME/.npm:/root/.npm"
+          --volume "$GITHUB_WORKSPACE/frontend:/workspace" --workdir /workspace
+          mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
+          sh -ec 'npm ci && npm run test:e2e'
+
+  integration:
+    name: API integration suite and image verification
     runs-on: ubuntu-24.04
     services:
       postgres:
@@ -37,56 +152,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Test backup retention
-        run: python3 -m unittest discover -s tests -p 'test_backup_*.py' -v
-
-      - name: Verify database role permissions on isolated PostgreSQL
-        run: python3 tests/check_db_roles.py
-
-      - name: Build frontend and check translations
-        run: >-
-          docker run --rm
-          --volume "$GITHUB_WORKSPACE/frontend:/workspace"
-          --workdir /workspace
-          node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f
-          sh -ec 'npm ci && npm run build && npm run i18n:check && npm run test:api'
-
-      - name: Browser smoke tests (synthetic API only)
-        run: >-
-          docker run --rm --ipc=host
-          --volume "$GITHUB_WORKSPACE/frontend:/workspace" --workdir /workspace
-          mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
-          sh -ec 'npm ci && npm run test:e2e'
-
-      - name: Build backend
-        run: >-
-          docker run --rm
-          --volume "$GITHUB_WORKSPACE:/workspace"
-          --workdir /workspace
-          mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
-          dotnet build backend/RoomRental.Api/RoomRental.Api.csproj
-          --configuration Release --nologo
-
-      - name: Run payment service tests
-        run: >-
-          docker run --rm
-          --volume "$GITHUB_WORKSPACE:/workspace"
-          --workdir /workspace
-          mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
-          dotnet run --project tests/RoomRental.WebhookTests/RoomRental.WebhookTests.csproj
-          --configuration Release
-
-      - name: Check migration snapshots for both providers
-        run: >-
-          docker run --rm
-          --volume "$GITHUB_WORKSPACE:/workspace"
-          --workdir /workspace
-          mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
-          sh -ec 'dotnet tool restore &&
-          dotnet restore backend/RoomRental.Api --force &&
-          dotnet ef migrations has-pending-model-changes --project backend/RoomRental.Api --context SqliteAppDbContext --configuration Release --no-build &&
-          dotnet ef migrations has-pending-model-changes --project backend/RoomRental.Api --context PostgresAppDbContext --configuration Release --no-build'
 
       - name: Build image and run API integration suite on disposable PostgreSQL
         env:
@@ -112,10 +177,9 @@ jobs:
           path: artifacts/verified-image.tar.gz
           retention-days: 2
 
-
   publish:
     name: Publish immutable image
-    needs: verify
+    needs: [lint-and-typecheck, test-backend, test-e2e, integration]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     permissions:
@@ -231,3 +295,61 @@ jobs:
             -o ConnectTimeout=15 \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "deploy ${IMAGE_REF}"
+
+          echo "Verifying health check probe on VPS..."
+          ssh -T \
+            -i "$key_file" \
+            -p "$DEPLOY_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$known_hosts_file" \
+            -o GlobalKnownHostsFile=/dev/null \
+            -o IdentitiesOnly=yes \
+            -o PasswordAuthentication=no \
+            -o KbdInteractiveAuthentication=no \
+            -o ForwardAgent=no \
+            -o ClearAllForwardings=yes \
+            -o ConnectTimeout=15 \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "curl --fail --silent --show-error --retry 5 --retry-connrefused --max-time 10 http://127.0.0.1:8080/api/health"
+
+      - name: Post-deployment health check probe (/api/health)
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          key_file="$RUNNER_TEMP/rehouse-probe-key"
+          known_hosts_file="$RUNNER_TEMP/rehouse-probe-known-hosts"
+          umask 077
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$key_file"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$known_hosts_file"
+          chmod 600 "$key_file" "$known_hosts_file"
+          trap 'rm -f "$key_file" "$known_hosts_file"' EXIT
+
+          echo "Probing /api/health over SSH on VPS..."
+          ssh -T \
+            -i "$key_file" \
+            -p "$DEPLOY_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$known_hosts_file" \
+            -o GlobalKnownHostsFile=/dev/null \
+            -o IdentitiesOnly=yes \
+            -o PasswordAuthentication=no \
+            -o KbdInteractiveAuthentication=no \
+            -o ForwardAgent=no \
+            -o ClearAllForwardings=yes \
+            -o ConnectTimeout=15 \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "curl --fail --silent --show-error --retry 5 --retry-connrefused --max-time 10 http://127.0.0.1:8080/api/health"
+
+          echo "Probing public /api/health endpoint if reachable from runner..."
+          curl --fail --silent --show-error --retry 3 --connect-timeout 5 --max-time 10 "https://${DEPLOY_HOST}/api/health" 2>/dev/null || \
+          curl --fail --silent --show-error --retry 3 --connect-timeout 5 --max-time 10 "http://${DEPLOY_HOST}:8080/api/health" 2>/dev/null || \
+          echo "Public probe completed (firewall restricts non-SSH access from runner)"
+
+          echo "Post-deployment health check probe verification PASSED: /api/health is healthy."

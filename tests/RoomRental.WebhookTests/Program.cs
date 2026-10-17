@@ -79,6 +79,10 @@ AccountOccupancyTests.Run();
 RegistrationEmailTemplateTests.Run();
 await RegistrationVerificationTests.RunAsync();
 await ManualReceiptTests.RunAsync();
+await AuthSecurityHttpTests.RunAsync();
+await RoomTenantLifecycleHttpTests.RunAsync();
+await AccountingBillingHttpTests.RunAsync();
+await PayOsOperationsHttpTests.RunAsync();
 
 sealed class FakeHandler : HttpMessageHandler, IHttpClientFactory
 {

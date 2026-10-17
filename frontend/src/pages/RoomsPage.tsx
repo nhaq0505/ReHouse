@@ -1,8 +1,8 @@
 import { dateFormat, getLanguage, languages, t, type Language } from '../i18n/runtime';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, App, Button, Card, Col, ConfigProvider, DatePicker, Dropdown, Form, Grid, Input, InputNumber, Modal, Row, Select, Space, Tag, Typography } from 'antd';
+import { Alert, App, Button, Card, Col, ConfigProvider, DatePicker, Dropdown, Form, Grid, Input, InputNumber, Modal, QRCode, Row, Select, Space, Tag, Typography } from 'antd';
 import type { MenuProps, TableProps } from 'antd';
-import { FileAddOutlined, CopyOutlined, CrownOutlined, EditOutlined, EllipsisOutlined, HomeOutlined, LinkOutlined, PlusOutlined, UserAddOutlined, RollbackOutlined } from '@ant-design/icons';
+import { FileAddOutlined, CopyOutlined, CrownOutlined, EditOutlined, EllipsisOutlined, HomeOutlined, InboxOutlined, LinkOutlined, PlusOutlined, UserAddOutlined, RollbackOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -51,10 +51,8 @@ function RoomsContent() {
   const buildingsQuery = useQuery({ queryKey: ['buildings', 'room-options'], queryFn: () => api.buildings.list(true) });
   const roomsQuery = useQuery({ queryKey: ['rooms', 'archive-view'], queryFn: () => api.rooms.list(undefined, true) });
   const subQuery = useQuery({ queryKey: ['subscription'], queryFn: api.subscription.getStatus });
-  const paymentSettingsQuery = useQuery({ queryKey: ['payment-settings'], queryFn: api.paymentSettings.get });
-  const isPaymentVerified = paymentSettingsQuery.data?.webhookStatus === 'Verified';
 
-  const refreshData = async () => { await Promise.all([client.invalidateQueries({ queryKey: ['rooms'] }), client.invalidateQueries({ queryKey: ['dashboard'] }), client.invalidateQueries({ queryKey: ['buildings'] }), client.invalidateQueries({ queryKey: ['invoices'] }), client.invalidateQueries({ queryKey: ['subscription'] }), client.invalidateQueries({ queryKey: ['payment-settings'] })]); };
+  const refreshData = async () => { await Promise.all([client.invalidateQueries({ queryKey: ['rooms'] }), client.invalidateQueries({ queryKey: ['dashboard'] }), client.invalidateQueries({ queryKey: ['buildings'] }), client.invalidateQueries({ queryKey: ['invoices'] }), client.invalidateQueries({ queryKey: ['subscription'] })]); };
   const createMutation = useMutation({ mutationFn: api.rooms.create, onSuccess: async () => { await refreshData(); message.success(t("Đã thêm phòng.")); setMode(null); roomForm.resetFields(); }, onError: (e: Error) => message.error(e.message) });
   const supplementalMutation = useMutation({ mutationFn: ({ roomId, body }: { roomId: string; body: Parameters<typeof api.invoices.createSupplemental>[1] }) => api.invoices.createSupplemental(roomId, body), onSuccess: async () => { await refreshData(); message.success(t("Đã tạo hóa đơn bổ sung trên link khách.")); setSupplemental(null); supplementalForm.resetFields(); }, onError: (e: Error) => message.error(e.message) });
   const updateMutation = useMutation({ mutationFn: ({ id, values }: { id: string; values: Parameters<typeof api.rooms.update>[1] }) => api.rooms.update(id, values), onSuccess: async () => { await refreshData(); message.success(t("Đã cập nhật thông tin phòng.")); setMode(null); }, onError: (e: Error) => message.error(e.message) });
@@ -63,7 +61,7 @@ function RoomsContent() {
   const archiveMutation = useMutation({ mutationFn: api.rooms.archive, onSuccess: async () => { await refreshData(); message.success(t("Đã lưu trữ phòng. Lịch sử và hóa đơn vẫn được giữ.")); }, onError: (error: Error) => message.error(error.message) });
   const restoreMutation = useMutation({ mutationFn: api.rooms.restore, onSuccess: async () => { await refreshData(); message.success(t("Đã khôi phục phòng.")); }, onError: (error: Error) => message.error(error.message) });
 
-  const rotateMutation = useMutation({ mutationFn: api.rooms.rotateLink, onSuccess: (result, id) => { setLinkInfo({ ...result, room: roomsQuery.data?.find((room) => room.id === id), newlyIssued: true }); void refreshData(); }, onError: (e: Error) => message.error(e.message) });
+  const rotateMutation = useMutation({ mutationFn: api.rooms.rotateLink, onSuccess: (result, id) => { setLinkInfo((prev) => ({ ...result, room: roomsQuery.data?.find((room) => room.id === id) ?? prev?.room, newlyIssued: true })); void refreshData(); }, onError: (e: Error) => message.error(e.message) });
 
   const isPro = subQuery.data?.isPro ?? false;
   const maxRooms = subQuery.data?.maxRooms ?? 5;
@@ -121,7 +119,7 @@ function RoomsContent() {
     ...(room.occupancy?.depositInvoiceId ? [{ key: 'deposit', label: <Link to={`/invoices?invoice=${room.occupancy.depositInvoiceId}`}>{t("Thu / quyết toán cọc")}</Link> }] : []),
     room.occupancy ? { key: 'moveout', danger: true, label: t("Trả phòng & quyết toán") } : { key: 'occupancy', icon: <UserAddOutlined />, label: t("Thêm người thuê") },
     { type: 'divider' },
-    { key: 'archive', danger: true, label: t("Xóa phòng") },
+    { key: 'archive', icon: <InboxOutlined />, label: t("Lưu trữ phòng") },
 
   ];
   const onAction = (key: string, room: Room) => {
@@ -131,35 +129,20 @@ function RoomsContent() {
     if (key === 'supplemental' && room.occupancy) { supplementalForm.resetFields(); supplementalForm.setFieldsValue({ dueDate: dayjs() }); setSupplemental({ room, requestId: crypto.randomUUID() }); }
     if (key === 'occupancy') openOccupancy(room);
     if (key === 'moveout') setMoveoutRoom(room);
-    if (key === 'archive') modal.confirm({ title: t("Xóa phòng {0}?", [room.name]), content: t("Phòng sẽ được lưu trữ khỏi danh sách đang hoạt động. Lịch sử thuê, hóa đơn và khoản thu vẫn được giữ."), okText: t("Xóa phòng"), cancelText: t("Hủy"), okButtonProps: { danger: true }, onOk: () => archiveMutation.mutateAsync(room.id) });
+    if (key === 'archive') modal.confirm({ title: t("Lưu trữ phòng {0}?", [room.name]), content: t("Phòng sẽ được lưu trữ khỏi danh sách đang hoạt động. Lịch sử thuê, hóa đơn và khoản thu vẫn được giữ."), okText: t("Lưu trữ phòng"), cancelText: t("Hủy"), onOk: () => archiveMutation.mutateAsync(room.id) });
 
-  };
-
-  const promptPaymentConfiguration = () => {
-    modal.confirm({
-      title: t("Chưa xác minh cấu hình payOS"),
-      content: t("Cần lưu và xác minh cấu hình payOS trước khi cấp link cho khách thuê."),
-      okText: t("Cấu hình ngay"),
-      cancelText: t("Để sau"),
-      onOk: () => navigate('/settings/payment'),
-    });
   };
 
   const renewLink = (room: Room) => {
-    if (!isPaymentVerified) {
-      promptPaymentConfiguration();
-      return;
-    }
     modal.confirm({ title: t("Thu hồi link của {0}?", [room.name]), content: t("Tạo liên kết riêng để người thuê xem hóa đơn và thanh toán. Nếu đã cấp link trước đó, link cũ sẽ hết hiệu lực."), className: 'room-editor', centered: true, autoFocusButton: 'cancel', okText: t("Thu hồi & tạo link mới"), cancelText: t("Hủy"), okButtonProps: { danger: true }, onOk: () => rotateMutation.mutateAsync(room.id) });
   };
   const issueLink = (room: Room) => {
-    if (!isPaymentVerified) {
-      promptPaymentConfiguration();
-      return;
-    }
     setLinkLanguage(getLanguage());
-    if (room.occupancy?.token && room.occupancy.url) setLinkInfo({ token: room.occupancy.token, url: room.occupancy.url, room });
-    else renewLink(room);
+    if (room.occupancy?.token && room.occupancy.url) {
+      setLinkInfo({ token: room.occupancy.token, url: room.occupancy.url, room, newlyIssued: false });
+    } else {
+      rotateMutation.mutate(room.id);
+    }
   };
   useEffect(() => { if (searchParams.get('create') === '1' && buildingsQuery.isSuccess && buildingsQuery.data.length > 0) { openCreate(); const next = new URLSearchParams(searchParams); next.delete('create'); setSearchParams(next, { replace: true }); } else if (searchParams.get('links') === '1') { setStatusFilter('occupied'); const next = new URLSearchParams(searchParams); next.delete('links'); setSearchParams(next, { replace: true }); } }, [searchParams, buildingsQuery.isSuccess]);
 
@@ -270,7 +253,22 @@ function RoomsContent() {
       </Form>
     </Modal>
     <Modal className="room-editor room-link-modal" title={t("Link hóa đơn · {0}", [linkInfo?.room?.name ?? t("Người thuê")])} open={!!linkInfo} onCancel={() => setLinkInfo(null)} footer={<div className="room-link-footer">{linkInfo?.room && <Button danger type="text" onClick={() => renewLink(linkInfo.room!)}>{t("Thu hồi & tạo link mới")}</Button>}<Button onClick={() => setLinkInfo(null)}>{t("Đóng")}</Button><Button type="primary" onClick={async () => { if (!linkInfo) return; const url = tenantLinkUrl(); try { await navigator.clipboard.writeText(url); message.success(t("Đã sao chép liên kết.")); } catch { message.info(t("Hãy chọn và sao chép liên kết ở trên.")); } }}>{t("Sao chép liên kết")}</Button></div>}>
-      <div className="link-info"><div className="link-info-icon"><LinkOutlined /></div><Typography.Paragraph>{linkInfo?.newlyIssued ? t("Đã tạo link mới và thu hồi link cũ. ") : ''}{t("Gửi link này cho")} {linkInfo?.room?.occupancy?.tenantName || t("người thuê")}  {t("để xem hóa đơn và thanh toán.")}</Typography.Paragraph><div className="tenant-link-language"><label>{t("Ngôn ngữ cho khách")}</label><Select aria-label={t("Ngôn ngữ cho khách")} value={linkLanguage} onChange={setLinkLanguage} options={[...languages]} /><span>{t("Chọn ngôn ngữ của link trước khi gửi cho khách.")}</span></div><Input readOnly aria-label={t("Link hóa đơn của người thuê")} value={linkInfo ? tenantLinkUrl() : ''} onFocus={(e) => e.currentTarget.select()} />{linkInfo && <Button href={tenantLinkUrl()} target="_blank" rel="noopener noreferrer" icon={<LinkOutlined />}>{t("Mở trang khách")}</Button>}</div>
+      <div className="link-info">
+        <div className="link-info-icon"><LinkOutlined /></div>
+        <Typography.Paragraph>{linkInfo?.newlyIssued ? t("Đã tạo link mới và thu hồi link cũ. ") : ''}{t("Gửi link này cho")} {linkInfo?.room?.occupancy?.tenantName || t("người thuê")}  {t("để xem hóa đơn và thanh toán.")}</Typography.Paragraph>
+        <div className="tenant-link-language">
+          <label>{t("Ngôn ngữ cho khách")}</label>
+          <Select aria-label={t("Ngôn ngữ cho khách")} value={linkLanguage} onChange={setLinkLanguage} options={[...languages]} />
+          <span>{t("Chọn ngôn ngữ của link trước khi gửi cho khách.")}</span>
+        </div>
+        <Input readOnly aria-label={t("Link hóa đơn của người thuê")} value={linkInfo ? tenantLinkUrl() : ''} onFocus={(e) => e.currentTarget.select()} />
+        {linkInfo && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
+            <Button href={tenantLinkUrl()} target="_blank" rel="noopener noreferrer" icon={<LinkOutlined />}>{t("Mở trang khách")}</Button>
+            <QRCode value={tenantLinkUrl()} size={110} bordered={false} />
+          </div>
+        )}
+      </div>
     </Modal>
   </div>;
 }

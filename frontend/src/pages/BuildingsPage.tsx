@@ -1,7 +1,7 @@
 import { t } from '../i18n/runtime';
 import { useEffect, useMemo, useState } from 'react';
 import { App, Button, Card, Col, Form, Input, Modal, Row, Select, Space, Spin, Tag, Typography } from 'antd';
-import { ArrowRightOutlined, BankOutlined, EnvironmentOutlined, HomeOutlined, PlusOutlined, RollbackOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, BankOutlined, EditOutlined, EnvironmentOutlined, HomeOutlined, PlusOutlined, RollbackOutlined } from '@ant-design/icons';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type Building } from '../api';
@@ -15,8 +15,10 @@ export default function BuildingsPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [open, setOpen] = useState(false);
+  const [editingBuilding, setEditingBuilding] = useState<Building | null>(null);
   const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>('Active');
   const [form] = Form.useForm<{ name: string; address: string }>();
+  const [editForm] = Form.useForm<{ name: string; address: string }>();
   const buildingsQuery = useQuery({ queryKey: ['buildings', 'archive-view'], queryFn: () => api.buildings.list(true) });
   const roomsQuery = useQuery({ queryKey: ['rooms', 'archive-view'], queryFn: () => api.rooms.list(undefined, true) });
   const createMutation = useMutation({
@@ -24,6 +26,19 @@ export default function BuildingsPage() {
     onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['buildings'] }); message.success(t("Đã thêm dãy trọ.")); setOpen(false); form.resetFields(); },
     onError: (error: Error) => message.error(error.message),
   });
+  const updateMutation = useMutation({
+    mutationFn: ({ id, values }: { id: string; values: { name: string; address: string } }) => api.buildings.update(id, values),
+    onSuccess: async () => {
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ['buildings'] }), queryClient.invalidateQueries({ queryKey: ['rooms'] }), queryClient.invalidateQueries({ queryKey: ['dashboard'] })]);
+      message.success(t("Đã cập nhật dãy trọ."));
+      setEditingBuilding(null);
+    },
+    onError: (error: Error) => message.error(error.message),
+  });
+  const openEditBuilding = (building: Building) => {
+    setEditingBuilding(building);
+    editForm.setFieldsValue({ name: building.name, address: building.address ?? '' });
+  };
   const archiveMutation = useMutation({
     mutationFn: api.buildings.archive,
     onSuccess: async () => { await Promise.all([queryClient.invalidateQueries({ queryKey: ['buildings'] }), queryClient.invalidateQueries({ queryKey: ['rooms'] }), queryClient.invalidateQueries({ queryKey: ['dashboard'] })]); message.success(t("Đã lưu trữ dãy trọ. Lịch sử và hóa đơn vẫn được giữ.")); },
@@ -59,7 +74,7 @@ export default function BuildingsPage() {
         return <Col key={building.id} xs={24} md={12} xl={8}><Card className={`building-card ${building.isArchived ? 'building-card-archived' : ''}`} bordered={false}>
           <div className={`building-art building-art-${index % 4}`}><div className="building-art-grid"><span /><span /><span /><span /><span /><span /></div><div className="building-art-tag">{String(index + 1).padStart(2, '0')}</div><div className="building-art-icon"><BankOutlined /></div>{building.isArchived && <Tag className="building-archived-tag">{t("Đã lưu trữ")}</Tag>}</div>
           <div className="building-card-body"><div className="building-card-title"><div><Typography.Title level={4}>{building.name}</Typography.Title><span><EnvironmentOutlined /> {building.address || t("Chưa có địa chỉ")}</span></div><div className="building-room-count"><strong>{roomCount ?? building.roomCount ?? 0}</strong><small>{t("phòng")}</small></div></div>
-            <div className="building-card-footer"><span>{building.isArchived ? t("Đã lưu trữ {0}", [building.archivedAt ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(building.archivedAt)) : '']) : t("Dãy trọ của bạn")}</span>{building.isArchived ? <Button icon={<RollbackOutlined />} loading={restoreMutation.isPending && restoreMutation.variables === building.id} onClick={() => restoreMutation.mutate(building.id)}>{t("Khôi phục")}</Button> : <Space><Link to={`/rooms?building=${encodeURIComponent(building.id)}`}>{t("Xem phòng")} <ArrowRightOutlined /></Link><Button danger type="text" loading={archiveMutation.isPending && archiveMutation.variables === building.id} onClick={() => confirmArchive(building)}>{t("Lưu trữ")}</Button></Space>}</div>
+            <div className="building-card-footer"><span>{building.isArchived ? t("Đã lưu trữ {0}", [building.archivedAt ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(building.archivedAt)) : '']) : t("Dãy trọ của bạn")}</span>{building.isArchived ? <Button icon={<RollbackOutlined />} loading={restoreMutation.isPending && restoreMutation.variables === building.id} onClick={() => restoreMutation.mutate(building.id)}>{t("Khôi phục")}</Button> : <Space><Link to={`/rooms?building=${encodeURIComponent(building.id)}`}>{t("Xem phòng")} <ArrowRightOutlined /></Link><Button type="text" icon={<EditOutlined />} onClick={() => openEditBuilding(building)} aria-label={t("Sửa dãy trọ")}>{t("Sửa")}</Button><Button danger type="text" loading={archiveMutation.isPending && archiveMutation.variables === building.id} onClick={() => confirmArchive(building)}>{t("Lưu trữ")}</Button></Space>}</div>
           </div>
         </Card></Col>;
       })}</Row>
@@ -67,6 +82,9 @@ export default function BuildingsPage() {
     </>}
     <Modal title={t("Thêm dãy trọ mới")} open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} okText={t("Tạo dãy trọ")} cancelText={t("Hủy")} confirmLoading={createMutation.isPending} destroyOnClose>
       <Typography.Paragraph className="modal-intro">{t("Đặt tên và nhập địa chỉ để dễ nhận biết dãy trọ của bạn.")}</Typography.Paragraph><Form form={form} layout="vertical" onFinish={(values) => createMutation.mutate(values)} requiredMark={false}><Form.Item label={t("Tên dãy trọ")} name="name" rules={[{ required: true, whitespace: true, message: t("Vui lòng nhập tên dãy trọ.") }]}><Input placeholder={t("Ví dụ: Dãy trọ đường Hoa Sứ")} maxLength={100} /></Form.Item><Form.Item label={t("Địa chỉ")} name="address" rules={[{ required: true, whitespace: true, message: t("Vui lòng nhập địa chỉ.") }]}><Input.TextArea placeholder={t("Số nhà, đường, phường/xã, quận/huyện")} autoSize={{ minRows: 2, maxRows: 4 }} maxLength={250} /></Form.Item></Form>
+    </Modal>
+    <Modal title={t("Sửa dãy trọ")} open={!!editingBuilding} onCancel={() => { if (!updateMutation.isPending) setEditingBuilding(null); }} onOk={() => editForm.submit()} okText={t("Lưu thay đổi")} cancelText={t("Hủy")} confirmLoading={updateMutation.isPending} destroyOnClose>
+      <Typography.Paragraph className="modal-intro">{t("Đặt tên và nhập địa chỉ để dễ nhận biết dãy trọ của bạn.")}</Typography.Paragraph><Form form={editForm} layout="vertical" onFinish={(values) => { if (editingBuilding && !updateMutation.isPending) updateMutation.mutate({ id: editingBuilding.id, values }); }} requiredMark={false}><Form.Item label={t("Tên dãy trọ")} name="name" rules={[{ required: true, whitespace: true, message: t("Vui lòng nhập tên dãy trọ.") }]}><Input placeholder={t("Ví dụ: Dãy trọ đường Hoa Sứ")} maxLength={100} /></Form.Item><Form.Item label={t("Địa chỉ")} name="address" rules={[{ required: true, whitespace: true, message: t("Vui lòng nhập địa chỉ.") }]}><Input.TextArea placeholder={t("Số nhà, đường, phường/xã, quận/huyện")} autoSize={{ minRows: 2, maxRows: 4 }} maxLength={250} /></Form.Item></Form>
     </Modal>
   </>;
 }
